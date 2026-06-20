@@ -1,0 +1,9 @@
+*.xls
+*.xlsx
+*.csv
+build/
+dist/
+*.spec
+__pycache__/
+*.exe
+leitura_error_log.txt
