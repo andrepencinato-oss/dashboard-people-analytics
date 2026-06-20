@@ -40,7 +40,7 @@ def fetch_latest_excel():
 
         service = build('drive', 'v3', credentials=creds)
 
-        query = f"'{folder_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains '.xls' and trashed = false"
+        query = f"'{folder_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains 'Extrato' and name contains '.xls' and trashed = false"
         results = service.files().list(
             q=query,
             orderBy="createdTime desc",

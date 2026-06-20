@@ -15,6 +15,7 @@ APP_VERSION = "v1.0.0"
 
 SYNC_FILE_PATH = None
 SYNC_ERROR = None
+LAST_PING_TIME = time.time()
 
 def get_base_path():
     if getattr(sys, 'frozen', False):
@@ -81,7 +82,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
 
             extrato_path = SYNC_FILE_PATH if SYNC_FILE_PATH else os.path.join(working_dir, DATA_FILE_NAME)
-            html_template_path = os.path.join(base_path, 'dashboard_dp_colaboradores (1).html')
+            html_template_path = os.path.join(base_path, 'dashboard_dp_colaboradores.html')
             
             try:
                 data = excel_reader.process_excel_files(extrato_path)
@@ -110,12 +111,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 # Injetar a versão dinamicamente
                 new_html_content = new_html_content.replace('{{APP_VERSION}}', APP_VERSION)
 
-                # Injetar script de shutdown antes de fechar a tag body
+                # Injetar script de shutdown e heartbeat antes de fechar a tag body
                 shutdown_script = """
 <script>
     window.addEventListener('beforeunload', function (e) {
         navigator.sendBeacon('/shutdown');
     });
+    setInterval(function() {
+        fetch('/ping').catch(e => console.log('Heartbeat failed'));
+    }, 5000);
 </script>
 </body>
 """
@@ -129,6 +133,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.write(f"<h1>Erro ao carregar dashboard</h1><p>{e}</p>".encode('utf-8'))
         elif self.path == '/shutdown':
             self.do_shutdown()
+        elif self.path == '/ping':
+            global LAST_PING_TIME
+            LAST_PING_TIME = time.time()
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'pong')
         else:
             self.send_response(404)
             self.end_headers()
@@ -160,11 +170,23 @@ def main():
     url = f"http://127.0.0.1:{port}"
     print(f"Servidor iniciado em {url}")
     
+    global LAST_PING_TIME
+    LAST_PING_TIME = time.time() + 15  # Give 15s extra grace period for browser to open
+    
     # Abrir o navegador com atraso para garantir que o servidor subiu
     threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     
-    # Thread Principal roda o servidor, bloqueando e mantendo vivo
-    httpd.serve_forever()
+    # Thread secundária roda o servidor
+    server_thread = threading.Thread(target=httpd.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+    
+    # Thread Principal monitora o Heartbeat
+    while True:
+        time.sleep(5)
+        if time.time() - LAST_PING_TIME > 15:
+            print("No heartbeat received for 15s. Shutting down Ghost Process...")
+            os._exit(0)
 
 if __name__ == '__main__':
     main()

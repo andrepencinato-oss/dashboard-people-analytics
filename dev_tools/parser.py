@@ -11,7 +11,7 @@ def clean_value(val):
 
 def process_excel_files(extrato_path):
     # Lendo o arquivo HTML disfarçado de XLS
-    df = pd.read_html(extrato_path, decimal=',', thousands='.')[0]
+    df = pd.read_html(extrato_path, decimal=',', thousands='.', match='CADASTRO')[0]
     
     # Substituir nan e valores nulos
     df = df.where(pd.notnull(df), None)
@@ -21,6 +21,38 @@ def process_excel_files(extrato_path):
     
     for idx, row in df.iterrows():
         cad = int(row['CADASTRO'])
+        
+        # Helper interno para tratar SUSPENSO
+        susp_raw = str(row.get('SUSPENSO', '')).strip().upper()
+        susp_val = 0
+        if susp_raw == 'SIM':
+            susp_val = 1
+        elif susp_raw in ['NÃO', 'NAO', 'NON', 'NO', '', 'NONE', 'NAN']:
+            susp_val = 0
+        else:
+            try:
+                susp_val = int(float(susp_raw.replace(',', '.')))
+            except ValueError:
+                print(f"AVISO: Valor inválido na coluna SUSPENSO para o cadastro {cad}: '{susp_raw}'")
+                susp_val = 0
+
+        descricao_evento = str(row.get('DESCRICAO_EVENTO', '')).upper()
+        afastado = str(row.get('AFASTADO', '')).strip().upper()
+        
+        ausente_val = 'FALTA' in descricao_evento
+        licenca_val = afastado == 'SIM'
+        advV_val = 1 if 'VERBAL' in descricao_evento else 0
+        advE_val = 1 if 'ESCRITA' in descricao_evento else 0
+
+        # Garantir horas
+        def get_float(val):
+            try:
+                if isinstance(val, str):
+                    return float(val.replace('.', '').replace(',', '.'))
+                return float(val) if val is not None else 0.0
+            except:
+                return 0.0
+
         if cad not in colabs_dict:
             # Processar o "setor" (Centro de Custo)
             centro_custo = clean_value(row.get('CENTRO_CUSTO'))
@@ -38,19 +70,6 @@ def process_excel_files(extrato_path):
             except:
                 salario = 0.0
 
-            # Garantir booleanos
-            ausente = str(row.get('AUSENTE', '')).strip().lower() == 'sim'
-            licenca = str(row.get('LICENCA', '')).strip().lower() == 'sim'
-            
-            # Garantir horas
-            def get_float(val):
-                try:
-                    if isinstance(val, str):
-                        return float(val.replace('.', '').replace(',', '.'))
-                    return float(val) if val is not None else 0.0
-                except:
-                    return 0.0
-
             colab = {
                 "cad": cad,
                 "nome": clean_value(row.get('NOME')),
@@ -61,47 +80,43 @@ def process_excel_files(extrato_path):
                 "salario": salario,
                 "setor": setor,
                 "local": clean_value(row.get('LOCAL')),
-                "ausente": ausente,
-                "licenca": licenca,
-                "susp": int(get_float(row.get('QTD_SUSPENSOES'))),
-                "advV": int(get_float(row.get('QTD_ADVERT_VERBAIS'))),
-                "advE": int(get_float(row.get('QTD_ADVERT_ESCRITAS'))),
+                "ausente": ausente_val,
+                "licenca": licenca_val,
+                "susp": susp_val,
+                "advV": advV_val,
+                "advE": advE_val,
                 "evento": clean_value(row.get('DESCRICAO_EVENTO')),
                 "cid": clean_value(row.get('DESCRICAO_CID_EVENTO')),
-                "hFaltas": get_float(row.get('HORAS_FALTAS')),
-                "hTrab": get_float(row.get('HORAS_TRABALHADAS')),
-                "hExtra": get_float(row.get('HORAS_EXTRAS'))
+                "hFaltas": get_float(row.get('HORAS_FALTAS')) if 'HORAS_FALTAS' in row else 0.0,
+                "hTrab": get_float(row.get('HORAS_TRABALHADAS')) if 'HORAS_TRABALHADAS' in row else 0.0,
+                "hExtra": get_float(row.get('HORAS_EXTRAS')) if 'HORAS_EXTRAS' in row else 0.0
             }
             colabs_dict[cad] = colab
         else:
-            # Se a pessoa aparecer de novo, precisamos agregar as horas, eventos e advertências
             c = colabs_dict[cad]
-            def get_float(val):
-                try:
-                    if isinstance(val, str):
-                        return float(val.replace('.', '').replace(',', '.'))
-                    return float(val) if val is not None else 0.0
-                except:
-                    return 0.0
-
-            c['susp'] = max(c['susp'], int(get_float(row.get('QTD_SUSPENSOES'))))
-            c['advV'] = max(c['advV'], int(get_float(row.get('QTD_ADVERT_VERBAIS'))))
-            c['advE'] = max(c['advE'], int(get_float(row.get('QTD_ADVERT_ESCRITAS'))))
             
-            c['hFaltas'] += get_float(row.get('HORAS_FALTAS'))
-            c['hTrab'] += get_float(row.get('HORAS_TRABALHADAS'))
-            c['hExtra'] += get_float(row.get('HORAS_EXTRAS'))
+            # Agregar eventos logicos
+            if ausente_val:
+                c['ausente'] = True
+            if licenca_val:
+                c['licenca'] = True
+            
+            c['susp'] += susp_val
+            c['advV'] += advV_val
+            c['advE'] += advE_val
+            
+            if 'HORAS_FALTAS' in row:
+                c['hFaltas'] += get_float(row.get('HORAS_FALTAS'))
+            if 'HORAS_TRABALHADAS' in row:
+                c['hTrab'] += get_float(row.get('HORAS_TRABALHADAS'))
+            if 'HORAS_EXTRAS' in row:
+                c['hExtra'] += get_float(row.get('HORAS_EXTRAS'))
             
             # Se houver um evento novo e o antigo era nulo, pega o novo
             if clean_value(row.get('DESCRICAO_EVENTO')) and not c['evento']:
                 c['evento'] = clean_value(row.get('DESCRICAO_EVENTO'))
             if clean_value(row.get('DESCRICAO_CID_EVENTO')) and not c['cid']:
                 c['cid'] = clean_value(row.get('DESCRICAO_CID_EVENTO'))
-
-            if str(row.get('AUSENTE', '')).strip().lower() == 'sim':
-                c['ausente'] = True
-            if str(row.get('LICENCA', '')).strip().lower() == 'sim':
-                c['licenca'] = True
 
     return list(colabs_dict.values())
 

@@ -16,11 +16,69 @@ def process_excel_files(extrato_path):
     # Substituir nan e valores nulos
     df = df.where(pd.notnull(df), None)
     
+    # Validação rigorosa de Schema
+    colunas_obrigatorias = ['AUSENTE', 'LICENCA', 'QTD_SUSPENSOES', 'QTD_ADVERT_VERBAIS', 'QTD_ADVERT_ESCRITAS']
+    colunas_faltantes = [col for col in colunas_obrigatorias if col not in df.columns]
+    if colunas_faltantes:
+        raise ValueError(f"Mudança de Schema Detectada: As colunas obrigatórias {colunas_faltantes} não foram encontradas na planilha. O sistema de extração do RH pode ter sido alterado. Atualize o sistema ou a planilha para evitar dados falsos (falsos negativos).")
+    
+    
     # Dicionário para armazenar o resultado agrupado pelo Cadastro
     colabs_dict = {}
     
     for idx, row in df.iterrows():
         cad = int(row['CADASTRO'])
+        
+        descricao_evento = str(row.get('DESCRICAO_EVENTO', '')).upper()
+        afastado = str(row.get('AFASTADO', '')).strip().upper()
+
+        # Helper para inteiros
+        def safe_int(val):
+            if val is None or pd.isna(val) or str(val).strip().upper() in ['', 'NAN', 'NONE']:
+                return 0
+            try:
+                return int(float(str(val).replace(',', '.')))
+            except:
+                return 0
+
+        if 'AUSENTE' in row:
+            ausente_val = str(row.get('AUSENTE', '')).strip().upper() == 'SIM'
+        else:
+            ausente_val = 'FALTA' in descricao_evento
+
+        if 'LICENCA' in row:
+            licenca_val = str(row.get('LICENCA', '')).strip().upper() == 'SIM'
+        else:
+            licenca_val = afastado == 'SIM'
+
+        if 'QTD_SUSPENSOES' in row:
+            susp_val = safe_int(row.get('QTD_SUSPENSOES', 0))
+        else:
+            susp_raw = str(row.get('SUSPENSO', '')).strip().upper()
+            if susp_raw == 'SIM':
+                susp_val = 1
+            else:
+                susp_val = safe_int(susp_raw) if susp_raw not in ['NÃO', 'NAO', 'NON', 'NO', ''] else 0
+
+        if 'QTD_ADVERT_VERBAIS' in row:
+            advV_val = safe_int(row.get('QTD_ADVERT_VERBAIS', 0))
+        else:
+            advV_val = 1 if 'VERBAL' in descricao_evento else 0
+
+        if 'QTD_ADVERT_ESCRITAS' in row:
+            advE_val = safe_int(row.get('QTD_ADVERT_ESCRITAS', 0))
+        else:
+            advE_val = 1 if 'ESCRITA' in descricao_evento else 0
+
+        # Garantir horas
+        def get_float(val):
+            try:
+                if isinstance(val, str):
+                    return float(val.replace('.', '').replace(',', '.'))
+                return float(val) if val is not None else 0.0
+            except:
+                return 0.0
+
         if cad not in colabs_dict:
             # Processar o "setor" (Centro de Custo)
             centro_custo = clean_value(row.get('CENTRO_CUSTO'))
@@ -38,19 +96,6 @@ def process_excel_files(extrato_path):
             except:
                 salario = 0.0
 
-            # Garantir booleanos
-            ausente = str(row.get('AUSENTE', '')).strip().lower() == 'sim'
-            licenca = str(row.get('LICENCA', '')).strip().lower() == 'sim'
-            
-            # Garantir horas
-            def get_float(val):
-                try:
-                    if isinstance(val, str):
-                        return float(val.replace('.', '').replace(',', '.'))
-                    return float(val) if val is not None else 0.0
-                except:
-                    return 0.0
-
             colab = {
                 "cad": cad,
                 "nome": clean_value(row.get('NOME')),
@@ -61,47 +106,43 @@ def process_excel_files(extrato_path):
                 "salario": salario,
                 "setor": setor,
                 "local": clean_value(row.get('LOCAL')),
-                "ausente": ausente,
-                "licenca": licenca,
-                "susp": int(get_float(row.get('QTD_SUSPENSOES'))),
-                "advV": int(get_float(row.get('QTD_ADVERT_VERBAIS'))),
-                "advE": int(get_float(row.get('QTD_ADVERT_ESCRITAS'))),
+                "ausente": ausente_val,
+                "licenca": licenca_val,
+                "susp": susp_val,
+                "advV": advV_val,
+                "advE": advE_val,
                 "evento": clean_value(row.get('DESCRICAO_EVENTO')),
                 "cid": clean_value(row.get('DESCRICAO_CID_EVENTO')),
-                "hFaltas": get_float(row.get('HORAS_FALTAS')),
-                "hTrab": get_float(row.get('HORAS_TRABALHADAS')),
-                "hExtra": get_float(row.get('HORAS_EXTRAS'))
+                "hFaltas": get_float(row.get('HORAS_FALTAS')) if 'HORAS_FALTAS' in row else 0.0,
+                "hTrab": get_float(row.get('HORAS_TRABALHADAS')) if 'HORAS_TRABALHADAS' in row else 0.0,
+                "hExtra": get_float(row.get('HORAS_EXTRAS')) if 'HORAS_EXTRAS' in row else 0.0
             }
             colabs_dict[cad] = colab
         else:
-            # Se a pessoa aparecer de novo, precisamos agregar as horas, eventos e advertências
             c = colabs_dict[cad]
-            def get_float(val):
-                try:
-                    if isinstance(val, str):
-                        return float(val.replace('.', '').replace(',', '.'))
-                    return float(val) if val is not None else 0.0
-                except:
-                    return 0.0
-
-            c['susp'] = max(c['susp'], int(get_float(row.get('QTD_SUSPENSOES'))))
-            c['advV'] = max(c['advV'], int(get_float(row.get('QTD_ADVERT_VERBAIS'))))
-            c['advE'] = max(c['advE'], int(get_float(row.get('QTD_ADVERT_ESCRITAS'))))
             
-            c['hFaltas'] += get_float(row.get('HORAS_FALTAS'))
-            c['hTrab'] += get_float(row.get('HORAS_TRABALHADAS'))
-            c['hExtra'] += get_float(row.get('HORAS_EXTRAS'))
+            # Agregar eventos logicos
+            if ausente_val:
+                c['ausente'] = True
+            if licenca_val:
+                c['licenca'] = True
+            
+            c['susp'] += susp_val
+            c['advV'] += advV_val
+            c['advE'] += advE_val
+            
+            if 'HORAS_FALTAS' in row:
+                c['hFaltas'] += get_float(row.get('HORAS_FALTAS'))
+            if 'HORAS_TRABALHADAS' in row:
+                c['hTrab'] += get_float(row.get('HORAS_TRABALHADAS'))
+            if 'HORAS_EXTRAS' in row:
+                c['hExtra'] += get_float(row.get('HORAS_EXTRAS'))
             
             # Se houver um evento novo e o antigo era nulo, pega o novo
             if clean_value(row.get('DESCRICAO_EVENTO')) and not c['evento']:
                 c['evento'] = clean_value(row.get('DESCRICAO_EVENTO'))
             if clean_value(row.get('DESCRICAO_CID_EVENTO')) and not c['cid']:
                 c['cid'] = clean_value(row.get('DESCRICAO_CID_EVENTO'))
-
-            if str(row.get('AUSENTE', '')).strip().lower() == 'sim':
-                c['ausente'] = True
-            if str(row.get('LICENCA', '')).strip().lower() == 'sim':
-                c['licenca'] = True
 
     return list(colabs_dict.values())
 
