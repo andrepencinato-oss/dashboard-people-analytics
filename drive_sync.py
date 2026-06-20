@@ -11,17 +11,17 @@ from googleapiclient.http import MediaIoBaseDownload
 
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
-def get_base_path():
+def get_working_dir():
     if getattr(sys, 'frozen', False):
-        return sys._MEIPASS
+        return os.path.dirname(sys.executable)
     return os.path.abspath(os.path.dirname(__file__))
 
 def fetch_latest_excel():
     try:
         folder_id = '1ufta5I1ooBkXw1fqXx7fg64RG4D4MBtn'
-        base_path = get_base_path()
-        creds_path = os.path.join(base_path, 'credentials.json')
-        token_path = os.path.join(base_path, 'token.json')
+        working_dir = get_working_dir()
+        creds_path = os.path.join(working_dir, 'credentials.json')
+        token_path = os.path.join(working_dir, 'token.json')
         
         creds = None
         if os.path.exists(token_path):
