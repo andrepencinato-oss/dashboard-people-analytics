@@ -7,10 +7,14 @@ import webbrowser
 import threading
 import time
 import traceback
+import drive_sync
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 DATA_FILE_NAME = 'DP_-_Colaboradores_-_Extrato_Diário.xls'
 APP_VERSION = "v1.0.0"
+
+SYNC_FILE_PATH = None
+SYNC_ERROR = None
 
 def get_base_path():
     if getattr(sys, 'frozen', False):
@@ -51,7 +55,32 @@ class DashboardHandler(BaseHTTPRequestHandler):
             base_path = get_base_path()
             working_dir = get_working_dir()
             
-            extrato_path = os.path.join(working_dir, DATA_FILE_NAME)
+            global SYNC_FILE_PATH, SYNC_ERROR
+            if SYNC_ERROR:
+                emergency_html = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Erro de Sincronização</title>
+                    <style>
+                        body {{ background-color: #121212; color: #00ff00; font-family: monospace; padding: 2rem; }}
+                        h1 {{ color: #ff3333; }}
+                        .traceback {{ background: #222; padding: 1rem; border: 1px solid #555; white-space: pre-wrap; }}
+                        .instruction {{ font-weight: bold; color: #fff; margin-bottom: 1rem; }}
+                    </style>
+                </head>
+                <body>
+                    <h1>Erro de Sincronização de Dados</h1>
+                    <div class="instruction">Copiar o texto abaixo e enviar ao suporte técnico:</div>
+                    <div class="traceback">{SYNC_ERROR}</div>
+                </body>
+                </html>
+                """
+                self.wfile.write(emergency_html.encode('utf-8'))
+                return
+
+            extrato_path = SYNC_FILE_PATH if SYNC_FILE_PATH else os.path.join(working_dir, DATA_FILE_NAME)
             html_template_path = os.path.join(base_path, 'dashboard_dp_colaboradores (1).html')
             
             try:
@@ -105,6 +134,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 def main():
+    global SYNC_FILE_PATH, SYNC_ERROR
+    try:
+        SYNC_FILE_PATH = drive_sync.fetch_latest_excel()
+    except Exception as e:
+        SYNC_ERROR = str(e)
+
     HTTPServer.allow_reuse_address = True
     port = 5000
     httpd = None
