@@ -11,11 +11,31 @@ import drive_sync
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 DATA_FILE_NAME = 'DP_-_Colaboradores_-_Extrato_Diário.xls'
-APP_VERSION = "v1.0.0"
+APP_VERSION = "v2.0.0"
 
-SYNC_FILE_PATH = None
-SYNC_ERROR = None
+DATA_READY = False
+JSON_DATA = "[]"
+LOAD_ERROR = None
 LAST_PING_TIME = time.time()
+
+def background_load_data():
+    global DATA_READY, JSON_DATA, LOAD_ERROR
+    try:
+        working_dir = get_working_dir()
+        sync_file_path = drive_sync.fetch_latest_excel()
+        extrato_path = sync_file_path if sync_file_path else os.path.join(working_dir, DATA_FILE_NAME)
+        data = excel_reader.process_excel_files(extrato_path)
+        JSON_DATA = json.dumps(data, ensure_ascii=False)
+        DATA_READY = True
+    except Exception as e:
+        print(f"Erro no background load: {e}")
+        LOAD_ERROR = str(e)
+        try:
+            with open(os.path.join(get_working_dir(), 'leitura_error_log.txt'), 'w', encoding='utf-8') as log_f:
+                log_f.write(traceback.format_exc())
+        except Exception:
+            pass
+        DATA_READY = True
 
 def get_base_path():
     if getattr(sys, 'frozen', False):
@@ -48,16 +68,36 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_GET(self):
+        global LOAD_ERROR, JSON_DATA, DATA_READY, LAST_PING_TIME
         if self.path == '/':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             
             base_path = get_base_path()
-            working_dir = get_working_dir()
+            loading_path = os.path.join(base_path, 'loading.html')
             
-            global SYNC_FILE_PATH, SYNC_ERROR
-            if SYNC_ERROR:
+            try:
+                with open(loading_path, 'r', encoding='utf-8') as f:
+                    self.wfile.write(f.read().encode('utf-8'))
+            except Exception as e:
+                self.wfile.write(f"<h1>Carregando dados...</h1><script>setInterval(() => fetch('/api/status').then(r=>r.json()).then(d=>{{if(d.ready) window.location='/dashboard';}}), 1000);</script>".encode('utf-8'))
+
+        elif self.path == '/api/status':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            status = {"ready": DATA_READY, "error": bool(LOAD_ERROR)}
+            self.wfile.write(json.dumps(status).encode('utf-8'))
+
+        elif self.path == '/dashboard':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            
+            base_path = get_base_path()
+            
+            if LOAD_ERROR:
                 emergency_html = f"""
                 <!DOCTYPE html>
                 <html>
@@ -74,44 +114,28 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <body>
                     <h1>Erro de Sincronização de Dados</h1>
                     <div class="instruction">Copiar o texto abaixo e enviar ao suporte técnico:</div>
-                    <div class="traceback">{SYNC_ERROR}</div>
+                    <div class="traceback">{LOAD_ERROR}</div>
                 </body>
                 </html>
                 """
                 self.wfile.write(emergency_html.encode('utf-8'))
                 return
 
-            extrato_path = SYNC_FILE_PATH if SYNC_FILE_PATH else os.path.join(working_dir, DATA_FILE_NAME)
             html_template_path = os.path.join(base_path, 'dashboard_dp_colaboradores.html')
             
-            try:
-                data = excel_reader.process_excel_files(extrato_path)
-                json_data = json.dumps(data, ensure_ascii=False)
-            except Exception as e:
-                print(f"Erro ao ler o Excel: {e}")
-                try:
-                    with open(os.path.join(working_dir, 'leitura_error_log.txt'), 'w', encoding='utf-8') as log_f:
-                        log_f.write(traceback.format_exc())
-                except Exception:
-                    pass
-                json_data = "[]"
-                
             try:
                 with open(html_template_path, 'r', encoding='utf-8') as f:
                     html_content = f.read()
                 
-                # Injetar os dados via Regex
                 new_html_content = re.sub(
                     r'const COLAB = \[.*?\];', 
-                    f'const COLAB = {json_data};', 
+                    f'const COLAB = {JSON_DATA};', 
                     html_content, 
                     flags=re.DOTALL
                 )
 
-                # Injetar a versão dinamicamente
                 new_html_content = new_html_content.replace('{{APP_VERSION}}', APP_VERSION)
 
-                # Injetar script de shutdown e heartbeat antes de fechar a tag body
                 shutdown_script = """
 <script>
     window.addEventListener('beforeunload', function (e) {
@@ -131,10 +155,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.wfile.write(new_html_content.encode('utf-8'))
             except Exception as e:
                 self.wfile.write(f"<h1>Erro ao carregar dashboard</h1><p>{e}</p>".encode('utf-8'))
+                
         elif self.path == '/shutdown':
             self.do_shutdown()
         elif self.path == '/ping':
-            global LAST_PING_TIME
             LAST_PING_TIME = time.time()
             self.send_response(200)
             self.end_headers()
@@ -144,11 +168,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 def main():
-    global SYNC_FILE_PATH, SYNC_ERROR
-    try:
-        SYNC_FILE_PATH = drive_sync.fetch_latest_excel()
-    except Exception as e:
-        SYNC_ERROR = str(e)
+    # Inicia a thread de carregamento em background
+    load_thread = threading.Thread(target=background_load_data)
+    load_thread.daemon = True
+    load_thread.start()
 
     HTTPServer.allow_reuse_address = True
     port = 5000
