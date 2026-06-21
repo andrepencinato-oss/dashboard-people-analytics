@@ -17,7 +17,7 @@ if getattr(sys, 'frozen', False):
     sys.stderr = open(os.devnull, 'w')
 
 DATA_FILE_NAME = 'DP_-_Colaboradores_-_Extrato_Diário.xls'
-APP_VERSION = "v2.0.1"
+APP_VERSION = "v2.0.2"
 
 DATA_READY = False
 JSON_DATA = "[]"
