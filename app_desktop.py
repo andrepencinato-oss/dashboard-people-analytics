@@ -192,6 +192,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 def main():
+    # Verifica atualizações antes de iniciar qualquer thread
+    import auto_updater
+    auto_updater.check_and_apply_updates(APP_VERSION)
+
     # Inicia a thread de carregamento em background
     load_thread = threading.Thread(target=background_load_data)
     load_thread.daemon = True
