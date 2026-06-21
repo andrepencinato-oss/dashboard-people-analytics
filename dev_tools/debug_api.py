@@ -13,7 +13,7 @@ def test():
         return
         
     service = build('drive', 'v3', credentials=creds)
-    folder_id = '1ufta5I1ooBkXw1fqXx7fg64RG4D4MBtn'
+    folder_id = '1KPwdqfXdiwdhDMftM6VfVEY-xTyjG6x1'
     
     query = f"'{folder_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and name contains '.xls' and trashed = false"
     
