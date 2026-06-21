@@ -1,16 +1,15 @@
-import urllib.request
-import urllib.error
-import json
 import os
 import sys
+import json
 import subprocess
-import time
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+import io
 
-GITHUB_REPO = "andrepencinato-oss/dashboard-people-analytics"
-API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+UPDATE_FOLDER_ID = '1A5Ap8NQAMyPRSQBW6OceQ2nUbvRDcq2p'
 
 def _parse_version(version_str):
-    # e.g., "v2.0.0" -> (2, 0, 0)
     version_str = version_str.lower().replace('v', '').strip()
     parts = version_str.split('.')
     try:
@@ -18,82 +17,97 @@ def _parse_version(version_str):
     except ValueError:
         return (0, 0, 0)
 
+def get_working_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.abspath(os.path.dirname(__file__))
+
 def check_and_apply_updates(current_version):
     """
-    Verifica se há versão mais recente no GitHub Releases e aplica o update se existir.
+    Verifica se há versão mais recente no Google Drive e aplica o update se existir.
     """
     print(f"Verificando atualizações. Versão atual: {current_version}...")
     try:
-        # 1. Obter info da última release
-        req = urllib.request.Request(API_URL, headers={'User-Agent': 'AutoUpdater'})
-        with urllib.request.urlopen(req) as response:
-            if response.status != 200:
-                print("Não foi possível acessar a API do GitHub.")
-                return False
-            data = json.loads(response.read().decode('utf-8'))
+        working_dir = get_working_dir()
+        token_path = os.path.join(working_dir, 'token.json')
         
-        latest_version = data.get('tag_name', '')
-        if not latest_version:
+        if not os.path.exists(token_path):
+            print("Token não encontrado, impossível verificar atualizações.")
             return False
             
+        creds = Credentials.from_authorized_user_file(token_path)
+        service = build('drive', 'v3', credentials=creds)
+        
+        query = f"'{UPDATE_FOLDER_ID}' in parents and trashed = false"
+        results = service.files().list(q=query, fields="files(id, name)").execute()
+        files = results.get('files', [])
+        
+        version_file_id = None
+        app_file_id = None
+        
+        for f in files:
+            if f['name'] == 'version.json':
+                version_file_id = f['id']
+            elif f['name'] == 'app_desktop.exe':
+                app_file_id = f['id']
+                
+        if not version_file_id or not app_file_id:
+            print("Arquivos de atualização não encontrados no Drive.")
+            return False
+            
+        # Download version.json
+        request = service.files().get_media(fileId=version_file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+            
+        version_data = json.loads(fh.getvalue().decode('utf-8'))
+        latest_version = version_data.get('version', '')
+        
         current_tuple = _parse_version(current_version)
         latest_tuple = _parse_version(latest_version)
         
-        print(f"Versão no GitHub: {latest_version}")
+        print(f"Versão no Drive: {latest_version}")
         
         if latest_tuple > current_tuple:
             print("Atualização disponível! Preparando download...")
             
-            # Encontrar o asset correspondente ao app_desktop.exe
-            download_url = None
-            for asset in data.get('assets', []):
-                if asset['name'] == 'app_desktop.exe':
-                    download_url = asset['browser_download_url']
-                    break
-            
-            if not download_url:
-                print("Nenhum executável (app_desktop.exe) encontrado na Release.")
-                return False
-                
-            # 2. Download do novo arquivo
-            new_exe_path = "app_desktop_update.exe"
-            print(f"Baixando nova versão de {download_url}...")
-            
-            # Se já existir um arquivo temporário, remova-o
+            new_exe_path = os.path.join(working_dir, "app_desktop_update.exe")
             if os.path.exists(new_exe_path):
                 os.remove(new_exe_path)
                 
-            urllib.request.urlretrieve(download_url, new_exe_path)
-            
+            # Download new executable
+            print("Baixando nova versão do Drive...")
+            request = service.files().get_media(fileId=app_file_id)
+            fh = io.FileIO(new_exe_path, mode='wb')
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while not done:
+                status, done = downloader.next_chunk()
+                
             print("Download concluído. Reiniciando para aplicar a atualização...")
             
-            # 3. Hot-swap usando um arquivo batch
-            bat_path = "apply_update.bat"
-            # O script bat aguarda 2 segundos, substitui o arquivo original e o abre novamente
+            bat_path = os.path.join(working_dir, "apply_update.bat")
             bat_content = f"""@echo off
 echo Atualizando o sistema... Por favor aguarde.
 timeout /t 3 /nobreak > nul
-move /y {new_exe_path} app_desktop.exe
+move /y "{new_exe_path}" "app_desktop.exe"
 start app_desktop.exe
 del "%~f0"
 """
             with open(bat_path, 'w', encoding='utf-8') as f:
                 f.write(bat_content)
                 
-            # Executa o batch sem bloquear e fecha o programa atual
-            subprocess.Popen([bat_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            subprocess.Popen([bat_path], cwd=working_dir, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
             sys.exit(0)
         else:
             print("O sistema já está na versão mais recente.")
             return False
             
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            print("Nenhuma Release encontrada no repositório.")
-        else:
-            print(f"Erro HTTP ao verificar atualização: {e}")
     except Exception as e:
-        print(f"Falha ao verificar/aplicar atualizações: {e}")
+        print(f"Falha ao verificar/aplicar atualizações via Drive: {e}")
     
     return False
 
