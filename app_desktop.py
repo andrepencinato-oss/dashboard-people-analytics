@@ -8,7 +8,13 @@ import threading
 import time
 import traceback
 import drive_sync
+import pandas as pd
+import io
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+if getattr(sys, 'frozen', False):
+    sys.stdout = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, 'w')
 
 DATA_FILE_NAME = 'DP_-_Colaboradores_-_Extrato_Diário.xls'
 APP_VERSION = "v2.0.0"
@@ -158,6 +164,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 
         elif self.path == '/shutdown':
             self.do_shutdown()
+        elif self.path == '/api/exportar_excel':
+            try:
+                data_list = json.loads(JSON_DATA)
+                df = pd.DataFrame(data_list)
+                
+                output = io.BytesIO()
+                df.to_excel(output, index=False)
+                excel_data = output.getvalue()
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                self.send_header('Content-Disposition', 'attachment; filename="Auditoria de dados - Diario de bordo - Gestao de pessoas.xlsx"')
+                self.end_headers()
+                self.wfile.write(excel_data)
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(f"Erro ao gerar Excel: {str(e)}".encode('utf-8'))
         elif self.path == '/ping':
             LAST_PING_TIME = time.time()
             self.send_response(200)

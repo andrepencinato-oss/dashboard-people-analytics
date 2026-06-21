@@ -4,7 +4,7 @@ from google.oauth2.credentials import Credentials
 import os
 
 def list_files():
-    folder_id = '1ufta5I1ooBkXw1fqXx7fg64RG4D4MBtn'
+    folder_id = '1KPwdqfXdiwdhDMftM6VfVEY-xTyjG6x1'
     working_dir = drive_sync.get_working_dir()
     token_path = os.path.join(working_dir, 'token.json')
     creds = Credentials.from_authorized_user_file(token_path, drive_sync.SCOPES)

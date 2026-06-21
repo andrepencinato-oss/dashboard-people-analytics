@@ -23,6 +23,13 @@ def process_excel_files(extrato_path):
         raise ValueError(f"Mudança de Schema Detectada: As colunas obrigatórias {colunas_faltantes} não foram encontradas na planilha. O sistema de extração do RH pode ter sido alterado. Atualize o sistema ou a planilha para evitar dados falsos (falsos negativos).")
     
     
+    # Determinar a origem baseada no path
+    import os
+    base_name = os.path.basename(extrato_path) if isinstance(extrato_path, str) else ""
+    origem = base_name.replace("DP_-_Colaboradores_-_", "").replace(".xls", "").replace(".xlsx", "")
+    if origem == "Listagem_detalhada_de_eventos_e_notificações":
+        origem = "Listagem_detalhada"
+        
     # Dicionário para armazenar o resultado agrupado pelo Cadastro
     colabs_dict = {}
     
@@ -115,7 +122,8 @@ def process_excel_files(extrato_path):
                 "cid": clean_value(row.get('DESCRICAO_CID_EVENTO')),
                 "hFaltas": get_float(row.get('HORAS_FALTAS')) if 'HORAS_FALTAS' in row else 0.0,
                 "hTrab": get_float(row.get('HORAS_TRABALHADAS')) if 'HORAS_TRABALHADAS' in row else 0.0,
-                "hExtra": get_float(row.get('HORAS_EXTRAS')) if 'HORAS_EXTRAS' in row else 0.0
+                "hExtra": get_float(row.get('HORAS_EXTRAS')) if 'HORAS_EXTRAS' in row else 0.0,
+                "origem": origem
             }
             colabs_dict[cad] = colab
         else:
