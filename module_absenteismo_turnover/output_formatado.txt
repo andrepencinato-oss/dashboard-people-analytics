@@ -1,0 +1,160 @@
+data 29/01/25
+Dia: Qua
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0036 entrada 07:00 almoço 11:00 às 12:30 saída 17:18
+Marcação: entrada 06:55 almoço 13:13 17:18 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 15/05/25
+Dia: Qui
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 05:58 saída 11:46
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 16/06/25
+Dia: Seg
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0198 entrada 07:00 almoço 11:30 às 12:30 saída 17:10
+Marcação: entrada 06:55 almoço 12:46 17:10 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 27/08/25
+Dia: Qua
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 11:45 almoço 12:45 16:48 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 30/09/25
+Dia: Ter
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 05:57 almoço 11:47 16:48 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 10/10/25
+Dia: Sex
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 05:58 almoço 11:46 16:48 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 08/12/25
+Dia: Seg
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 05:57 almoço 11:46 16:48 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 09/12/25
+Dia: Ter
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 05:59 almoço 11:47 16:48 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 16/01/26
+Dia: Sex
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:55 almoço 11:47 12:46 saída 15:00
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 21/01/26
+Dia: Qua
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0198 entrada 07:00 almoço 11:30 às 12:30 saída 17:10
+Marcação: entrada 05:58 almoço 11:47 12:48 saída 15:00
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 29/01/26
+Dia: Qui
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:55 almoço 11:46 12:46 saída 15:00
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 26/02/26
+Dia: Qui
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:55 almoço 11:45 12:46 saída 15:02
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 08/06/26
+Dia: Seg
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:55 almoço 12:45 16:48 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 29/06/26
+Dia: Seg
+Cod. 410
+Nome: LETICIA BERGAMO ANTONIO
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:55 saída 12:00
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 29/04/25
+Dia: Ter
+Cod. 560
+Nome: DANIEL DE SOUSA SANTANA
+Escala: 0043 entrada 07:00 almoço 11:00 às 12:30 saída 17:40
+Marcação: entrada 06:47 almoço 12:19 17:43 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 05/02/26
+Dia: Qui
+Cod. 560
+Nome: DANIEL DE SOUSA SANTANA
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 09:07 almoço 11:12 11:54 saída 17:01
+Situação Apurada :414 Aus. Justif. Não Abonada - (h)
+----------------------------------------
+data 02/06/26
+Dia: Ter
+Cod. 560
+Nome: DANIEL DE SOUSA SANTANA
+Escala: 0198 entrada 07:00 almoço 11:30 às 12:30 saída 17:10
+Marcação: entrada 06:33 almoço 11:10 11:53 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 09/06/26
+Dia: Ter
+Cod. 560
+Nome: DANIEL DE SOUSA SANTANA
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:36 almoço 12:13 13:03 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------
+data 29/06/26
+Dia: Seg
+Cod. 560
+Nome: DANIEL DE SOUSA SANTANA
+Escala: 0144 entrada 07:00 almoço 12:00 às 13:00 saída 16:48
+Marcação: entrada 06:49 saída 12:02
+Situação Apurada :101 Saída Antecipada (falta)
+----------------------------------------
+data 08/01/25
+Dia: Qua
+Cod. 575
+Nome: ROGERIO SILVA DOS SANTOS
+Escala: 0326 entrada 07:30 almoço 12:00 às 13:00 saída 18:02
+Marcação: entrada 07:31 almoço 12:14 13:14 saída Não marcou
+Situação Apurada :999 Marcações Inválidas
+----------------------------------------

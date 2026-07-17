@@ -1,5 +1,5 @@
 import os
-from module_absenteismo_turnover.data_processor import get_credentials
+from data_processor import get_credentials
 from googleapiclient.discovery import build
 
 creds = get_credentials()

@@ -5,13 +5,27 @@ import re
 def clean_value(val):
     if pd.isna(val) or val == ' ' or val == '\xa0':
         return None
+    if isinstance(val, pd.Timestamp):
+        return val.strftime('%d/%m/%Y')
     if isinstance(val, str):
         return val.strip()
     return val
 
 def process_excel_files(extrato_path):
     # Lendo o arquivo HTML disfarçado de XLS
-    df = pd.read_html(extrato_path, decimal=',', thousands='.', match='CADASTRO')[0]
+    try:
+        if str(extrato_path).lower().endswith('.xlsx'):
+            df = pd.read_excel(extrato_path)
+        else:
+            try:
+                df = pd.read_html(extrato_path, decimal=',', thousands='.', match='CADASTRO', encoding='latin1')[0]
+            except ValueError:
+                df = pd.read_html(extrato_path, decimal=',', thousands='.', match='CADASTRO')[0]
+    except Exception:
+        try:
+            df = pd.read_excel(extrato_path)
+        except Exception:
+            df = pd.read_html(extrato_path, decimal=',', thousands='.', match='CADASTRO')[0]
     
     # Substituir nan e valores nulos
     df = df.where(pd.notnull(df), None)

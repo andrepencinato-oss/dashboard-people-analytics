@@ -1,12 +1,40 @@
+# Ignore Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore Data Folders
+data/
+*/data/
+module_frequencia_diaria/data/
+module_absenteismo_turnover/data/
+*.csv
 *.xls
 *.xlsx
-*.csv
+
+# Ignore Credentials & Tokens
+token.json
+token_upload.json
+credentials.json
+core/token.json
+core/credentials.json
+core/token_upload.json
+core/token_deploy.json
+*token*.json
+*credentials*.json
+
+# Ignore Build & Dist
 build/
 dist/
 *.spec
-__pycache__/
 *.exe
-leitura_error_log.txt
 
-credentials.json
-token.json
+# Ignore temp / logs
+.update_temp/
+.update_stage/
+leitura_error_log.txt
+*.log
+
+# Ignore VS Code
+.vscode/

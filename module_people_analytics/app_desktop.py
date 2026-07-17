@@ -1,8 +1,19 @@
+import os
+import sys
+
+# Ensure core and current module are in path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(current_dir, '..'))
+core_dir = os.path.join(root_dir, 'core')
+
+if core_dir not in sys.path:
+    sys.path.insert(0, core_dir)
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 import excel_reader
 import json
 import re
-import os
-import sys
 import webbrowser
 import threading
 import time
@@ -17,7 +28,7 @@ if getattr(sys, 'frozen', False):
     sys.stderr = open(os.devnull, 'w')
 
 DATA_FILE_NAME = 'DP_-_Colaboradores_-_Extrato_Diário.xls'
-APP_VERSION = "v2.0.2"
+APP_VERSION = "v2.0.4"
 
 DATA_READY = False
 JSON_DATA = "[]"
@@ -45,13 +56,13 @@ def background_load_data():
 
 def get_base_path():
     if getattr(sys, 'frozen', False):
-        return sys._MEIPASS
+        return os.path.join(sys._MEIPASS, 'module_people_analytics')
     return os.path.abspath(os.path.dirname(__file__))
 
 def get_working_dir():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
-    return os.path.abspath(os.path.dirname(__file__))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 class DashboardHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -236,8 +247,8 @@ def main():
     while True:
         time.sleep(5)
         if time.time() - LAST_PING_TIME > 15:
-            print("No heartbeat received for 15s. Shutting down Ghost Process...")
-            os._exit(0)
+            print("No heartbeat received for 15s. UI disconnected, mas mantendo o backend rodando para o ecossistema...")
+            break
 
 if __name__ == '__main__':
     main()

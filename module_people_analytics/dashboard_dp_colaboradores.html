@@ -793,8 +793,8 @@ function renderAusencias() {
   if (ausFilter==='cid') rows = rows.filter(c=>c.cid);
 
   if (q) rows = rows.filter(c =>
-    c.nome.toLowerCase().includes(q) ||
-    c.setor.toLowerCase().includes(q) ||
+    (c.nome||'').toLowerCase().includes(q) ||
+    (c.setor||'').toLowerCase().includes(q) ||
     (c.cid||'').toLowerCase().includes(q) ||
     (c.cargo||'').toLowerCase().includes(q)
   );

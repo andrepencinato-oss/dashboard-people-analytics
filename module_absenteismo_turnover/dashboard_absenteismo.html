@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria de Absenteísmo | Pro UX</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jQuery & DataTables -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <!-- DataTables Scroller (Virtual Scrolling) -->
+    <script src="https://cdn.datatables.net/scroller/2.2.0/js/dataTables.scroller.min.js"></script>
+    <!-- DataTables Buttons (Excel/CSV Export) -->
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Phosphor Icons (Professional UI Icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --sidebar-bg: #111827;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-1: #3b82f6; /* Modern Blue */
+            --accent-2: #8b5cf6; /* Modern Purple */
+            --accent-gradient: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --sidebar-width: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color); color: var(--text-main);
+            display: flex; height: 100vh; overflow: hidden;
+            background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05), transparent 50%);
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: var(--sidebar-width); min-width: var(--sidebar-width); flex-shrink: 0;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--card-border);
+            display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; z-index: 20; box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+            height: 100%;
+        }
+        
+        body.sidebar-closed .sidebar {
+            transform: translateX(calc(var(--sidebar-width) * -1));
+            position: absolute; height: 100%;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem; border-bottom: 1px solid var(--card-border);
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        }
+        .sidebar-header h2 { font-size: 1.2rem; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text-main); margin: 0; }
+        .sidebar-header i { font-size: 1.4rem; color: var(--accent-1); }
+
+        .sidebar-content {
+            padding: 1rem; overflow-y: auto; flex-grow: 1; min-height: 0; max-height: calc(100vh - 80px);
+            display: flex; flex-direction: column; gap: 1rem; justify-content: flex-start;
+        }
+        .sidebar-content::-webkit-scrollbar { width: 4px; }
+        .sidebar-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        .filter-group { display: flex; flex-direction: column; gap: 0.25rem; justify-content: flex-start; }
+        .filter-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2px; }
+        .filter-group label { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); line-height: 1.1; }
+        
+        .filter-action { font-size: 0.7rem; color: var(--accent-1); cursor: pointer; background: none; border: none; font-weight: 500; transition: color 0.2s; display: flex; align-items: center; gap: 4px;}
+        .filter-action:hover { color: #fff; }
+
+        .sidebar-footer {
+            padding: 1.5rem; border-top: 1px solid var(--card-border);
+        }
+        .btn-reset {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--card-border);
+            color: var(--text-main); padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        .btn-reset:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--danger-color); }
+
+        /* --- Main Content --- */
+        .main-wrapper {
+            flex-grow: 1; display: block; overflow-y: auto; overflow-x: hidden;
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* --- Active Filters (When Sidebar Closed) --- */
+        #active-filters-container { display: none; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-left: 1.5rem; }
+        body.sidebar-closed #active-filters-container { display: flex; }
+
+        header {
+            padding: 1.25rem 2rem; border-bottom: 1px solid var(--card-border);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(11, 15, 25, 0.6); backdrop-filter: blur(12px); z-index: 10;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .toggle-btn {
+            background: none; border: none; color: var(--text-muted); font-size: 1.5rem;
+            cursor: pointer; padding: 4px; border-radius: 4px; transition: color 0.2s;
+        }
+        .toggle-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        
+        h1 { font-size: 1.25rem; font-weight: 600; color: #fff; }
+
+        .btn-sync {
+            background: var(--accent-gradient); border: none; color: #fff;
+            padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 500; font-size: 0.85rem;
+            cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-sync:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
+
+        .content { padding: 1.5rem 2rem; display: block; }
+
+        /* --- Tabs --- */
+        .tabs-nav {
+            display: flex; gap: 2rem; border-bottom: 1px solid var(--card-border);
+            padding: 0 2rem; background: rgba(0,0,0,0.1); flex-shrink: 0;
+        }
+        [data-theme="light"] .tabs-nav { background: #f9fafb; }
+        .tab-btn {
+            background: none; border: none; color: var(--text-muted); padding: 1rem 0;
+            font-size: 0.9rem; font-weight: 500; cursor: pointer; position: relative;
+            transition: color 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active { color: var(--accent-1); font-weight: 600; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+            height: 2px; background: var(--accent-1); border-radius: 2px 2px 0 0;
+        }
+        .tab-pane { display: none; animation: fadeIn 0.3s ease; }
+        .tab-pane.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- KPIs --- */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+        .kpi-card { 
+            background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; 
+            padding: 0.875rem 1.25rem; display: flex; flex-direction: row; align-items: center; gap: 0.875rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .kpi-icon { width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; background: rgba(59,130,246,0.1); color: var(--accent-1); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+        .kpi-title { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1.2; margin-top: 2px;}
+
+        /* --- Select2 Professional Overrides --- */
+        .select2-container--default .select2-selection--multiple {
+            background-color: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 8px; min-height: 42px; padding: 2px 8px; transition: border-color 0.2s;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: var(--accent-1); }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e5e7eb; border-radius: 6px; padding: 2px 8px; margin-top: 6px; display: flex; flex-direction: row-reverse; gap: 6px; align-items: center; font-size: 0.8rem; line-height: 1.2;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+            color: var(--text-muted); font-size: 1.1rem; position: static; border: none; font-weight: normal; background: none; transition: color 0.2s; line-height: 1; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover { color: var(--danger); background: none;}
+        .select2-dropdown { background-color: #1f2937; border: 1px solid var(--card-border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden;}
+        .select2-container--default .select2-results__option--selected { background-color: rgba(255,255,255,0.05); }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable { background-color: var(--accent-1); color: #fff; }
+        .select2-search__field { color: #fff !important; font-family: 'Inter', sans-serif;}
+        .select2-container--default .select2-selection--multiple .select2-selection__clear { margin-top: 10px; color: var(--text-muted); }
+
+        /* --- DataTables --- */
+        .table-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 0; overflow: hidden; display: flex; flex-direction: column; height: calc(100vh - 3rem);}
+        .table-header { padding: 1.5rem; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); flex-shrink: 0;}
+        .table-header h3 { font-size: 1rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 8px;}
+        
+        .dt-wrapper { padding: 0; display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
+        .dataTables_wrapper { display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
+        .dataTables_scroll { display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
+        .dataTables_scrollHead { flex-shrink: 0; }
+        .dataTables_scrollBody { min-height: 400px; }
+        
+        table.dataTable { border-collapse: collapse; width: 100%; margin: 0 !important; font-size: 0.85rem;}
+        table.dataTable thead th { border-bottom: 1px solid var(--card-border); color: var(--text-muted); font-weight: 600; text-align: left; padding: 1rem 1.5rem; background: rgba(0,0,0,0.3); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;}
+        table.dataTable tbody td { padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle;}
+        table.dataTable tbody tr { background: transparent !important; transition: background 0.2s;}
+        
+        /* Export Buttons Style */
+        .dt-buttons .dt-button {
+            background: rgba(255, 255, 255, 0.05) !important; color: var(--text-main) !important; border: 1px solid var(--card-border) !important;
+            border-radius: 6px !important; padding: 0.4rem 1rem !important; font-size: 0.85rem !important; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .dt-buttons .dt-button:hover { background: var(--accent-1) !important; color: #fff !important; border-color: var(--accent-1) !important; }
+        [data-theme="light"] .dt-buttons .dt-button { background: #fff !important; color: #374151 !important; border-color: #d1d5db !important; }
+        [data-theme="light"] .dt-buttons .dt-button:hover { background: var(--accent-1) !important; color: #fff !important; border-color: var(--accent-1) !important; }
+        table.dataTable tbody tr:hover { background: rgba(255,255,255,0.02) !important; }
+        
+        .dataTables_scrollBody::-webkit-scrollbar { width: 6px; height: 6px; }
+        .dataTables_scrollBody::-webkit-scrollbar-track { background: transparent; }
+        .dataTables_scrollBody::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .dataTables_scrollBody::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        
+        .alert-badge { background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 4px 8px; border-radius: 4px; font-weight: 500; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;}
+        .danger-badge { background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 4px 8px; border-radius: 4px; font-weight: 500; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;}
+
+        /* Hide default DT elements */
+        .dataTables_info, .dataTables_length, .dataTables_filter { display: none; }
+
+        #loader { position: fixed; inset: 0; background: var(--bg-color); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top-color: var(--accent-1); animation: spin 1s linear infinite; margin-bottom: 1rem; }
+        [data-theme="light"] .spinner { border-color: rgba(0,0,0,0.1); border-top-color: var(--accent-1); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- Light Mode Overrides --- */
+        [data-theme="light"] {
+            --bg-color: #f3f4f6;
+            --sidebar-bg: #ffffff;
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb;
+            --text-main: #374151;
+            --text-muted: #6b7280;
+        }
+        [data-theme="light"] h1, 
+        [data-theme="light"] .kpi-value, 
+        [data-theme="light"] .table-header h3, 
+        [data-theme="light"] #tableSearch, 
+        [data-theme="light"] .select2-search__field { color: var(--text-main) !important; }
+        
+        [data-theme="light"] #tableSearch, 
+        [data-theme="light"] .select2-container--default .select2-selection--multiple { background-color: #ffffff; border-color: var(--card-border); }
+        
+        [data-theme="light"] .table-header { background: #f9fafb; }
+        [data-theme="light"] header { background: #ffffff; border-bottom: 1px solid var(--card-border); }
+        [data-theme="light"] table.dataTable tbody td strong { color: var(--text-main) !important; }
+        [data-theme="light"] table.dataTable thead th { background: #f3f4f6; color: var(--text-muted); }
+        [data-theme="light"] table.dataTable tbody td { border-bottom: 1px solid #f3f4f6; }
+        [data-theme="light"] table.dataTable tbody tr:hover { background: #f9fafb !important; }
+        [data-theme="light"] .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #f3f4f6; border-color: #e5e7eb; color: var(--text-main); }
+        [data-theme="light"] .select2-dropdown { background-color: #ffffff; border-color: var(--card-border); }
+        [data-theme="light"] .select2-container--default .select2-results__option--selected { background-color: #f3f4f6; }
+        [data-theme="light"] .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable { background-color: var(--accent-1); color: #fff !important; }
+        [data-theme="light"] body { background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08), transparent 50%); }
+        [data-theme="light"] .toggle-btn:hover { background: rgba(0,0,0,0.05); color: var(--text-main); }
+    </style>
+</head>
+<body>
+    <div id="loader"><div class="spinner"></div><p style="color: var(--text-muted); font-size: 0.9rem;">Carregando bases...</p></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="ph ph-funnel"></i> Filtros</h2>
+            <button class="btn-reset" onclick="limparFiltrosGeral()"><i class="ph ph-trash"></i> Limpar</button>
+        </div>
+        <div class="sidebar-content">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="filter-group">
+                    <div class="filter-header">
+                        <label>Ano</label>
+                        <button class="filter-action" title="Alternar Todos" onclick="toggleAll('filter-ano', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                    </div>
+                    <select id="filter-ano" multiple="multiple" style="width: 100%;"></select>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header">
+                        <label>Mês</label>
+                        <button class="filter-action" title="Alternar Todos" onclick="toggleAll('filter-mes', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                    </div>
+                    <select id="filter-mes" multiple="multiple" style="width: 100%;"></select>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-header">
+                    <label>Área</label>
+                    <button class="filter-action" title="Alternar Todas" onclick="toggleAll('filter-area', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                </div>
+                <select id="filter-area" multiple="multiple" style="width: 100%;"></select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="filter-group">
+                    <div class="filter-header">
+                        <label>Dia da Semana</label>
+                        <button class="filter-action" title="Alternar Todos" onclick="toggleAll('filter-dia', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                    </div>
+                    <select id="filter-dia" multiple="multiple" style="width: 100%;"></select>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header">
+                        <label>Status</label>
+                        <button class="filter-action" title="Alternar Todos" onclick="toggleAll('filter-status', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                    </div>
+                    <select id="filter-status" multiple="multiple" style="width: 100%;"></select>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-header">
+                    <label>Situação Apurada</label>
+                    <button class="filter-action" title="Alternar Todas" onclick="toggleAll('filter-situacao', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                </div>
+                <select id="filter-situacao" multiple="multiple" style="width: 100%;"></select>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--card-border); margin: 0.5rem 0;">
+
+            <div class="filter-group">
+                <div class="filter-header">
+                    <label>Data</label>
+                    <button class="filter-action" title="Alternar Todas" onclick="toggleAll('filter-data', this)"><i class="ph ph-check-circle" style="font-size: 1.1rem;"></i></button>
+                </div>
+                <select id="filter-data" multiple="multiple" style="width: 100%;"></select>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-wrapper">
+        <header>
+            <div class="header-left">
+                <button class="toggle-btn" onclick="toggleSidebar()"><i class="ph ph-list"></i></button>
+                <h1 id="page-title" style="display: flex; align-items: center; gap: 8px;">Auditoria de Absenteísmo <span class="alert-badge" style="background: rgba(59,130,246,0.1); color: var(--accent-1); font-size: 0.75rem;">v2.0.4</span></h1>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div id="sync-status" style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 0.75rem; align-items: center; margin-right: 1rem;"></div>
+                <button id="themeToggleBtn" class="toggle-btn" onclick="toggleTheme()" title="Alternar Tema"><i class="ph ph-sun"></i></button>
+                <button class="btn-sync" onclick="syncData()"><i class="ph ph-arrows-clockwise"></i> Atualizar Base</button>
+            </div>
+        </header>
+
+        <!-- TOP LEVEL KPIs -->
+        <div class="content" style="padding-bottom: 0;">
+            <div class="kpi-grid">
+                <!-- 1. Taxa Absenteísmo -->
+                <div class="kpi-card" style="border-left: 4px solid var(--accent-1);">
+                    <div class="kpi-icon"><i class="ph ph-percent"></i></div>
+                    <div>
+                        <div class="kpi-title">Taxa de Absenteísmo</div>
+                        <div class="kpi-value" id="kpi-taxa-abs">0.00%</div>
+                    </div>
+                </div>
+                <!-- 2. Horas Previstas -->
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-2);"><i class="ph ph-clock-user"></i></div>
+                    <div>
+                        <div class="kpi-title">Horas Previstas</div>
+                        <div class="kpi-value" id="kpi-horas-previstas">0</div>
+                    </div>
+                </div>
+                <!-- 3. Dias Úteis -->
+                <div class="kpi-card">
+                    <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning);"><i class="ph ph-calendar-blank"></i></div>
+                    <div>
+                        <div class="kpi-title">Dias Úteis</div>
+                        <div class="kpi-value" id="kpi-dias-uteis">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('tab-auditoria', this)"><i class="ph ph-table"></i> Auditoria</button>
+            <button class="tab-btn" onclick="switchTab('tab-indicadores', this)"><i class="ph ph-chart-line-up"></i> Indicadores Absenteísmo</button>
+        </div>
+
+        <div class="content">
+            
+            <!-- ABA 1: AUDITORIA (Ativa por padrão) -->
+            <div id="tab-auditoria" class="tab-pane active">
+                
+                <!-- Table -->
+            <div class="table-card">
+                <div class="table-header" style="flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; align-items: center; flex-grow: 1;">
+                        <h3 style="margin: 0; white-space: nowrap;"><i class="ph ph-table"></i> Detalhamento de Ocorrências</h3>
+                        <div id="active-filters-container"></div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-left: auto;">
+                        <div id="export-buttons-container"></div>
+                        <div style="position: relative; width: 320px;">
+                            <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem;"></i>
+                            <input type="text" id="tableSearch" placeholder="Buscar por Nome ou Matrícula..." style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); border-radius: 8px; color: #fff; padding: 0.6rem 1rem 0.6rem 2.5rem; outline: none; font-size: 0.85rem; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-1)'" onblur="this.style.borderColor='var(--card-border)'">
+                        </div>
+                    </div>
+                </div>
+                <div class="dt-wrapper">
+                    <table id="auditTable" class="display nowrap">
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Nome</th>
+                                <th>Área</th>
+                                <th>Data</th>
+                                <th>Mês/Ano</th>
+                                <th>Dia</th>
+                                <th>Status</th>
+                                <th>Motivo Afast.</th>
+                                <th>Situação Apurada</th>
+                                <th>Horas</th>
+                                <th>Evidência</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            </div> <!-- FIM TAB AUDITORIA -->
+
+            <!-- ABA 2: INDICADORES -->
+            <div id="tab-indicadores" class="tab-pane">
+                <div class="kpi-grid">
+                    <div class="kpi-card" style="border-left: 4px solid var(--accent-2);">
+                        <div class="kpi-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-2);"><i class="ph ph-percent"></i></div>
+                        <div>
+                            <div class="kpi-title">Índice de Absenteísmo</div>
+                            <div class="kpi-value" id="kpi-indice-abs">0.0%</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Fórmula: (Horas Perdidas / Previstas) × 100</div>
+                        </div>
+                    </div>
+
+                    <!-- Resumo de Efetivo (Card Triplo) -->
+                    <div class="kpi-card">
+                        <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);"><i class="ph ph-users"></i></div>
+                        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+                                <span>Headcount Total:</span> <span id="kpi-hc-total" style="font-weight:600;">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+                                <span>Afastados:</span> <span id="kpi-hc-afastados" style="font-weight:600;">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; color: var(--success); font-size: 0.875rem; border-top: 1px solid var(--card-border); padding-top: 4px; margin-top: 2px;">
+                                <strong>Quadro Ativo:</strong> <strong id="kpi-hc-ativo">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-card" style="padding: 2rem; display: flex; align-items: center; justify-content: center; min-height: 300px; flex-grow: 1;">
+                    <div style="text-align: center; color: var(--text-muted);">
+                        <i class="ph ph-chart-bar" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <h3>Gráficos em Breve</h3>
+                        <p style="font-size: 0.85rem; max-width: 400px; margin: 0 auto;">Aguardando carga do quadro de horas previstas para gerar as visualizações macro do Absenteísmo.</p>
+                    </div>
+                </div>
+            </div> <!-- FIM TAB INDICADORES -->
+
+        </div>
+    </main>
+
+    <script>
+        let dataTableInst;
+        let auditData = [];
+        
+        // Cache global dos filtros para extrema performance
+        let currentFilters = { anos: [], meses: [], areas: [], datas: [], dias: [], sits: [], status: [] };
+
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-closed');
+            // Force redraw of datatables when container width changes
+            setTimeout(() => { if(dataTableInst) dataTableInst.columns.adjust(); }, 350);
+        }
+
+        // --- Tabs Logic ---
+        function switchTab(tabId, btnElement) {
+            $('.tab-pane').removeClass('active');
+            $('.tab-btn').removeClass('active');
+            
+            $('#' + tabId).addClass('active');
+            $(btnElement).addClass('active');
+
+            const titleEl = document.getElementById('page-title');
+
+            if(tabId === 'tab-auditoria') {
+                if(titleEl) titleEl.innerText = 'Auditoria de Absenteísmo';
+                if(dataTableInst) {
+                    // Redesenha as colunas da tabela para corrigir a largura
+                    dataTableInst.columns.adjust().draw();
+                }
+            } else if(tabId === 'tab-indicadores') {
+                if(titleEl) titleEl.innerText = 'Indicadores de Absenteísmo';
+            }
+        }
+
+        function updateFilterCache() {
+            currentFilters.anos = $('#filter-ano').val() || [];
+            currentFilters.meses = $('#filter-mes').val() || [];
+            currentFilters.areas = $('#filter-area').val() || [];
+            currentFilters.datas = $('#filter-data').val() || [];
+            currentFilters.dias = $('#filter-dia').val() || [];
+            currentFilters.sits = $('#filter-situacao').val() || [];
+            currentFilters.status = $('#filter-status').val() || [];
+            renderActiveFilters();
+        }
+
+        function renderActiveFilters() {
+            const container = document.getElementById('active-filters-container');
+            if (!container) return;
+            
+            let badges = [];
+            const addBadge = (label, values) => {
+                if (values && values.length > 0) {
+                    let text = values.length > 2 ? `${values.length} selecionados` : values.join(', ');
+                    badges.push(`<span style="background: rgba(59, 130, 246, 0.1); color: var(--accent-1); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; border: 1px solid rgba(59, 130, 246, 0.2);"><b>${label}:</b> ${text}</span>`);
+                }
+            };
+
+            addBadge('Ano', currentFilters.anos);
+            addBadge('Mês', currentFilters.meses);
+            addBadge('Área', currentFilters.areas);
+            addBadge('Data', currentFilters.datas);
+            addBadge('Dia', currentFilters.dias);
+            addBadge('Situação', currentFilters.sits);
+            addBadge('Status', currentFilters.status);
+
+            if (badges.length > 0) {
+                container.innerHTML = `<i class="ph ph-funnel" style="color: var(--accent-1); font-size: 1rem;"></i> ` + badges.join('');
+            } else {
+                container.innerHTML = `<span style="color: var(--text-muted); font-size: 0.75rem; font-style: italic;">Todos os dados visíveis (Nenhum filtro)</span>`;
+            }
+        }
+
+        async function init() {
+            try {
+                const response = await fetch('/api/absenteismo/auditoria?v=' + new Date().getTime());
+                const result = await response.json();
+                if(result.error) throw new Error(result.error);
+                
+                auditData = result.auditoria;
+                
+                if (result.kpis) {
+                    const formatNum = (num) => num.toLocaleString('pt-BR');
+                    
+                    document.getElementById('kpi-taxa-abs').innerText = result.kpis.taxa_absenteismo.toFixed(2).replace('.', ',') + '%';
+                    document.getElementById('kpi-horas-previstas').innerText = formatNum(Math.floor(result.kpis.horas_previstas));
+                    document.getElementById('kpi-dias-uteis').innerText = result.kpis.dias_uteis;
+                    
+                    document.getElementById('kpi-hc-total').innerText = formatNum(result.kpis.headcount_total);
+                    document.getElementById('kpi-hc-afastados').innerText = formatNum(result.kpis.total_afastados);
+                    document.getElementById('kpi-hc-ativo').innerText = formatNum(result.kpis.headcount_ativo);
+                }
+
+                if (result.sync_info) {
+                    const abs = result.sync_info.absenteismo;
+                    const hc = result.sync_info.headcount;
+                    const afast = result.sync_info.afastamentos || { name: '', date: '' };
+                    const syncDiv = document.getElementById('sync-status');
+                    
+                    if (syncDiv) {
+                        const cleanName = (str) => str ? str.split(' ')[0].replace('.xlsx', '').replace('.xls', '') : 'N/A';
+                        const formatDateText = (isoStr) => {
+                            if (!isoStr) return "N/A";
+                            const date = new Date(isoStr);
+                            return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+                        };
+                        
+                        const infoText = `Absenteísmo: ${cleanName(abs.name)} (${formatDateText(abs.date)})\nHeadcount: ${cleanName(hc.name)} (${formatDateText(hc.date)})\nAfastamentos: ${cleanName(afast.name)} (${formatDateText(afast.date)})`;
+                        
+                        syncDiv.innerHTML = `<div title="${infoText}" style="cursor: help; display: flex; align-items: center; padding: 4px;"><i class="ph ph-warning-circle" style="font-size: 1.25rem; color: var(--text-muted); transition: color 0.2s;" onmouseover="this.style.color='var(--accent-1)'" onmouseout="this.style.color='var(--text-muted)'"></i></div>`;
+                    }
+                }
+                
+                populateFilters(auditData);
+                renderTable(auditData);
+
+                // Initialize Select2 with premium UI options
+                const s2Options = { allowClear: true, closeOnSelect: true, width: '100%' };
+                $('#filter-ano').select2({ placeholder: "Selecione anos...", ...s2Options });
+                $('#filter-mes').select2({ placeholder: "Selecione meses...", ...s2Options });
+                $('#filter-area').select2({ placeholder: "Selecione áreas...", ...s2Options });
+                $('#filter-data').select2({ placeholder: "Selecione datas...", ...s2Options });
+                $('#filter-dia').select2({ placeholder: "Selecione dias...", ...s2Options });
+                $('#filter-status').select2({ placeholder: "Selecione status...", ...s2Options });
+                $('#filter-situacao').select2({ placeholder: "Selecione situações...", ...s2Options });
+
+                // Event Listeners - Atualiza cache de filtros apenas UMA VEZ antes de cada desenho (COM DEBOUNCE)
+                let debounceTimeout;
+                $('#filter-ano, #filter-mes, #filter-area, #filter-data, #filter-dia, #filter-status, #filter-situacao').on('change', function(e) {
+                    if (e.namespace === 'select2') return;
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => {
+                        updateFilterCache();
+                        dataTableInst.draw();
+                    }, 250); // 250ms debounce para não travar a UI ao clicar em múltiplos itens rapidamente
+                });
+
+                $('#tableSearch').on('keyup', function() {
+                    if(dataTableInst) dataTableInst.search(this.value).draw();
+                });
+
+                document.getElementById('loader').style.display = 'none';
+            } catch(e) {
+                alert("Erro ao carregar dados: " + e);
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        async function syncData() {
+            document.getElementById('loader').style.display = 'flex';
+            await fetch('/api/absenteismo/sync');
+            location.reload();
+        }
+
+        function populateFilters(data) {
+            let anos = new Set(), meses = new Set(), areas = new Set(), datas = new Set(), dias = new Set(), situacoes = new Set(), statusSet = new Set();
+            data.forEach(row => {
+                if(row.mes_ano && row.mes_ano.includes('-')) {
+                    anos.add(row.mes_ano.split('-')[0]); meses.add(row.mes_ano.split('-')[1]);
+                }
+                if(row.area) areas.add(row.area);
+                if(row.data) datas.add(row.data);
+                if(row.dia) dias.add(row.dia);
+                if(row.sit_cod && row.sit_desc) situacoes.add(row.sit_cod + ' - ' + row.sit_desc);
+                if(row.Status) statusSet.add(row.Status);
+            });
+
+            const populate = (id, set, reverse=false) => {
+                const el = document.getElementById(id);
+                let arr = Array.from(set).sort();
+                if(reverse) arr.reverse();
+                arr.forEach(val => { let opt = document.createElement('option'); opt.value = val; opt.innerHTML = val; el.appendChild(opt); });
+            };
+
+            populate('filter-ano', anos, true);
+            populate('filter-mes', meses);
+            populate('filter-area', areas);
+            
+            // Tratamento de datas (Data)
+            const parseData = (str) => {
+                let parts = str.split('/');
+                return new Date(`20${parts[2]}`, parts[1] - 1, parts[0]);
+            };
+            const sortedDatas = Array.from(datas).sort((a, b) => parseData(b) - parseData(a));
+            const elData = document.getElementById('filter-data');
+            sortedDatas.forEach(val => { let opt = document.createElement('option'); opt.value = val; opt.innerHTML = val; elData.appendChild(opt); });
+
+            const diasOrder = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+            const sortedDias = Array.from(dias).sort((a,b) => diasOrder.indexOf(a) - diasOrder.indexOf(b));
+            const elDia = document.getElementById('filter-dia');
+            sortedDias.forEach(val => { let opt = document.createElement('option'); opt.value = val; opt.innerHTML = val; elDia.appendChild(opt); });
+
+            populate('filter-status', statusSet);
+            populate('filter-situacao', situacoes);
+        }
+
+        function renderTable(data) {
+            // Se a tabela já existir, apenas atualiza os dados
+            if(dataTableInst) {
+                dataTableInst.clear().rows.add(data).draw();
+                return;
+            }
+
+            // Remove o populator de custom search global se já existir para evitar lixo
+            $.fn.dataTable.ext.search = [];
+
+            // Custom Filtering Logic usando originalData (extremamente rápido, sem Regex)
+            $.fn.dataTable.ext.search.push(
+                function(settings, dataArray, dataIndex, originalData) {
+                    let selAnos = currentFilters.anos;
+                    let selMeses = currentFilters.meses;
+                    let selAreas = currentFilters.areas;
+                    let selDatas = currentFilters.datas;
+                    let selDias = currentFilters.dias;
+                    let selSits = currentFilters.sits;
+                    let selStatus = currentFilters.status;
+
+                    let rowData = originalData.data || "";
+                    let rowDia = originalData.dia || "";
+                    let rowArea = originalData.area || "";
+                    let rowMesAno = originalData.mes_ano || "";
+                    let rowAno = rowMesAno ? rowMesAno.split('-')[0] : "";
+                    let rowMes = rowMesAno ? rowMesAno.split('-')[1] : "";
+                    let rowSit = originalData.sit_cod + ' - ' + originalData.sit_desc;
+                    let rowStatus = originalData.Status || "";
+
+                    if (selAnos.length > 0 && !selAnos.includes(rowAno)) return false;
+                    if (selMeses.length > 0 && !selMeses.includes(rowMes)) return false;
+                    if (selAreas.length > 0 && !selAreas.includes(rowArea)) return false;
+                    if (selDatas.length > 0 && !selDatas.includes(rowData)) return false;
+                    if (selDias.length > 0 && !selDias.includes(rowDia)) return false;
+                    if (selSits.length > 0 && !selSits.includes(rowSit)) return false;
+                    if (selStatus.length > 0 && !selStatus.includes(rowStatus)) return false;
+                    return true;
+                }
+            );
+
+            // Calculate height for table scrolling based on viewport
+            let calcHeight = window.innerHeight - 350;
+            if(calcHeight < 300) calcHeight = 300;
+
+            dataTableInst = $('#auditTable').DataTable({
+                data: data, // Inicialização por DataNat
+                deferRender: true,
+                scroller: true, // VIRTUAL SCROLLING ATIVADO
+                paging: true, // Necessário para scroller funcionar
+                scrollY: '500px', // O CSS Flexbox vai sobrescrever e esticar a tabela perfeitamente
+                scrollX: true,
+                scrollCollapse: true,
+                autoWidth: false,
+                order: [[2, 'desc']],
+                language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' },
+                dom: 'rt', // completely strip out everything except table
+                columns: [
+                    { width: "70px", data: 'cod', render: function(d) { return `<strong style="color:#fff;">${d}</strong>`; } },
+                    { width: "230px", data: 'nome' },
+                    { width: "170px", data: 'area' },
+                    { 
+                        width: "90px",
+                        data: 'data',
+                        render: function(d, type, row) {
+                            if (type === 'sort' || type === 'type') return row.data_iso || d;
+                            return d;
+                        }
+                    },
+                    { 
+                        width: "120px",
+                        data: 'mes_ano',
+                        render: function(d, type, row) {
+                            if (type === 'display' && d) {
+                                const partes = d.split('-');
+                                if (partes.length === 2) {
+                                    const meses = {
+                                        '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril', 
+                                        '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto', 
+                                        '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+                                    };
+                                    const anoCurto = partes[0].substring(2);
+                                    return (meses[partes[1]] || partes[1]) + ' ' + anoCurto;
+                                }
+                            }
+                            return d;
+                        }
+                    },
+                    { width: "60px", data: 'dia' },
+                    { 
+                        width: "90px", 
+                        data: 'Status', 
+                        render: function(d, type, row) {
+                            if (d === 'Ativo') return `<span style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">Ativo</span>`;
+                            let motivo = row.motivo_afastamento ? `Motivo: ${row.motivo_afastamento}` : '';
+                            let retorno = row.retorno_afastamento ? `\nPrevisão de Retorno: ${row.retorno_afastamento}` : '';
+                            let titleStr = motivo + retorno;
+                            let titleAttr = titleStr.trim() !== '' ? ` title="${titleStr.trim()}" style="cursor:help;"` : '';
+                            return `<span style="background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;"${titleAttr}>${d || '-'}</span>`;
+                        }
+                    },
+                    { 
+                        width: "150px", 
+                        data: 'motivo_afastamento',
+                        render: function(d) {
+                            return d ? `<span style="font-size:0.75rem; color:var(--text-muted);">${d}</span>` : '<span style="color:var(--card-border);">-</span>';
+                        }
+                    },
+                    { width: "180px", data: 'sit_cod', render: function(d, type, row) { return `${d} - ${row.sit_desc}`; } },
+                    { width: "90px", data: 'horas_str', render: function(d, type, row) { 
+                        if(type === 'display') {
+                            let parts = d ? d.split(':') : ['00', '00'];
+                            let h = parseInt(parts[0], 10);
+                            let m = parseInt(parts[1], 10);
+                            return `<strong style="color: var(--accent-1);">${h}h ${m.toString().padStart(2, '0')}m</strong> <span style="font-size:0.7rem; color:var(--text-muted);" title="Horas Decimais para DP">(${row.horas_dec.toFixed(2)})</span>`;
+                        }
+                        return row.horas_dec; // for sorting
+                    }},
+                    { width: "200px", data: 'marcacoes', render: function(d, type, row) { 
+                        if(d === "OK (no horário)" || d === "Sem escala na base") return `<span style="color: var(--text-muted);">-</span>`;
+                        
+                        let titleTooltip = `Previsto: \u2002${row.escala}&#10;Realizado: ${row.marcacoes_raw || 'Nenhum'}`;
+                        if(d.includes("Faltou Tudo")) return `<span class="danger-badge" title="${titleTooltip}"><i class="ph-fill ph-warning-circle"></i> ${d}</span>`;
+                        
+                        let parts = d.split(' | ');
+                        return parts.map(p => {
+                            if(p.includes("Faltou")) return `<span class="danger-badge" style="margin-right:4px; font-size: 0.7rem;" title="${titleTooltip}"><i class="ph-fill ph-warning-circle"></i> ${p}</span>`;
+                            return `<span class="alert-badge" style="margin-right:4px; font-size: 0.7rem;" title="${titleTooltip}"><i class="ph-fill ph-clock"></i> ${p}</span>`;
+                        }).join('');
+                    } }
+                ],
+                drawCallback: function(settings) {
+                    let totalHoras = 0; let count = 0;
+                    this.api().rows({ search: 'applied' }).data().each(function(row) {
+                        let val = parseFloat(row.horas_dec);
+                        if(!isNaN(val)) totalHoras += val;
+                        count++;
+                    });
+                    
+                    let hTotal = Math.floor(totalHoras);
+                    let mTotal = Math.round((totalHoras - hTotal) * 60);
+                    let formattedTotal = `${hTotal.toLocaleString('pt-BR')}h ${mTotal.toString().padStart(2, '0')}m`;
+                    
+                    let totalMins = Math.round(totalHoras * 60);
+                    let minsPerDay = 528; // 8h48m em minutos
+                    let diasInteiros = Math.floor(totalMins / minsPerDay);
+                    let remMins = totalMins % minsPerDay;
+                    let hRem = Math.floor(remMins / 60);
+                    let mRem = remMins % 60;
+                    let formattedDias = `${diasInteiros.toLocaleString('pt-BR')}d ${hRem}h ${mRem.toString().padStart(2, '0')}m`;
+                    
+                    document.getElementById('kpi-horas').innerText = formattedTotal;
+                    document.getElementById('kpi-dias').innerText = formattedDias;
+                    document.getElementById('kpi-registros').innerText = count.toLocaleString('pt-BR');
+                }
+            });
+
+            // Inicialização manual do Buttons para evitar quebra de layout do "dom: B"
+            new $.fn.dataTable.Buttons(dataTableInst, {
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="ph ph-file-xls"></i> Exportar Excel',
+                        title: 'Auditoria_Absenteismo_' + new Date().toISOString().split('T')[0],
+                        className: 'dt-button',
+                        exportOptions: { modifier: { search: 'applied' } }
+                    }
+                ]
+            });
+            dataTableInst.buttons().container().appendTo('#export-buttons-container');
+
+            // Adjust table columns on window resize to keep headers aligned
+            window.addEventListener('resize', () => {
+                if(dataTableInst) dataTableInst.columns.adjust();
+            });
+        }
+
+        function toggleAll(id, btnElement) {
+            const select = $('#' + id);
+            const allOptions = select.find('option').map(function() { return $(this).val(); }).get();
+            const currentVal = select.val() || [];
+            
+            const icon = btnElement.querySelector('i');
+            if (currentVal.length === allOptions.length && allOptions.length > 0) {
+                // Se tudo já está selecionado, Limpa
+                select.val(null).trigger('change.select2');
+                if(icon) { icon.classList.remove('ph-fill'); icon.classList.add('ph'); }
+            } else {
+                // Seleciona Todos
+                select.val(allOptions).trigger('change.select2');
+                if(icon) { icon.classList.remove('ph'); icon.classList.add('ph-fill'); }
+            }
+            updateFilterCache();
+            if(dataTableInst) dataTableInst.draw();
+        }
+
+        function limparFiltrosGeral() {
+            $('#filter-ano, #filter-mes, #filter-area, #filter-data, #filter-dia, #filter-status, #filter-situacao').val(null).trigger('change.select2');
+            
+            // Reseta também os ícones de Toggle para vazio
+            document.querySelectorAll('.filter-action i').forEach(icon => {
+                icon.classList.remove('ph-fill'); icon.classList.add('ph');
+            });
+            
+            $('#tableSearch').val('');
+            if(dataTableInst) dataTableInst.search('').draw();
+            updateFilterCache();
+            if(dataTableInst) dataTableInst.draw();
+        }
+
+        window.onload = init;
+
+        // --- Theme Toggle Logic ---
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const rootElement = document.documentElement;
+        
+        function setTheme(theme) {
+            if (theme === 'light') {
+                rootElement.setAttribute('data-theme', 'light');
+                themeToggleBtn.innerHTML = '<i class="ph ph-moon"></i>';
+                localStorage.setItem('theme', 'light');
+            } else {
+                rootElement.removeAttribute('data-theme');
+                themeToggleBtn.innerHTML = '<i class="ph ph-sun"></i>';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        function toggleTheme() {
+            const currentTheme = rootElement.getAttribute('data-theme');
+            setTheme(currentTheme === 'light' ? 'dark' : 'light');
+        }
+        
+        // Initialize Theme from localStorage
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<h1>Erro de Sincronizacao</h1><pre>Falha ao autenticar/sincronizar com Google Drive:
+Traceback (most recent call last):
+  File "D:\Projeto geral\People analytics - GP\module_frequencia_diaria\app_frequencia.py", line 50, in fetch_from_drive
+    creds.refresh(Request())
+    ~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\andre.WIN-UT7BSJO8U2I\AppData\Local\Programs\Python\Python314\Lib\site-packages\google\oauth2\credentials.py", line 412, in refresh
+    ) = reauth.refresh_grant(
+        ~~~~~~~~~~~~~~~~~~~~^
+        request,
+        ^^^^^^^^
+    ...<6 lines>...
+        enable_reauth_refresh=self._enable_reauth_refresh,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\andre.WIN-UT7BSJO8U2I\AppData\Local\Programs\Python\Python314\Lib\site-packages\google\oauth2\reauth.py", line 370, in refresh_grant
+    _client._handle_error_response(response_data, retryable_error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre.WIN-UT7BSJO8U2I\AppData\Local\Programs\Python\Python314\Lib\site-packages\google\oauth2\_client.py", line 69, in _handle_error_response
+    raise exceptions.RefreshError(
+        error_details, response_data, retryable=retryable_error
+    )
+google.auth.exceptions.RefreshError: ('invalid_scope: Bad Request', {'error': 'invalid_scope', 'error_description': 'Bad Request'})
+</pre>

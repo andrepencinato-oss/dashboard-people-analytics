@@ -1,0 +1,11 @@
+{
+    "folders": [
+        { "path": "core", "name": "Shared Core" },
+        { "path": "module_people_analytics", "name": "People Analytics App" },
+        { "path": "module_sst", "name": "SST App" },
+        { "path": "module_controle_vagas", "name": "Controle de Vagas" },
+        { "path": "module_frequencia_diaria", "name": "Frequência Diária" },
+        { "path": ".", "name": "Root (Launcher & Deploy)" }
+    ],
+    "settings": {}
+}

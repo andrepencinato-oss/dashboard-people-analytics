@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auditoria de Marcação de Ponto</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="data_frequencia.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F6F7F5;
+    --panel: #FFFFFF;
+    --ink: #23282E;
+    --ink-soft: #5B6470;
+    --line: #E7E9E4;
+    --navy: #1D4E89;
+    --navy-soft: #EAF1FA;
+    --emerald: #0E8A5F;
+    --emerald-soft: #E6F5EE;
+    --coral: #C4523F;
+    --coral-soft: #FBEAE6;
+    --amber: #B8790A;
+    --amber-soft: #FCF1DE;
+    --gray-soft: #F3F4F1;
+  }
+  html{font-family:'Inter',system-ui,sans-serif;}
+  body{background-color:var(--bg); color:var(--ink);}
+  .font-display{font-family:'Manrope',system-ui,sans-serif;}
+  .tabular{font-variant-numeric: tabular-nums;}
+  
+  .card{ background: var(--panel); border:1px solid var(--line); border-radius:16px; }
+  .badge{ display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; border-radius:999px; font-size:.72rem; font-weight:600; letter-spacing:.01em; white-space:nowrap;}
+  .badge-coral{ background:var(--coral-soft); color:var(--coral); }
+  .badge-amber{ background:var(--amber-soft); color:var(--amber); }
+  .badge-emerald{ background:var(--emerald-soft); color:var(--emerald); }
+  .badge-navy{ background:var(--navy-soft); color:var(--navy); }
+  .badge-gray{ background:var(--gray-soft); color:var(--ink-soft); }
+  
+  .scrollbar-thin::-webkit-scrollbar{ height:6px; width:6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb{ background:#D6D9D2; border-radius:10px; }
+  select, input[type="text"]{ outline:none; }
+  select:focus, input[type="text"]:focus{ box-shadow:0 0 0 3px var(--coral-soft); border-color:var(--coral); }
+  tbody tr:hover{ background:#FAFBF9; cursor: default; }
+  
+  /* Animação suave */
+  .fade-in{ animation: fadeIn .35s ease both; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+  
+  /* Barra de proporção no card de setor */
+  .sector-bar{ height:6px; border-radius:999px; background:var(--line); overflow:hidden; display: flex; }
+  .sector-bar > .bar-falta{ height:100%; background:var(--coral); transition: width 0.3s; }
+  .sector-bar > .bar-outros{ height:100%; background:var(--amber); transition: width 0.3s; }
+  
+  /* Linha destacada para Faltas na tabela */
+  .row-falta td:first-child { position: relative; }
+  .row-falta td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--coral);
+  }
+  .row-falta td { background-color: #fdf5f4; }
+  .row-falta:hover td { background-color: #faebe9; }
+
+  /* Interatividade dos KPIs */
+  .kpi-card { cursor: pointer; transition: all 0.2s ease; }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border-color: var(--ink-soft); }
+  .kpi-inactive { opacity: 0.4; filter: grayscale(100%); }
+  .kpi-active { border: 2px solid var(--ink) !important; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); opacity: 1 !important; filter: none !important; }
+</style>
+</head>
+<body class="h-screen w-full flex overflow-hidden bg-[var(--bg)]">
+
+  <!-- ======================= SIDEBAR (ESQUERDA) ======================= -->
+  <aside id="sidebar" class="w-72 xl:w-80 shrink-0 bg-white border-r border-[var(--line)] flex flex-col h-full overflow-y-auto shadow-[2px_0_10px_rgba(0,0,0,0.02)] z-50 transition-all duration-300">
+    <header class="p-6 pb-5 border-b border-[var(--line)] flex flex-col gap-5">
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <p class="text-[10px] font-semibold tracking-[0.18em] text-[var(--coral)] uppercase">Análise de Absenteísmo</p>
+          <span class="badge badge-navy" style="font-size: 0.65rem;">v2.0.4</span>
+        </div>
+        <h1 class="font-display text-xl lg:text-2xl font-800 text-[var(--ink)] tracking-tight leading-tight">Auditoria de Marcação de Ponto</h1>
+      </div>
+      <div class="flex flex-col gap-2.5">
+          <button id="btnSyncDrive" class="card px-3 py-2.5 flex items-center justify-center gap-3 cursor-pointer hover:border-[var(--emerald)] transition-colors group bg-[var(--emerald-soft)] border-[var(--emerald)] shadow-sm" title="Baixar relatórios do Google Drive">
+            <i data-lucide="refresh-cw" id="syncIcon" class="w-4 h-4 text-[var(--emerald)] group-hover:rotate-180 transition-transform duration-500"></i>
+            <span id="syncText" class="text-xs font-semibold text-[var(--emerald)]">Sincronizar Dados do Drive</span>
+          </button>
+          <div class="card px-3 py-2.5 flex items-center gap-3">
+            <i data-lucide="calendar-days" class="w-4 h-4 text-[var(--coral)]"></i>
+            <select id="f-data" class="bg-transparent text-xs font-semibold tabular text-[var(--ink)] focus:outline-none cursor-pointer border-none p-0 outline-none w-28">
+              <option value="">Todas as Datas</option>
+            </select>
+          </div>
+        <div class="card px-3 py-2.5 flex items-center gap-3">
+          <i data-lucide="clock" class="w-4 h-4 text-[var(--coral)]"></i>
+          <span class="text-xs font-semibold text-[var(--ink)]">Turno 05:00–18:00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ======================= KPIs ======================= -->
+    <div class="p-6 pt-5 flex-1 pb-10">
+      <p class="text-[10px] font-bold tracking-widest uppercase text-[var(--ink-soft)] mb-3">Indicadores</p>
+      <section class="flex flex-col gap-3.5" id="kpi-section"></section>
+    </div>
+  </aside>
+
+  <!-- ======================= ÁREA PRINCIPAL (DIREITA) ======================= -->
+  <main class="flex-1 h-full overflow-y-auto relative flex flex-col">
+    
+    <!-- Topbar para o Botão Toggle -->
+    <div class="px-6 lg:px-8 py-4 border-b border-[var(--line)] bg-white/70 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <button id="toggleSidebar" class="p-2 -ml-2 rounded-lg hover:bg-black/5 text-[var(--ink)] transition-colors" title="Ocultar/Mostrar Menu Lateral">
+          <i data-lucide="panel-left-close" id="sidebarIcon" class="w-5 h-5"></i>
+        </button>
+        <span class="text-sm font-semibold text-[var(--ink)]">Filtros e KPIs</span>
+      </div>
+      <button id="btnLimparFiltros" class="hidden text-[11px] font-bold px-3 py-1.5 bg-[var(--coral-soft)] text-[var(--coral)] hover:bg-[var(--coral)] hover:text-white rounded-lg transition-colors items-center gap-2 shadow-sm" onclick="limparFiltrosGerais()" title="Limpar todos os filtros">
+        <i data-lucide="filter-x" class="w-3.5 h-3.5"></i>
+        Limpar Filtros
+      </button>
+    </div>
+
+    <div class="p-6 lg:p-8 space-y-6">
+
+  <!-- ======================= SETORES ======================= -->
+  <section class="card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="font-display font-700 text-[15px]">Ranking de Setores</h2>
+        <p class="text-xs text-[var(--ink-soft)]">Todos os centros de custo detalhados</p>
+      </div>
+      <i data-lucide="alert-octagon" class="w-4 h-4 text-[var(--coral)]"></i>
+    </div>
+    <div id="sector-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-h-[580px] overflow-y-auto scrollbar-thin pr-2"></div>
+  </section>
+
+  <!-- ======================= TABELA DETALHADA ======================= -->
+  <section class="card p-5">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+      <div>
+        <h2 class="font-display font-700 text-[15px]">Detalhamento de Colaboradores</h2>
+        <p class="text-xs text-[var(--ink-soft)]">Lista detalhada com visualização rápida das ocorrências</p>
+      </div>
+      <button onclick="exportToExcel()" class="px-4 py-2.5 bg-[var(--emerald)] hover:bg-[#0b6c4a] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shadow-sm shrink-0">
+        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+        Exportar Excel
+      </button>
+    </div>
+    
+    <div class="flex flex-col sm:flex-row gap-2 mb-4 w-full">
+      <div class="relative grow max-w-sm">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"></i>
+        <input id="f-search" type="text" placeholder="Buscar matrícula ou nome..."
+          class="pl-9 pr-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full"/>
+      </div>
+      <select id="f-setor" class="px-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full sm:w-56"></select>
+      <select id="f-situacao" class="px-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full sm:w-48"></select>
+    </div>
+
+    <div class="max-h-[380px] overflow-y-auto overflow-x-auto scrollbar-thin rounded-lg border border-[var(--line)]">
+      <table class="w-full text-sm">
+        <thead class="sticky top-0 z-10 bg-[#FAFBF9] shadow-sm">
+          <tr class="text-left text-[11px] uppercase tracking-wide text-[var(--ink-soft)] font-semibold border-b border-[var(--line)]">
+            <th class="px-4 py-3 bg-[#FAFBF9]">Matrícula</th>
+            <th class="px-4 py-3 bg-[#FAFBF9]">Colaborador</th>
+            <th class="px-4 py-3 bg-[#FAFBF9]">Centro de Custo / Setor</th>
+            <th class="px-4 py-3 bg-[#FAFBF9]">Situação</th>
+            <th class="px-4 py-3 tabular bg-[#FAFBF9]">Prev. Término</th>
+            <th class="px-4 py-3 tabular bg-[#FAFBF9]">Previsto</th>
+            <th class="px-4 py-3 tabular bg-[#FAFBF9]">Marcação</th>
+          </tr>
+        </thead>
+        <tbody id="table-body" class="divide-y divide-[var(--line)]"></tbody>
+      </table>
+    </div>
+    <p id="table-count" class="text-xs text-[var(--ink-soft)] mt-3"></p>
+  </section>
+
+  <footer class="text-center text-xs text-[var(--ink-soft)] pt-2 pb-6">
+    Auditoria de Marcação de Ponto · Controle de Frequência de 15/07/2026 · Móveis Província · People Analytics
+  </footer>
+  <!-- Fim dos dados -->
+    </div>
+  </main>
+
+<!-- ======================= MODAL DE ERRO DE CSV ======================= -->
+<div id="csvErrorModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-[var(--ink)]/50 backdrop-blur-sm p-4 fade-in">
+  <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 border-t-4 border-[var(--coral)] flex flex-col gap-4">
+    <div class="flex items-center gap-3 text-[var(--coral)]">
+      <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      <h3 class="font-display font-800 text-lg text-[var(--ink)]">Erro ao ler o Arquivo</h3>
+    </div>
+    
+    <p class="text-sm text-[var(--ink-soft)] leading-relaxed">Não consegui encontrar as colunas principais de mapeamento (como 'Nome', 'Setor' ou 'Centro de Custo').</p>
+    
+    <div class="bg-[#FAFBF9] p-4 rounded-lg border border-[var(--line)]">
+      <p class="text-[10px] font-bold text-[var(--ink-soft)] mb-2 uppercase tracking-wider">Colunas que eu encontrei:</p>
+      <code id="csvErrorHeaders" class="text-xs text-[var(--coral)] break-all select-all font-mono leading-relaxed block bg-white p-2 border border-[var(--line)] rounded"></code>
+    </div>
+    
+    <div class="flex items-start gap-2 bg-[var(--amber-soft)] p-3 rounded-lg text-xs text-[var(--ink-soft)] mt-2">
+      <i data-lucide="lightbulb" class="w-4 h-4 text-[var(--amber)] shrink-0 mt-0.5"></i>
+      <p><b>Dica:</b> O sistema que gerou o relatório pode ter inserido o <i>Nome da Empresa</i> na primeira linha. Abra o CSV, apague as linhas de título para que os cabeçalhos fiquem na linha 1 e salve o arquivo novamente.</p>
+    </div>
+    
+    <div class="flex justify-end mt-2">
+      <button id="closeCsvError" class="px-5 py-2.5 bg-[var(--coral)] hover:bg-[#d94a4a] text-white text-sm font-bold rounded-lg transition-colors shadow-sm">Entendi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+lucide.createIcons();
+
+
+/* ============================================================
+   1) BASE DE DADOS
+   ============================================================ */
+const SAMPLE_DATA = [{"setor": "USINAGEM", "matricula": "1344", "nome": "Jose Marcos Alves Da Silva", "hora_prevista": "07:00", "hora_marcacao": "", "situacao": "Faltas", "codigo": "001", "data_relatorio": "2026-07-15"}, {"setor": "COLAGEM DE BORDAS", "matricula": "2022", "nome": "Cicero Cordeiro De Araujo", "hora_prevista": "07:00", "hora_marcacao": "08:39", "situacao": "", "codigo": "001", "data_relatorio": "2026-07-15"}];
+let DATA = typeof DATA_INJECT !== 'undefined' && DATA_INJECT.length > 0 ? [...DATA_INJECT] : [...SAMPLE_DATA];
+
+/* ============================================================
+   2) REGRAS DE NEGÓCIO / CLASSIFICAÇÃO COM FOCO EM FALTAS
+   ============================================================ */
+const AFASTAMENTO_SET = new Set(['Auxílio Doença','Atestado (d)','Licença Maternidade','Férias','Aposentadoria por Invalidez']);
+
+function classify(sit){
+  if(sit === '') return 'Atraso';
+  if(AFASTAMENTO_SET.has(sit)) return 'Afastamento';
+  return 'Falta'; // Faltas, Atraso (falta), Marcações Inválidas, Dispensado
+}
+function situacaoLabel(sit){ return sit === '' ? 'Atraso no Ponto' : sit; }
+
+/* ============================================================
+   ESTADO GLOBAL DE FILTRO
+   ============================================================ */
+let activeGlobalFilter = null; // null | 'Falta' | 'Afastamento' | 'Atraso'
+
+const selData = document.getElementById('f-data');
+const selSetor = document.getElementById('f-setor');
+const selSituacao = document.getElementById('f-situacao');
+const inputSearch = document.getElementById('f-search');
+const tbody = document.getElementById('table-body');
+const tableCount = document.getElementById('table-count');
+
+/* ============================================================
+   3) RENDERIZAÇÃO DOS KPIS
+   ============================================================ */
+const accentMap = {
+  navy: {bg:'var(--navy-soft)', fg:'var(--navy)'},
+  coral: {bg:'var(--coral-soft)', fg:'var(--coral)'},
+  amber: {bg:'var(--amber-soft)', fg:'var(--amber)'},
+  emerald: {bg:'var(--emerald-soft)', fg:'var(--emerald)'},
+  gray: {bg:'var(--gray-soft)', fg:'var(--ink-soft)'}
+};
+
+function toggleFilter(id) {
+  if (id === 'null' || id === null) activeGlobalFilter = null;
+  else if (activeGlobalFilter === id) activeGlobalFilter = null;
+  else activeGlobalFilter = id;
+  renderDashboard();
+}
+
+function limparFiltrosGerais() {
+  activeGlobalFilter = null;
+  document.getElementById('f-search').value = '';
+  selData.value = '';
+  selSetor.value = '';
+  selSituacao.value = '';
+  renderDashboard();
+}
+
+function badgeForSituacao(sit, cat){
+  if(cat === 'Atraso') return `<span class="badge badge-emerald"><i data-lucide="clock" class="w-3 h-3"></i>Atrasado</span>`;
+  if(cat === 'Falta') return `<span class="badge badge-coral"><i data-lucide="user-x" class="w-3 h-3"></i>${sit}</span>`;
+  if(cat === 'Afastamento') return `<span class="badge badge-amber"><i data-lucide="shield-plus" class="w-3 h-3"></i>${sit}</span>`;
+  return `<span class="badge badge-gray"><i data-lucide="alert-triangle" class="w-3 h-3"></i>${sit}</span>`;
+}
+
+/* ============================================================
+   FUNÇÃO PRINCIPAL DE REDESENHO (UNIFICADA)
+   ============================================================ */
+function renderDashboard() {
+  const q = inputSearch.value.trim().toLowerCase();
+  const dataSel = selData.value;
+  const setorSel = selSetor.value;
+  const sitSel = selSituacao.value;
+
+  // 1. Filtro Local (Busca, Dropdowns)
+  const baseFilteredData = DATA.filter(d => {
+    const matchData = !dataSel || d.data_relatorio === dataSel;
+    const matchSetor = !setorSel || d.setor === setorSel;
+    const matchSit = !sitSel || situacaoLabel(d.situacao) === sitSel;
+    const matchSearch = !q || d.nome.toLowerCase().includes(q) || d.matricula.includes(q);
+    return matchData && matchSetor && matchSit && matchSearch;
+  });
+
+  // Mostrar/Ocultar botão de limpar filtros
+  const isFiltered = activeGlobalFilter !== null || q !== '' || dataSel !== '' || setorSel !== '' || sitSel !== '';
+  const btnLimpar = document.getElementById('btnLimparFiltros');
+  if(btnLimpar) {
+      if(isFiltered) {
+          btnLimpar.classList.remove('hidden');
+          btnLimpar.classList.add('flex');
+      } else {
+          btnLimpar.classList.add('hidden');
+          btnLimpar.classList.remove('flex');
+      }
+  }
+
+  // 2. Renderizar KPIs baseados nos filtros locais
+  const totalMapeados = baseFilteredData.length;
+  const totalFaltasNJ = baseFilteredData.filter(d => d.categoria === 'Falta').length;
+  const totalAfastamentos = baseFilteredData.filter(d => d.categoria === 'Afastamento').length;
+  const totalAtrasos = baseFilteredData.filter(d => d.categoria === 'Atraso').length;
+
+  const kpis = [
+    { id: 'Falta', label: 'Ausentes (Faltas)', value: totalFaltasNJ, sub: `Faltas e outras ocorrências sem justificativa`, icon: 'user-x', accent: 'coral', highlight: true },
+    { id: 'Afastamento', label: 'Afastados', value: totalAfastamentos, sub: 'Atestados, Licenças, Férias e INSS', icon: 'shield-plus', accent: 'amber' },
+    { id: 'Atraso', label: 'Atrasados', value: totalAtrasos, sub: 'Trabalharam, mas tiveram exceção no ponto', icon: 'clock', accent: 'emerald' },
+    { id: null, label: 'Colaboradores Mapeados', value: totalMapeados, sub: 'Total de registros neste relatório', icon: 'users', accent: 'navy' }
+  ];
+
+  const kpiSection = document.getElementById('kpi-section');
+  kpiSection.innerHTML = kpis.map(k => {
+    const a = accentMap[k.accent];
+    const valueColor = k.highlight ? 'var(--coral)' : 'var(--ink)';
+    
+    let filterClass = '';
+    if (activeGlobalFilter !== null) {
+      if (k.id === activeGlobalFilter) filterClass = 'kpi-active';
+      else if (k.id !== null) filterClass = 'kpi-inactive';
+    }
+    if (k.id === null && activeGlobalFilter !== null) filterClass = 'kpi-inactive';
+
+    const extraClasses = k.highlight && activeGlobalFilter === null ? 'border-2 border-[var(--coral-soft)] shadow-sm' : '';
+    
+    return `
+    <div class="card p-4 kpi-card ${extraClasses} ${filterClass}" onclick="toggleFilter('${k.id}')">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-[10px] font-bold text-[var(--ink-soft)] uppercase tracking-wide ${k.highlight ? 'text-[var(--coral)]' : ''}">${k.label}</p>
+          <p class="font-display text-2xl font-800 mt-1 tabular" style="color:${valueColor}">${k.value}</p>
+        </div>
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:${a.bg}">
+          <i data-lucide="${k.icon}" class="w-4 h-4" style="color:${a.fg}"></i>
+        </div>
+      </div>
+      <p class="text-[10px] text-[var(--ink-soft)] mt-2 leading-snug font-medium">${k.sub}</p>
+    </div>`;
+  }).join('');
+
+  // 3. Filtro Global (Clique no KPI)
+  const currentData = activeGlobalFilter ? baseFilteredData.filter(d => d.categoria === activeGlobalFilter) : baseFilteredData;
+
+  // 4. Renderizar Setores
+  const setorMap = {};
+  currentData.forEach(d => {
+    if(!setorMap[d.setor]) setorMap[d.setor] = { setor: d.setor, faltas:0, afastamentos:0, atrasos:0, motivos:{}, total:0 };
+    const s = setorMap[d.setor];
+    s.total++;
+    if(d.categoria === 'Falta') s.faltas++;
+    else if(d.categoria === 'Afastamento'){ s.afastamentos++; s.motivos[d.situacao] = (s.motivos[d.situacao]||0)+1; }
+    else s.atrasos++;
+  });
+
+  const setores = Object.values(setorMap).sort((a,b) => {
+    if(b.faltas !== a.faltas) return b.faltas - a.faltas;
+    return (b.afastamentos) - (a.afastamentos);
+  });
+  const maxFaltas = Math.max(...setores.map(s => s.faltas + s.afastamentos + s.atrasos), 1); 
+
+  const sectorGrid = document.getElementById('sector-grid');
+  sectorGrid.innerHTML = setores.map(s => {
+    const motivosHtml = Object.entries(s.motivos).map(([k,v]) => `<span class="badge badge-amber">${k} · ${v}</span>`).join(' ');
+    const pctFalta = (s.faltas / maxFaltas) * 100;
+    const pctOutros = (s.afastamentos / maxFaltas) * 100;
+    
+    return `
+    <div class="border border-[var(--line)] rounded-xl p-4 fade-in hover:border-[var(--coral-soft)] transition-colors cursor-pointer" onclick="filterBySector('${s.setor}')">
+      <div class="flex items-center justify-between gap-2">
+        <p class="font-semibold text-sm truncate" title="${s.setor}">${s.setor}</p>
+        <span class="text-xs font-bold ${s.faltas > 0 ? 'text-[var(--coral)]' : 'text-[var(--ink-soft)]'} tabular shrink-0">${s.total} Reg.</span>
+      </div>
+      
+      <div class="sector-bar mt-2.5">
+        <div class="bar-falta" style="width:${pctFalta}%" title="${s.faltas} Faltas"></div>
+        <div class="bar-outros" style="width:${pctOutros}%" title="${s.afastamentos} Afastamentos"></div>
+      </div>
+      
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        ${s.faltas ? `<span class="badge badge-coral"><i data-lucide="user-x" class="w-3 h-3"></i>Faltas · ${s.faltas}</span>` : ''}
+        ${motivosHtml}
+        ${s.atrasos ? `<span class="badge badge-emerald"><i data-lucide="clock" class="w-3 h-3"></i>Atrasos · ${s.atrasos}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // 5. Renderizar Tabela
+  const allRecords = currentData.slice().sort((a,b) => {
+    if(a.categoria === 'Falta' && b.categoria !== 'Falta') return -1;
+    if(a.categoria !== 'Falta' && b.categoria === 'Falta') return 1;
+    return a.setor.localeCompare(b.setor) || a.nome.localeCompare(b.nome);
+  });
+  
+  window.currentExportData = allRecords;
+
+  tbody.innerHTML = allRecords.map(d => {
+    const isFalta = d.categoria === 'Falta';
+    return `
+    <tr class="fade-in ${isFalta ? 'row-falta' : ''}">
+      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)] font-medium">${d.matricula}</td>
+      <td class="px-4 py-2.5 font-medium ${isFalta ? 'text-[var(--coral)]' : ''}">${d.nome}</td>
+      <td class="px-4 py-2.5 text-[var(--ink-soft)]">${d.setor}</td>
+      <td class="px-4 py-2.5">${badgeForSituacao(d.situacao, d.categoria)}</td>
+      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)] font-medium">${d.previsao_termino || '—'}</td>
+      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)]">${d.hora_prevista || '—'}</td>
+      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)]">${d.hora_marcacao || '—'}</td>
+    </tr>
+  `}).join('') || `<tr><td colspan="7" class="px-4 py-8 text-center text-[var(--ink-soft)]">Nenhum colaborador encontrado para os filtros selecionados.</td></tr>`;
+
+  tableCount.textContent = `${allRecords.length} colaboradores exibidos`;
+  lucide.createIcons();
+}
+
+[inputSearch, selData, selSetor, selSituacao].forEach(el => el.addEventListener('input', renderDashboard));
+
+function filterBySector(setorName) {
+  if (selSetor.value === setorName) {
+    selSetor.value = ''; // 2 cliques limpa o filtro
+  } else {
+    selSetor.value = setorName;
+  }
+  renderDashboard();
+  document.getElementById('f-setor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/* ============================================================
+   INICIALIZAÇÃO E IMPORTAÇÃO DE CSV
+   ============================================================ */
+function initDashboard() {
+  DATA.forEach(d => { 
+      d.categoria = classify(d.situacao);
+      // REGRA DE NEGÓCIO: Apenas Afastamentos (Férias, Licenças, etc) têm Previsão de Término.
+      if (d.categoria !== 'Afastamento') {
+          d.previsao_termino = "";
+      }
+  });
+  
+  // Populamos os dropdowns com todas as opções originais (sempre absolutas)
+  const datasUnicas = [...new Set(DATA.map(d => d.data_relatorio).filter(x => x))].sort().reverse();
+  selData.innerHTML = '<option value="">Todas as Datas</option>' + datasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
+  if(datasUnicas.length > 0) selData.value = datasUnicas[0]; // Preseleciona a data mais recente
+    
+  const setoresUnicos = [...new Set(DATA.map(d => d.setor))].sort();
+  selSetor.innerHTML = '<option value="">Todos os setores</option>' + setoresUnicos.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  const situacoesUnicas = [...new Set(DATA.map(d => situacaoLabel(d.situacao)))].sort();
+  selSituacao.innerHTML = '<option value="">Todas as situações</option>' + situacoesUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  renderDashboard();
+}
+
+document.getElementById('btnSyncDrive').addEventListener('click', function(e) {
+    const btn = document.getElementById('btnSyncDrive');
+    const icon = document.getElementById('syncIcon');
+    const text = document.getElementById('syncText');
+    
+    icon.classList.add('animate-spin');
+    text.textContent = 'Sincronizando...';
+    btn.style.pointerEvents = 'none';
+    
+    fetch('http://127.0.0.1:5008/api/sync-drive')
+      .then(r => r.json())
+      .then(data => {
+          if(data.status === 'sucesso') {
+              alert('Dados sincronizados com sucesso! A página será recarregada.');
+              window.location.reload();
+          } else {
+              alert('Erro na sincronização: ' + data.detalhe);
+              icon.classList.remove('animate-spin');
+              text.textContent = 'Sincronizar Dados do Drive';
+              btn.style.pointerEvents = 'auto';
+          }
+      })
+      .catch(err => {
+          alert('Erro de conexão: ' + err);
+          icon.classList.remove('animate-spin');
+          text.textContent = 'Sincronizar Dados do Drive';
+          btn.style.pointerEvents = 'auto';
+      });
+});
+
+// Iniciar a página
+initDashboard();
+
+// Toggle Sidebar Logic
+const sidebar = document.getElementById('sidebar');
+const toggleBtn = document.getElementById('toggleSidebar');
+const sidebarIcon = document.getElementById('sidebarIcon');
+
+toggleBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('w-72');
+  sidebar.classList.toggle('xl:w-80');
+  sidebar.classList.toggle('w-0');
+  sidebar.classList.toggle('opacity-0');
+  sidebar.classList.toggle('px-0');
+  sidebar.classList.toggle('border-r-0');
+  
+  if (sidebar.classList.contains('w-0')) {
+    sidebarIcon.setAttribute('data-lucide', 'panel-left-open');
+  } else {
+    sidebarIcon.setAttribute('data-lucide', 'panel-left-close');
+  }
+  lucide.createIcons();
+});
+
+// Modal Error Logic
+document.getElementById('closeCsvError').addEventListener('click', () => {
+  const modal = document.getElementById('csvErrorModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+});
+
+function exportToExcel() {
+  if (!window.currentExportData || window.currentExportData.length === 0) {
+    alert("Não há dados para exportar.");
+    return;
+  }
+  
+  const exportData = window.currentExportData.map(d => ({
+    "Matrícula": d.matricula,
+    "Colaborador": d.nome,
+    "Centro de Custo / Setor": d.setor,
+    "Situação": situacaoLabel(d.situacao),
+    "Previsão de Término": d.previsao_termino || "-",
+    "Previsto": d.hora_prevista || "-",
+    "Marcação": d.hora_marcacao || "-"
+  }));
+  
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Colaboradores");
+  
+  XLSX.writeFile(workbook, "Auditoria_Faltas.xlsx");
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de XLSX</title>
+    <!-- Incluindo a biblioteca SheetJS para ler e escrever XLSX -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background-color: #10b981;
+        }
+        
+        .btn-success:hover {
+            background-color: #059669;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 500px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.875rem;
+        }
+
+        th {
+            background-color: #f9fafb;
+            padding: 1rem;
+            font-weight: 600;
+            color: #4b5563;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            color: #374151;
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Tooltip para mostrar texto inteiro no hover se for muito grande */
+        td:hover {
+            white-space: normal;
+            word-wrap: break-word;
+            position: relative;
+            z-index: 10;
+            background-color: #f3f4f6;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #f9fafb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+
+        .file-name-display {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Organizador de Planilhas (XLSX)</h1>
+        
+        <div class="controls">
+            <div class="file-upload">
+                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+                <label for="fileInput" class="btn">📁 Enviar Planilha (XLSX)</label>
+            </div>
+            
+            <button id="downloadBtn" class="btn btn-success" disabled>📥 Baixar Planilha Organizada</button>
+        </div>
+        <div id="fileNameDisplay" class="file-name-display">Nenhum arquivo selecionado</div>
+
+        <div class="table-container">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Cad.</th>
+                        <th>Nome</th>
+                        <th>Dt Admissão</th>
+                        <th>Dt Nascimento</th>
+                        <th>Início</th>
+                        <th>Término</th>
+                        <th>Duração</th>
+                        <th>CID</th>
+                        <th>Descrição do CID</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                📊 Carregue um arquivo para visualizar os dados organizados aqui.
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const tableBody = document.getElementById('tableBody');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        
+        const targetColumns = [
+            "Cad.", "Nome", "Dt Admissão", "Dt Nascimento", 
+            "Início", "Término", "Duração", "CID", "Descrição do CID"
+        ];
+
+        let processedData = [];
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileNameDisplay.textContent = "Arquivo selecionado: " + file.name;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
+                    
+                    if (jsonData.length > 0) {
+                        organizeData(jsonData);
+                    } else {
+                        alert("A planilha parece estar vazia.");
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Erro ao ler o arquivo. Certifique-se de que é um formato XLSX/XLS válido.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function formatExcelDate(excelDate) {
+            if (!excelDate && excelDate !== 0) return "";
+            if (typeof excelDate === 'string') return excelDate.trim();
+            if (typeof excelDate === 'number') {
+                const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+                const d = String(date.getUTCDate()).padStart(2, '0');
+                const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const y = date.getUTCFullYear();
+                return `${d}/${m}/${y}`;
+            }
+            return String(excelDate);
+        }
+
+        function organizeData(matrix) {
+            processedData = [];
+            tableBody.innerHTML = "";
+
+            let currentEmployee = {
+                cad: "",
+                nome: "",
+                dtAdmissao: "",
+                dtNascimento: ""
+            };
+
+            for(let i = 0; i < matrix.length; i++) {
+                const rowRaw = matrix[i];
+                const row = rowRaw.filter(c => String(c).trim() !== "");
+
+                if (row.length === 0) continue;
+
+                if (String(row[0]).trim() === "Nome:") {
+                    currentEmployee.nome = String(row[1] || "").trim();
+                    
+                    let cadIndex = row.indexOf("Cad:");
+                    if (cadIndex !== -1) {
+                        if (cadIndex > 0 && String(row[cadIndex - 1]).match(/^\d+$/)) {
+                            currentEmployee.cad = String(row[cadIndex - 1]).trim();
+                        } else if (cadIndex + 1 < row.length && !String(row[cadIndex + 1]).includes("Dt Admiss")) {
+                            currentEmployee.cad = String(row[cadIndex + 1]).trim();
+                        }
+                    } else if (String(row[row.length - 2]).trim() === "Cad:") {
+                        currentEmployee.cad = String(row[row.length - 1]).trim();
+                    }
+                    
+                    let admIndex = row.findIndex(c => String(c).includes("Admiss"));
+                    if(admIndex !== -1 && admIndex + 1 < row.length) {
+                        currentEmployee.dtAdmissao = formatExcelDate(row[admIndex + 1]);
+                    }
+                    
+                    let nascIndex = row.findIndex(c => String(c).includes("Nascim"));
+                    if(nascIndex !== -1 && nascIndex + 1 < row.length) {
+                        currentEmployee.dtNascimento = formatExcelDate(row[nascIndex + 1]);
+                    }
+                    continue;
+                }
+
+                const isExcelDate = typeof row[0] === 'number' && row[0] > 40000;
+                const isStringDate = typeof row[0] === 'string' && row[0].match(/^\d{2}\/\d{2}\/\d{4}$/);
+                
+                if ((isExcelDate || isStringDate) && (row.length === 6 || row.length === 7)) {
+                    let inicio, termino, duracao, cid, descricao, ocorrencia;
+                    
+                    if (row.length === 7) {
+                        inicio = formatExcelDate(row[0]);
+                        termino = formatExcelDate(row[1]);
+                        
+                        let val = row[2];
+                        if(typeof val === 'number') {
+                            let totalMins = Math.round(val * 24 * 60);
+                            let hours = Math.floor(totalMins / 60);
+                            let mins = totalMins % 60;
+                            duracao = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${row[3]}`;
+                        } else {
+                            duracao = `${val} ${row[3]}`;
+                        }
+                        
+                        cid = row[4];
+                        descricao = row[5];
+                        ocorrencia = row[6];
+                    } else if (row.length === 6) {
+                        inicio = formatExcelDate(row[0]);
+                        termino = formatExcelDate(row[1]);
+                        duracao = row[2];
+                        cid = row[3];
+                        descricao = row[4];
+                        ocorrencia = row[5];
+                    }
+
+                    let rowObj = {
+                        "Cad.": currentEmployee.cad,
+                        "Nome": currentEmployee.nome,
+                        "Dt Admissão": currentEmployee.dtAdmissao,
+                        "Dt Nascimento": currentEmployee.dtNascimento,
+                        "Início": inicio,
+                        "Término": termino,
+                        "Duração": duracao,
+                        "CID": String(cid).trim(),
+                        "Descrição do CID": String(descricao).trim(),
+                        "Ocorrência": String(ocorrencia).trim()
+                    };
+
+                    processedData.push(rowObj);
+                    
+                    const tr = document.createElement('tr');
+                    targetColumns.forEach(target => {
+                        const td = document.createElement('td');
+                        td.textContent = rowObj[target] || "";
+                        td.title = rowObj[target] || ""; 
+                        tr.appendChild(td);
+                    });
+                    tableBody.appendChild(tr);
+                }
+            }
+
+            if (processedData.length > 0) {
+                downloadBtn.disabled = false;
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="10"><div class="empty-state">Nenhum dado válido encontrado para extração.</div></td></tr>`;
+            }
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            if (processedData.length === 0) return;
+
+            const worksheet = XLSX.utils.json_to_sheet(processedData, {header: targetColumns});
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Atestados Organizados");
+
+            XLSX.writeFile(workbook, "relatorio_organizado.xlsx");
+        });
+    </script>
+</body>
+</html>

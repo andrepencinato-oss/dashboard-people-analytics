@@ -13,7 +13,7 @@ def update_version_files(new_version):
     print(f"Atualizando controladores de versão para {new_version}...")
     
     # 1. Atualiza app_desktop.py
-    app_py = 'app_desktop.py'
+    app_py = 'module_people_analytics/app_desktop.py'
     with open(app_py, 'r', encoding='utf-8') as f:
         content = f.read()
     
@@ -22,23 +22,42 @@ def update_version_files(new_version):
         f.write(new_content)
         
     # 2. Cria/Atualiza version.json local
-    with open('version.json', 'w', encoding='utf-8') as f:
+    with open('core/version.json', 'w', encoding='utf-8') as f:
         json.dump({"version": new_version}, f)
         
     print("Versões atualizadas localmente.")
 
 def run_pyinstaller():
     print("Executando PyInstaller (pode demorar um pouco)...")
-    result = subprocess.run([sys.executable, '-m', 'PyInstaller', 'app_desktop.spec', '--clean', '-y'], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, '-m', 'PyInstaller', 'main_launcher.spec', '--clean', '-y'], capture_output=True, text=True)
     if result.returncode != 0:
         print("Erro no PyInstaller:")
         print(result.stderr)
         sys.exit(1)
     print("Executável gerado com sucesso na pasta 'dist/'.")
 
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+
 def upload_to_drive():
     print("Iniciando upload para o Google Drive...")
-    creds = Credentials.from_authorized_user_file('token.json')
+    creds = None
+    token_path = 'core/token_deploy.json'
+    creds_path = 'core/credentials.json'
+    scopes = ['https://www.googleapis.com/auth/drive']
+    
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, scopes)
+        
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(creds_path, scopes)
+            creds = flow.run_local_server(port=0)
+        with open(token_path, 'w') as token:
+            token.write(creds.to_json())
+
     service = build('drive', 'v3', credentials=creds)
     
     # Lista arquivos existentes na pasta
@@ -49,8 +68,8 @@ def upload_to_drive():
     existing = {f['name']: f['id'] for f in files}
     
     files_to_upload = [
-        ('version.json', 'application/json'),
-        ('dist/app_desktop.exe', 'application/vnd.microsoft.portable-executable')
+        ('core/version.json', 'application/json'),
+        ('dist/HomedockSuite.exe', 'application/vnd.microsoft.portable-executable')
     ]
     
     for local_path, mimetype in files_to_upload:

@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard SST — Móveis Província</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f8fafc;
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #475569;
+    --color-text-tertiary: #94a3b8;
+    --color-border-secondary: #e2e8f0;
+    --color-border-tertiary: #f1f5f9;
+    --color-accent: #2563eb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    background: #f1f5f9;
+    color: var(--color-text-primary);
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  .app-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--color-border-secondary);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .header-left { display: flex; align-items: center; gap: 0.75rem; }
+  .header-logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header-title { font-size: 15px; font-weight: 700; color: var(--color-text-primary); }
+  .header-sub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 1px; }
+
+  .header-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+
+  .btn-upload {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: var(--font-sans);
+  }
+  .btn-upload:hover { background: #1d4ed8; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-sans);
+  }
+  .btn-secondary:hover { background: #e2e8f0; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    background: #16a34a;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ===== UPLOAD MODAL ===== */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.75rem;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close {
+    width: 28px; height: 28px;
+    border: none; background: var(--color-background-secondary);
+    border-radius: 6px; cursor: pointer;
+    font-size: 16px; color: var(--color-text-secondary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: #e2e8f0; }
+
+  .upload-tabs {
+    display: flex; gap: 4px;
+    background: var(--color-background-secondary);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 1.25rem;
+  }
+  .upload-tab {
+    flex: 1; padding: 7px 10px;
+    border: none; background: transparent;
+    border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    color: var(--color-text-secondary);
+    font-family: var(--font-sans);
+    transition: all 0.15s;
+  }
+  .upload-tab.active {
+    background: #fff;
+    color: var(--color-text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .upload-section { display: none; }
+  .upload-section.active { display: block; }
+
+  .drop-zone {
+    border: 2px dashed var(--color-border-secondary);
+    border-radius: 10px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--color-background-secondary);
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #2563eb;
+    background: #eff6ff;
+  }
+  .drop-icon { font-size: 36px; margin-bottom: 0.5rem; }
+  .drop-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 4px; }
+  .drop-sub { font-size: 12px; color: var(--color-text-tertiary); }
+  .drop-formats {
+    display: flex; gap: 6px; justify-content: center; margin-top: 0.75rem; flex-wrap: wrap;
+  }
+  .format-tag {
+    padding: 3px 8px;
+    background: #dbeafe; color: #1e40af;
+    border-radius: 4px; font-size: 10px; font-weight: 600;
+  }
+
+  .file-input { display: none; }
+
+  .file-preview {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--color-background-secondary);
+    border-radius: 8px;
+    display: none;
+  }
+  .file-preview.visible { display: block; }
+  .file-preview-name { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+  .file-preview-info { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+  .template-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 0.85rem;
+    margin-bottom: 1rem;
+    font-size: 12px;
+    color: #1e40af;
+    line-height: 1.6;
+  }
+  .template-info strong { display: block; margin-bottom: 4px; font-size: 13px; }
+
+  .col-list {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 4px; margin-top: 6px;
+  }
+  .col-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: #1e40af;
+  }
+  .col-item::before { content: '•'; color: #2563eb; }
+
+  .modal-footer {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border-secondary);
+  }
+
+  .btn-primary {
+    padding: 8px 18px;
+    background: #2563eb; color: #fff;
+    border: none; border-radius: 7px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--font-sans);
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+
+  .btn-cancel {
+    padding: 8px 18px;
+    background: transparent; color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-secondary); border-radius: 7px;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--font-sans);
+  }
+  .btn-cancel:hover { background: var(--color-background-secondary); }
+
+  /* ===== TOAST ===== */
+  .toast-container {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    z-index: 2000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: toastIn 0.25s ease;
+    max-width: 320px;
+  }
+  .toast.success { background: #166534; color: #fff; }
+  .toast.error { background: #991b1b; color: #fff; }
+  .toast.info { background: #1e40af; color: #fff; }
+  @keyframes toastIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main { padding: 1.25rem 1.5rem; max-width: 1200px; margin: 0 auto; }
+
+  /* ===== DASHBOARD TABS ===== */
+  .dash { padding: 0.5rem 0; }
+  .tab-bar {
+    display: flex; gap: 0; margin-bottom: 0; flex-wrap: wrap;
+  }
+  .tab {
+    padding: 8px 16px; font-size: 12px;
+    border-radius: 6px 6px 0 0; cursor: pointer;
+    background: #e2e8f0; color: var(--color-text-secondary);
+    border: 0.5px solid #cbd5e1; border-bottom: none;
+    font-family: var(--font-sans); margin-right: 3px;
+    transition: all 0.15s;
+  }
+  .tab.active {
+    background: #fff; color: var(--color-text-primary);
+    font-weight: 500; border-color: #cbd5e1;
+    z-index: 2; position: relative;
+  }
+  .panel-outer {
+    border: 0.5px solid #cbd5e1;
+    border-radius: 0 8px 8px 8px;
+    background: #fff;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .section-header {
+    display: flex; align-items: baseline; gap: 8px;
+    margin-bottom: 1rem; padding-bottom: 0.6rem;
+    border-bottom: 1.5px solid var(--color-border-secondary);
+    flex-wrap: wrap;
+  }
+  .section-header h3 { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+  .section-header span { font-size: 11px; color: var(--color-text-tertiary); }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px; margin-bottom: 1rem;
+  }
+  .kpi {
+    background: var(--color-background-secondary);
+    border-radius: 8px; padding: 0.65rem 0.85rem;
+    border-left: 3px solid transparent;
+  }
+  .kpi.c1 { border-left-color: #2563eb; }
+  .kpi.c2 { border-left-color: #16a34a; }
+  .kpi.c3 { border-left-color: #dc2626; }
+  .kpi.c4 { border-left-color: #9333ea; }
+  .kpi.c5 { border-left-color: #ea580c; }
+  .kpi.c6 { border-left-color: #0891b2; }
+  .kpi-l { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 2px; }
+  .kpi-v { font-size: 22px; font-weight: 700; color: var(--color-text-primary); line-height: 1.1; }
+  .kpi-s { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+  .card {
+    background: #fff;
+    border: 0.5px solid #e2e8f0;
+    border-radius: 8px; padding: 0.85rem 1rem;
+    margin-bottom: 0.9rem;
+  }
+  .row2 {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0.85rem; margin-bottom: 0.9rem;
+  }
+  .sl {
+    font-size: 11px; font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin: 0 0 0.55rem;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th {
+    text-align: left; font-weight: 500;
+    color: var(--color-text-secondary); font-size: 11px;
+    padding: 6px 7px;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background: var(--color-background-secondary);
+    white-space: nowrap;
+  }
+  td {
+    padding: 5px 7px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-primary);
+    vertical-align: middle; font-size: 11.5px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--color-background-secondary); }
+
+  .badge {
+    display: inline-block; font-size: 10px;
+    padding: 2px 7px; border-radius: 4px; font-weight: 500;
+  }
+  .bt-tip { background: #dbeafe; color: #1e40af; }
+  .bt-tra { background: #fef3c7; color: #92400e; }
+  .bt-crit { background: #fee2e2; color: #991b1b; }
+  .bt-warn { background: #fef3c7; color: #92400e; }
+  .bt-ok { background: #dcfce7; color: #166534; }
+  .bt-info { background: #e0f2fe; color: #0369a1; }
+  .bt-purple { background: #f3e8ff; color: #6b21a8; }
+
+  .rank-num { font-weight: 600; color: var(--color-text-secondary); font-size: 11px; width: 22px; }
+  .bar-bg { background: var(--color-background-secondary); border-radius: 3px; height: 6px; width: 100%; min-width: 40px; }
+  .bar-fill { height: 6px; border-radius: 3px; }
+
+  .sub-tab-bar { display: flex; gap: 6px; margin-bottom: 1rem; }
+  .sub-tab {
+    padding: 5px 12px; font-size: 11px;
+    border-radius: 20px; cursor: pointer;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    border: 0.5px solid var(--color-border-secondary);
+    font-family: var(--font-sans);
+  }
+  .sub-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .sub-panel { display: none; }
+  .sub-panel.active { display: block; }
+
+  .alert-item {
+    padding: 5px 0;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    font-size: 12px; line-height: 1.7;
+  }
+  .alert-item:last-child { border-bottom: none; }
+
+  /* ===== UPLOAD HISTORY ===== */
+  .upload-history {
+    background: #fff;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .upload-history-title {
+    font-size: 12px; font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 0.75rem;
+  }
+  .history-list { display: flex; flex-direction: column; gap: 6px; }
+  .history-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 10px;
+    background: var(--color-background-secondary);
+    border-radius: 6px; font-size: 12px;
+  }
+  .history-icon { font-size: 16px; }
+  .history-name { font-weight: 500; flex: 1; }
+  .history-time { font-size: 11px; color: var(--color-text-tertiary); }
+  .history-type {
+    padding: 2px 7px;
+    border-radius: 4px; font-size: 10px; font-weight: 600;
+  }
+  .ht-acc { background: #dbeafe; color: #1e40af; }
+  .ht-att { background: #f3e8ff; color: #6b21a8; }
+  .ht-afa { background: #dcfce7; color: #166534; }
+
+  @media (max-width: 640px) {
+    .row2 { grid-template-columns: 1fr; }
+    .main { padding: 1rem; }
+    .app-header { padding: 0.75rem 1rem; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== APP HEADER ===== -->
+<header class="app-header">
+  <div class="header-left">
+    <div class="header-logo">🦺</div>
+    <div>
+      <div class="header-title">Dashboard SST — Móveis Província</div>
+      <div class="header-sub" id="last-update">Atualizado 12/05/2026 · Jan–Mai 2026</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-badge"><div class="status-dot"></div><span id="status-text">Dados carregados</span></div>
+    <button class="btn-secondary" onclick="downloadTemplate()">⬇ Modelo de planilha</button>
+    <button class="btn-upload" onclick="openModal()">⬆ Importar planilha</button>
+  </div>
+</header>
+
+<!-- ===== UPLOAD MODAL ===== -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📥 Importar planilha</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="upload-tabs">
+      <button class="upload-tab active" onclick="switchUploadTab('acidentes', this)">🦺 Acidentes</button>
+      <button class="upload-tab" onclick="switchUploadTab('atestados', this)">🏥 Atestados</button>
+      <button class="upload-tab" onclick="switchUploadTab('afastados', this)">🚶 Afastados</button>
+    </div>
+
+    <!-- ACIDENTES -->
+    <div class="upload-section active" id="usec-acidentes">
+      <div class="template-info">
+        <strong>📋 Colunas esperadas para Acidentes:</strong>
+        <div class="col-list">
+          <div class="col-item">Data (DD/MM/AAAA)</div>
+          <div class="col-item">Colaborador</div>
+          <div class="col-item">Setor</div>
+          <div class="col-item">Tipo (Típico/Trajeto)</div>
+          <div class="col-item">Causa</div>
+          <div class="col-item">Parte do corpo</div>
+          <div class="col-item">Lesão</div>
+          <div class="col-item">Dias afastados</div>
+        </div>
+      </div>
+      <div class="drop-zone" id="drop-acidentes"
+        ondragover="handleDragOver(event, 'acidentes')"
+        ondragleave="handleDragLeave('acidentes')"
+        ondrop="handleDrop(event, 'acidentes')"
+        onclick="document.getElementById('file-acidentes').click()">
+        <div class="drop-icon">📊</div>
+        <div class="drop-title">Arraste o arquivo ou clique para selecionar</div>
+        <div class="drop-sub">Planilha de registro de acidentes do trabalho</div>
+      </div>
+      <input type="file" class="file-input" id="file-acidentes" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event, 'acidentes')">
+      <div class="file-preview" id="preview-acidentes">
+        <div class="file-preview-name" id="preview-name-acidentes"></div>
+        <div class="file-preview-info" id="preview-info-acidentes"></div>
+      </div>
+    </div>
+
+    <!-- ATESTADOS -->
+    <div class="upload-section" id="usec-atestados">
+      <div class="template-info">
+        <strong>📋 Colunas esperadas para Atestados:</strong>
+        <div class="col-list">
+          <div class="col-item">Colaborador</div>
+          <div class="col-item">Setor</div>
+          <div class="col-item">CID</div>
+          <div class="col-item">Dias afastados</div>
+          <div class="col-item">Nº atestados</div>
+        </div>
+      </div>
+      <div class="drop-zone" id="drop-atestados"
+        ondragover="handleDragOver(event, 'atestados')"
+        ondragleave="handleDragLeave('atestados')"
+        ondrop="handleDrop(event, 'atestados')"
+        onclick="document.getElementById('file-atestados').click()">
+        <div class="drop-icon">🏥</div>
+        <div class="drop-title">Arraste o arquivo ou clique para selecionar</div>
+        <div class="drop-sub">Planilha de atestados médicos e afastamentos</div>
+      </div>
+      <input type="file" class="file-input" id="file-atestados" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event, 'atestados')">
+      <div class="file-preview" id="preview-atestados">
+        <div class="file-preview-name" id="preview-name-atestados"></div>
+        <div class="file-preview-info" id="preview-info-atestados"></div>
+      </div>
+    </div>
+
+    <!-- AFASTADOS -->
+    <div class="upload-section" id="usec-afastados">
+      <div class="template-info">
+        <strong>📋 Colunas esperadas para Afastados:</strong>
+        <div class="col-list">
+          <div class="col-item">Colaborador</div>
+          <div class="col-item">Setor</div>
+          <div class="col-item">Motivo/Tipo</div>
+        </div>
+      </div>
+      <div class="drop-zone" id="drop-afastados"
+        ondragover="handleDragOver(event, 'afastados')"
+        ondragleave="handleDragLeave('afastados')"
+        ondrop="handleDrop(event, 'afastados')"
+        onclick="document.getElementById('file-afastados').click()">
+        <div class="drop-icon">🚶</div>
+        <div class="drop-title">Arraste o arquivo ou clique para selecionar</div>
+        <div class="drop-sub">Planilha de controle de afastados longos</div>
+      </div>
+      <input type="file" class="file-input" id="file-afastados" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event, 'afastados')">
+      <div class="file-preview" id="preview-afastados">
+        <div class="file-preview-name" id="preview-name-afastados"></div>
+        <div class="file-preview-info" id="preview-info-afastados"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" id="btn-process" onclick="processUpload()" disabled>Processar e atualizar dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="main">
+
+<!-- Upload history -->
+<div class="upload-history" id="upload-history" style="display:none">
+  <div class="upload-history-title">📁 Arquivos importados</div>
+  <div class="history-list" id="history-list"></div>
+</div>
+
+<!-- Dashboard -->
+<div class="dash">
+<div class="tab-bar">
+  <button class="tab active" onclick="go('seg',this)">🦺 Segurança</button>
+  <button class="tab" onclick="go('sau',this)">🏥 Saúde</button>
+  <button class="tab" onclick="go('afa',this)">🚶 Afastados</button>
+  <button class="tab" onclick="go('top',this)">🏆 Top 50</button>
+  <button class="tab" onclick="go('cid',this)">🔬 CIDs</button>
+  <button class="tab" onclick="go('fin',this)">💰 Custos</button>
+</div>
+
+<div class="panel-outer">
+
+<!-- ===== SEGURANÇA ===== -->
+<div class="panel active" id="panel-seg">
+  <div class="section-header">
+    <h3>🦺 Acidentes do trabalho</h3>
+    <span id="seg-subtitle">Atualizado 07/05/2026 · Jan–Abr 2026</span>
+  </div>
+  <div class="kpi-grid" id="kpi-seg">
+    <div class="kpi c1"><div class="kpi-l">Total acidentes</div><div class="kpi-v" id="k-total">16</div><div class="kpi-s">Jan–Abr 2026</div></div>
+    <div class="kpi c2"><div class="kpi-l">Típico</div><div class="kpi-v" id="k-tipico">7</div><div class="kpi-s" id="k-tipico-pct">44% do total</div></div>
+    <div class="kpi c5"><div class="kpi-l">Trajeto</div><div class="kpi-v" id="k-trajeto">9</div><div class="kpi-s" id="k-trajeto-pct">56% do total</div></div>
+    <div class="kpi c3"><div class="kpi-l">Dias perdidos</div><div class="kpi-v" id="k-dias">125</div><div class="kpi-s">todos acidentes</div></div>
+    <div class="kpi c4"><div class="kpi-l">Reincidente</div><div class="kpi-v" id="k-reinc">1</div><div class="kpi-s" id="k-reinc-nome">Gabriel H. F. Ponte</div></div>
+    <div class="kpi c6"><div class="kpi-l">Afastamento grave</div><div class="kpi-v" id="k-grave">93d</div><div class="kpi-s" id="k-grave-nome">Franilda — fratura</div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><p class="sl">Acidentes por mês</p>
+      <div style="display:flex;gap:10px;font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">
+        <span><span style="display:inline-block;width:9px;height:9px;background:#2563eb;border-radius:2px;vertical-align:middle;margin-right:3px"></span>Típico</span>
+        <span><span style="display:inline-block;width:9px;height:9px;background:#ea580c;border-radius:2px;vertical-align:middle;margin-right:3px"></span>Trajeto</span>
+      </div>
+      <div style="position:relative;height:175px"><canvas id="cMes"></canvas></div>
+    </div>
+    <div class="card"><p class="sl">Típico vs Trajeto</p>
+      <div style="position:relative;height:175px"><canvas id="cTipo"></canvas></div>
+    </div>
+  </div>
+  <div class="row2">
+    <div class="card"><p class="sl">Dias perdidos por mês</p><div style="position:relative;height:160px"><canvas id="cDias"></canvas></div></div>
+    <div class="card"><p class="sl">Tipo de lesão</p><div style="position:relative;height:160px"><canvas id="cLesao"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><p class="sl">Acidentes típicos por setor</p><div style="position:relative;height:180px"><canvas id="cSetorTip"></canvas></div></div>
+    <div class="card"><p class="sl">Parte do corpo atingida</p><div style="position:relative;height:180px"><canvas id="cParte"></canvas></div></div>
+  </div>
+  <div class="card"><p class="sl">Registro de acidentes</p>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Data</th><th>Colaborador</th><th>Setor</th><th>Tipo</th><th>Causa</th><th>Parte</th><th>Lesão</th><th style="text-align:right">Dias</th></tr></thead>
+      <tbody id="tbody-acidentes"></tbody>
+    </table></div>
+  </div>
+  <div class="card"><p class="sl">Pontos de atenção</p>
+    <div id="pontos-atencao"></div>
+  </div>
+</div>
+
+<!-- ===== SAÚDE ===== -->
+<div class="panel" id="panel-sau">
+  <div class="section-header">
+    <h3>🏥 Atestados médicos</h3>
+    <span id="sau-subtitle">01/01/2026 a 05/05/2026 · 1.292 registros</span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi c4"><div class="kpi-l">Total atestados</div><div class="kpi-v" id="k-total-ats">1.292</div><div class="kpi-s">Jan–Mai 2026</div></div>
+    <div class="kpi c3"><div class="kpi-l">Dias perdidos</div><div class="kpi-v" id="k-dias-ats">793</div><div class="kpi-s">em dias</div></div>
+    <div class="kpi c5"><div class="kpi-l">Atestados/hora</div><div class="kpi-v" id="k-horas-ats">499</div><div class="kpi-s" id="k-horas-sub">690h 15min</div></div>
+    <div class="kpi c2"><div class="kpi-l">Setores</div><div class="kpi-v" id="k-setores-ats">30+</div><div class="kpi-s">centros de custo</div></div>
+  </div>
+  <div class="card"><p class="sl">Atestados por setor (Top 10)</p><div style="position:relative;height:255px"><canvas id="cSetorSau"></canvas></div></div>
+  <div class="card"><p class="sl">Afastamentos longos em aberto</p>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Colaborador</th><th>Setor</th><th>CID</th><th style="text-align:right">Dias</th></tr></thead>
+      <tbody id="tbody-afastamentos"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ===== AFASTADOS (NOVA ABA) ===== -->
+<div class="panel" id="panel-afa">
+  <div class="section-header">
+    <h3>🚶 Controle de Afastados Longos</h3>
+    <span id="afa-subtitle">Lista atualizada de colaboradores afastados</span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi c1"><div class="kpi-l">Total afastados</div><div class="kpi-v" id="k-afa-total">17</div><div class="kpi-s">em aberto</div></div>
+    <div class="kpi c4"><div class="kpi-l">Auxílio Doença</div><div class="kpi-v" id="k-afa-aux">7</div><div class="kpi-s">INSS</div></div>
+    <div class="kpi c5"><div class="kpi-l">Maternidade</div><div class="kpi-v" id="k-afa-mat">3</div><div class="kpi-s">Licença</div></div>
+    <div class="kpi c3"><div class="kpi-l">Acidente Trab.</div><div class="kpi-v" id="k-afa-aci">1</div><div class="kpi-s">B91</div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><p class="sl">Afastados por Setor</p><div style="position:relative;height:220px"><canvas id="cAfaSetor"></canvas></div></div>
+    <div class="card"><p class="sl">Motivo do Afastamento</p><div style="position:relative;height:220px"><canvas id="cAfaMotivo"></canvas></div></div>
+  </div>
+  <div class="card"><p class="sl">Lista de Colaboradores Afastados</p>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Matrícula</th><th>Colaborador</th><th>Setor</th><th>Motivo</th></tr></thead>
+      <tbody id="tbody-afa-lista"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ===== TOP 50 ===== -->
+<div class="panel" id="panel-top">
+  <div class="section-header">
+    <h3>🏆 Ranking de Impacto (Top 50)</h3>
+    <span>Identificação dos colaboradores com maior volume de afastamentos</span>
+  </div>
+  
+  <div class="card" style="background: #f8fafc; border-left: 4px solid #2563eb; margin-bottom: 15px;">
+    <div style="padding: 12px;">
+      <p style="margin: 0; font-size: 13px; color: #1e293b; line-height: 1.5;">
+        <strong>Análise de Severidade e Frequência:</strong> Este ranking destaca os colaboradores que mais impactam a operação. 
+        A aba <strong>"Dias Perdidos"</strong> foca na <em>severidade</em> (afastamentos longos), enquanto a aba <strong>"Nº de Atestados"</strong> foca na <em>frequência</em> (reincidência de faltas).
+      </p>
+    </div>
+  </div>
+
+  <div class="sub-tab-bar">
+    <button class="sub-tab active" onclick="switchTop('dias',this)">📅 Por dias perdidos (Severidade)</button>
+    <button class="sub-tab" onclick="switchTop('ats',this)">📋 Por nº de atestados (Frequência)</button>
+  </div>
+  
+  <div class="sub-panel active" id="sub-dias">
+    <div class="card">
+      <p class="sl">Ranking por Severidade — Colaboradores com maior tempo total de afastamento</p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>#</th><th>Colaborador</th><th>Setor</th><th style="text-align:right">Total Dias</th><th style="text-align:right">Qtd Atestados</th><th style="min-width:60px">Impacto</th></tr></thead>
+        <tbody id="tbody-dias"></tbody>
+      </table></div>
+    </div>
+  </div>
+  
+  <div class="sub-panel" id="sub-ats">
+    <div class="card">
+      <p class="sl">Ranking por Frequência — Colaboradores com maior número de entregas de atestados</p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>#</th><th>Colaborador</th><th>Setor</th><th style="text-align:right">Total Atestados</th><th style="text-align:right">Dias Perdidos</th><th style="min-width:60px">Impacto</th></tr></thead>
+        <tbody id="tbody-ats"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CIDs ===== -->
+<div class="panel" id="panel-cid">
+  <div class="section-header"><h3>🔬 Análise de CIDs</h3><span id="cid-subtitle">Causas mais frequentes · Jan–Mai 2026</span></div>
+  <div class="card"><p class="sl">Top 15 CIDs</p><div style="position:relative;height:345px"><canvas id="cCid"></canvas></div></div>
+  <div class="row2">
+    <div class="card"><p class="sl">Por categoria</p><div style="position:relative;height:215px"><canvas id="cCategoria"></canvas></div></div>
+    <div class="card"><p class="sl">Alertas de saúde</p>
+      <div id="alertas-saude"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CUSTOS ===== -->
+<div class="panel" id="panel-fin">
+  <div class="section-header">
+    <h3>💰 Levantamento de Custos de Afastamento</h3>
+    <span>Estimativa de impacto financeiro baseada em dias perdidos</span>
+  </div>
+
+  <div class="card" style="background: #fff7ed; border-left: 4px solid #ea580c; margin-bottom: 15px;">
+    <div style="padding: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      <p style="margin: 0; font-size: 13px; color: #9a3412; flex: 1;">
+        <strong>Configuração de Cálculo:</strong> Os valores são estimados multiplicando o custo do dia de trabalho pelo total de dias de afastamento.
+      </p>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 12px; font-weight: 600;">Salário Médio (R$):</label>
+        <input type="number" id="input-salario" value="2500" onchange="rebuildFinanceiro()" style="width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi c1"><div class="kpi-l">Custo Total Empresa</div><div class="kpi-v" id="k-fin-total">R$ 0</div><div class="kpi-s">15d apenas p/ afastados INSS</div></div>
+    <div class="kpi c3"><div class="kpi-l">Custo Acidentes</div><div class="kpi-v" id="k-fin-acc">R$ 0</div><div class="kpi-s">CAT / B91</div></div>
+    <div class="kpi c4"><div class="kpi-l">Custo Atestados</div><div class="kpi-v" id="k-fin-ats">R$ 0</div><div class="kpi-s">Saúde Geral</div></div>
+    <div class="kpi c2"><div class="kpi-l">Custo/Dia Médio</div><div class="kpi-v" id="k-fin-dia">R$ 0</div><div class="kpi-s">Base de cálculo</div></div>
+  </div>
+
+  <div style="font-size:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:.6rem .9rem;margin-bottom:.9rem;color:#166534;line-height:1.7">
+    ℹ️ <strong>Regra de cálculo:</strong>
+    O teto de <strong>15 dias pagos pela empresa</strong> é aplicado <em>somente</em> aos colaboradores listados na aba <strong>Afastados</strong> (afastamento previdenciário INSS).
+    Para os demais atestados e acidentes que <em>não</em> geraram afastamento previdenciário, o custo é calculado sobre o <strong>total de dias</strong>.
+  </div>
+
+  <div class="row2">
+    <div class="card"><p class="sl">Custo por Setor (Top 10)</p><div style="position:relative;height:250px"><canvas id="cFinSetor"></canvas></div></div>
+    <div class="card"><p class="sl">Distribuição de Custo</p><div style="position:relative;height:250px"><canvas id="cFinPizza"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <p class="sl">Detalhamento de Custos por Colaborador</p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Colaborador</th>
+            <th>Setor</th>
+            <th>Tipo</th>
+            <th style="text-align:right">Dias totais</th>
+            <th style="text-align:right">Dias pagos (empresa)</th>
+            <th style="text-align:right">Custo Estimado</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-fin-lista"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- panel-outer -->
+</div><!-- dash -->
+</main>
+
+<script>
+// ============================================================
+// DADOS PADRÃO
+// ============================================================
+const DEFAULT_DATA = {
+  acidentes: [
+    {data:'12/01', colaborador:'Gabriel H. F. Ponte', setor:'CNC', tipo:'Típico', causa:'Impacto por paleteira', parte:'Pé', lesao:'Trauma', dias:1},
+    {data:'12/01', colaborador:'Francislaine Martins', setor:'PU', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:2},
+    {data:'15/01', colaborador:'Tamires Rodrigues Sales', setor:'Tapeçaria', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:6},
+    {data:'15/01', colaborador:'Nathalia Ferreira Silva', setor:'Tapeçaria', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:1},
+    {data:'16/01', colaborador:'Fabio Junior C. das Chagas', setor:'Tapeçaria', tipo:'Típico', causa:'Impacto ao movimentar máquina', parte:'Dedo da mão', lesao:'Corte', dias:1},
+    {data:'26/01', colaborador:'Robson Mendes Alves', setor:'PU', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:2},
+    {data:'29/01', colaborador:'Gleiser Raieny Costa e Costa', setor:'Tapeçaria', tipo:'Típico', causa:'Impacto por grampo', parte:'Dedo', lesao:'Ferimento', dias:3},
+    {data:'03/03', colaborador:'Victoria dos Santos Bernardo', setor:'Furação', tipo:'Típico', causa:'Impacto por esteira', parte:'Dedo da mão', lesao:'Contusão', dias:6},
+    {data:'09/03', colaborador:'Gabriel H. F. Ponte', setor:'CNC', tipo:'Típico', causa:'Contato com broca parada', parte:'Braço', lesao:'Corte', dias:1},
+    {data:'11/03', colaborador:'Tais Conceicao dos Santos', setor:'Tupias', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:1},
+    {data:'18/03', colaborador:'Franilda Batista da Silva', setor:'Tapeçaria', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Fratura', dias:93},
+    {data:'18/03', colaborador:'Joao Victor de Goes Campos', setor:'PU', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:2},
+    {data:'24/03', colaborador:'Kawa Crystian de Sousa e Souza', setor:'UV', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas', lesao:'Trauma', dias:1},
+    {data:'24/03', colaborador:'Fernando F. Nunes Ferreira', setor:'Almoxarifado', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e braços', lesao:'Trauma', dias:1},
+    {data:'31/03', colaborador:'Gabriel A. da Silva Garcia', setor:'Coladeira', tipo:'Típico', causa:'Mov. próprio corpo', parte:'Tornozelo', lesao:'Torsão', dias:3},
+    {data:'02/04', colaborador:'Beatriz Yara Nunes dos Santos', setor:'Tapeçaria', tipo:'Típico', causa:'Equipamento', parte:'Olho', lesao:'Trauma', dias:1},
+  ],
+
+  afastados: [
+    {id:648, setor:'LINHA DE EMBALAGEM', nome:'NEIVA APARECIDA MATIAS LOPES', motivo:'Auxílio Doença'},
+    {id:2806, setor:'TAPEÇARIA GERAL', nome:'MARCOS ANTONIO BRASIL DA SILVA', motivo:'Auxílio Doença'},
+    {id:2947, setor:'CONTROLE DE QUALIDADE', nome:'PAULO CESAR BUENO', motivo:'Auxílio Doença'},
+    {id:3160, setor:'PRENSAGEM', nome:'BRENO MARINO DE OLIVEIRA', motivo:'Auxílio Doença'},
+    {id:3182, setor:'LIXAMENTO', nome:'ESTER SANTOS SILVA', motivo:'Auxílio Doença'},
+    {id:3425, setor:'LIXAMENTO', nome:'SILVANEIDE FERREIRA NUNES', motivo:'Auxílio Doença'},
+    {id:3596, setor:'LIXAMENTO', nome:'FRANCISCA FRANCILENE VASCONCELOS', motivo:'Auxílio Doença'},
+    {id:4073, setor:'TAPEÇARIA GERAL', nome:'BRENDHA THAIS DE MELO', motivo:'Auxílio Doença'},
+    {id:4096, setor:'TAPEÇARIA GERAL', nome:'GERALDA CRISTINA DOS SANTOS SOUZA', motivo:'Auxílio Doença'},
+    {id:4210, setor:'PINTURA P.U.', nome:'JHENIFER BEATRIZ DE OLIVEIRA TORRES', motivo:'Licença Maternidade'},
+    {id:4428, setor:'METALURGICA PINTURA', nome:'ESMERALDA RODRIGUES DE SOUZA', motivo:'Licença Maternidade'},
+    {id:4535, setor:'TAPEÇARIA GERAL', nome:'FRANILDA BATISTA DA SILVA', motivo:'Acidente de Trabalho'},
+    {id:4570, setor:'TAPEÇARIA COLAGEM', nome:'ANA JULIA SILVA LOPES', motivo:'Auxílio Doença'},
+    {id:4599, setor:'LINHA DE EMBALAGEM', nome:'LORENA VITORIA BATISTA FIGUEIREDO', motivo:'Licença Maternidade'},
+    {id:4756, setor:'TAPEÇARIA GERAL', nome:'TAMIRES RODRIGUES SALES', motivo:'Auxílio Doença'},
+    {id:4854, setor:'LOJA', nome:'MAEDSON FERNANDES NICACIO LIMA', motivo:'Auxílio Doença'},
+    {id:4926, setor:'APOSENTADOS', nome:'JOSE OLIVEIRA NEVES', motivo:'Aposentadoria por Invalidez'},
+  ],
+
+  top50Dias: [
+    ['Geralda Cristina dos Santos Souza','Tapeçaria',373,2],
+    ['Jhenifer Beatriz de Oliveira Torres','Pintura P.U.',164,17],
+    ['Esmeralda Rodrigues de Souza','Metalúrgica Pintura',145,9],
+    ['Mariana Claudino da Silva Valentim','Contabilidade',125,3],
+    ['Lorena Vitoria Batista Figueiredo','Linha de Embalagem',120,1],
+    ['Ana Julia Silva Lopes','Tapeçaria Colagem',110,1],
+    ['Ester Santos Silva','Lixamento',104,10],
+    ['Francisca Francilene Vasconcelos','Lixamento',95,9],
+    ['Maedson Fernandes Nicacio Lima','Loja',92,1],
+    ['Neiva Aparecida Matias Lopes','Linha de Embalagem',91,5],
+    ['Rafaela Marinho da Silva','Lixamento',84,24],
+    ['Edneia da Silva Lima','Tupias e Fresas',81,14],
+    ['Josilene Rodrigues','Lixamento',64,5],
+    ['Igor Guilherme Silva Egydio','Tupias e Fresas',60,19],
+    ['Maria Lucineide Ramos de Jesus','Lixamento',58,33],
+    ['Silvaneide Ferreira Nunes','Lixamento',55,1],
+    ['Juliana Santos de Oliveira','Tapeçaria',46,10],
+    ['Claudia Olivia Alves Peixoto Evaristo','Prensagem',39,13],
+    ['Erica Cristina Alves','Tapeçaria Colagem',37,26],
+    ['Jose Fernandes de Almeida','Tapeçaria',36,28],
+    ['Edson Luis Tamarindo','Logística',35,9],
+    ['Thais Salvador de Araujo','Colagem de Bordas',33,4],
+    ['Tamires Rodrigues Sales','Tapeçaria',32,4],
+    ['Ana Paula Santos da Silva','Tupias e Fresas',28,11],
+    ['Ahieska Cristina dos Santos','Tupias e Fresas',26,12],
+    ['Silmara Aparecida Paula Carlos','Tupias e Fresas',23,18],
+    ['Fernando Felippe Nunes Ferreira','Almoxarifado',23,14],
+    ['Marlucia de Azevedo Pereira','Lixamento',21,8],
+    ['Victoria dos Santos Bernardo','Furação',20,3],
+    ['Josefa Dodou da Silva David','Pintura U.V.',16,3],
+    ['Gisele Aparecida dos Santos','Tapeçaria',16,5],
+    ['Neide Rodrigues de Carvalho','Tapeçaria',16,3],
+    ['Elaine Balbino Tofoli Aquino','Lixamento',15,8],
+    ['Jeniffer Maria da Silva Araujo','Tapeçaria',15,1],
+    ['Marllon Miguel da Silva','Metalúrgica',14,10],
+    ['Neuza Ferreira','Tapeçaria',13,4],
+    ['Jamilly Fernanda Monteiro','Gestão Pessoas',13,11],
+    ['Livia Maisa Silva de Paula','Furação',12,15],
+    ['Daniel Fernandes','CNC',12,5],
+    ['Everton Moraes Ramos','Tupias e Fresas',12,6],
+    ['Eliozeni da Silva Valeriano dos Santos','Tupias e Fresas',12,12],
+    ['Jessica Caroline de Souza','Pintura U.V.',12,12],
+    ['Luciriam Souza Santos Rodrigues','Tapeçaria',12,4],
+    ['Clotilde de Moraes','Furação',11,3],
+    ['Mizael dos Santos Bezerra','CNC',11,5],
+    ['Ana Luiza Pereira de Sa','Tupias e Fresas',11,7],
+    ['Amanda Rita da Silva','Almoxarifado',11,4],
+    ['Antonio Rodrigues da Silva','Tapeçaria',11,5],
+    ['Leticia Cristina Martins dos Santos','Tapeçaria',11,10],
+    ['Mauricio Marques da Silva','Metalúrgica',11,5],
+  ],
+
+  top50Ats: [
+    ['Maria Lucineide Ramos de Jesus','Lixamento',33,58],
+    ['Jose Fernandes de Almeida','Tapeçaria',28,36],
+    ['Erica Cristina Alves','Tapeçaria Colagem',26,37],
+    ['Rafaela Marinho da Silva','Lixamento',24,84],
+    ['Claudemir de Freitas','Pintura P.U.',22,0],
+    ['Igor Guilherme Silva Egydio','Tupias e Fresas',19,60],
+    ['Silmara Aparecida Paula Carlos','Tupias e Fresas',18,23],
+    ['Jhenifer Beatriz de Oliveira Torres','Pintura P.U.',17,164],
+    ['Livia Maisa Silva de Paula','Furação',15,12],
+    ['Edneia da Silva Lima','Tupias e Fresas',14,81],
+    ['Fernando Felippe Nunes Ferreira','Almoxarifado',14,23],
+    ['Claudia Olivia Alves Peixoto Evaristo','Prensagem',13,39],
+    ['Eliozeni da Silva Valeriano dos Santos','Tupias e Fresas',12,12],
+    ['Ahieska Cristina dos Santos','Tupias e Fresas',12,26],
+    ['Samara Moura Araujo','Pintura P.U.',12,6],
+    ['Jessica Caroline de Souza','Pintura U.V.',12,12],
+    ['Ana Paula Santos da Silva','Tupias e Fresas',11,28],
+    ['Jamilly Fernanda Monteiro','Gestão Pessoas',11,13],
+    ['Ester Santos Silva','Lixamento',10,104],
+    ['Alessandra Ferreira Barbosa','Lixamento',10,5],
+    ['Leticia Cristina Martins dos Santos','Tapeçaria',10,11],
+    ['Juliana Santos de Oliveira','Tapeçaria',10,46],
+    ['Giovanna dos Santos Ferro','Tapeçaria',10,3],
+    ['Marllon Miguel da Silva','Metalúrgica',10,14],
+    ['Francisca Francilene Vasconcelos','Lixamento',9,95],
+    ['Bruna Martins dos Santos','Pintura P.U.',9,4],
+    ['Gabrielle Ferreira da Costa','Tapeçaria',9,9],
+    ['Marianny Mabbelly da Silva Oliveira','Tapeçaria Colagem',9,6],
+    ['Esmeralda Rodrigues de Souza','Metalúrgica Pintura',9,145],
+    ['Edilson de Andrade Pinheiro','Metalúrgica',9,10],
+    ['Edson Luis Tamarindo','Logística',9,35],
+    ['Bruna Gabrielle de Sousa Oliveira','Tupias e Fresas',8,2],
+    ['Marlucia de Azevedo Pereira','Lixamento',8,21],
+    ['Elaine Balbino Tofoli Aquino','Lixamento',8,15],
+    ['Pedro Henrique Caseri','Linha de Embalagem',8,1],
+    ['Felipe Augusto Moura Salgado','Almoxarifado',8,10],
+    ['Edjania de Sousa Romero','Prensagem',7,9],
+    ['Vitor Junior Rabelo Nunes','Tupias e Fresas',7,9],
+    ['Elis Lorrana Bento da Silva','Tupias e Fresas',7,1],
+    ['Rita de Cassia Feitosa Batista','Tupias e Fresas',7,2],
+    ['Ana Luiza Pereira de Sa','Tupias e Fresas',7,11],
+    ['Daniele de Fatima Venancio','Tupias e Fresas',7,9],
+    ['Edinaldo Carlos Inacio','Colagem de Bordas',6,10],
+    ['Everton Moraes Ramos','Tupias e Fresas',6,12],
+    ['Welington Batista da Silva','Tupias e Fresas',6,9],
+    ['Tais Conceicao dos Santos','Tupias e Fresas',6,5],
+    ['Luana Vitoria de Paula Oliveira','Tupias e Fresas',6,6],
+    ['Rosilene Leite Campos Ribeiro','Pintura U.V.',6,6],
+    ['Marcos Paulo Primo','Tapeçaria Colagem',6,3],
+    ['Gisele Marino de Oliveira','Tapeçaria',6,7],
+  ],
+
+  afastamentos: [
+    {colaborador:'Geralda Cristina dos Santos Souza', setor:'Tapeçaria', cid:'M19.0 Artrose', dias:366, nivel:'crit'},
+    {colaborador:'Jhenifer Beatriz O. Torres', setor:'Pintura P.U.', cid:'O80 Maternidade', dias:120, nivel:'warn'},
+    {colaborador:'Lorena Vitoria B. Figueiredo', setor:'Linha Embalagem', cid:'O82 Maternidade', dias:120, nivel:'warn'},
+    {colaborador:'Esmeralda Rodrigues de Souza', setor:'Metalúrgica', cid:'O80 Maternidade', dias:120, nivel:'warn'},
+    {colaborador:'Ana Julia Silva Lopes', setor:'Tapeçaria Colagem', cid:'Z34 Repouso gravidez', dias:110, nivel:'warn'},
+    {colaborador:'Franilda Batista da Silva', setor:'Tapeçaria (acidente)', cid:'Fratura — trajeto', dias:93, nivel:'crit'},
+    {colaborador:'Neiva A. Matias Lopes', setor:'Linha Embalagem', cid:'S72 Fratura fêmur', dias:90, nivel:'crit'},
+    {colaborador:'Francilene Vasconcelos', setor:'Lixamento', cid:'S52.5 Fratura braço', dias:90, nivel:'crit'},
+    {colaborador:'Edneia da Silva Lima', setor:'Tupias e Fresas', cid:'M65.3 Dedo em gatilho', dias:74, nivel:'warn'},
+  ],
+
+  cids: {
+    labels: ['M54.5 Dor lombar','A09 Diarreia','Z00.0 Consulta geral','M79.6 Dor membro','R11 Náusea/Vômito','Z76.3 Acomp. familiar','R51 Cefaleia','J06.9 Inf. vias aéreas','H10 Conjuntivite','K08.1 Extração dente','Z10.0 Exame ocup.','F41 Ansiedade','G43 Enxaqueca','A90 Dengue','M54.2 Cervicalgia'],
+    values: [85,72,65,58,54,38,36,34,28,22,20,19,18,14,13],
+    categorias: {
+      labels: ['Musculoesquelético','Digestivo','Neurológico','Respiratório','Saúde mental','Ocular','Outros'],
+      values: [180,160,54,47,38,56,100]
+    }
+  },
+
+  setoresSau: {
+    labels: ['Tapeçaria','Tupias e Fresas','Lixamento','Prensagem','Metalúrgica','Pintura P.U.','Almoxarifado','CNC','Colagem Bordas','Furação'],
+    values: [118,89,62,52,48,46,41,31,29,28]
+  }
+};
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+let charts = {};
+let pendingFile = { acidentes: null, atestados: null, afastados: null };
+let currentUploadTab = 'acidentes';
+
+// ============================================================
+// MODAL
+// ============================================================
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  pendingFile = { acidentes: null, atestados: null, afastados: null };
+  ['acidentes','atestados','afastados'].forEach(t => {
+    document.getElementById('preview-' + t).classList.remove('visible');
+  });
+  document.getElementById('btn-process').disabled = true;
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+function switchUploadTab(name, el) {
+  currentUploadTab = name;
+  document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.upload-section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('usec-' + name).classList.add('active');
+  updateProcessBtn();
+}
+
+// ============================================================
+// DRAG & DROP / FILE SELECT
+// ============================================================
+function handleDragOver(e, type) {
+  e.preventDefault();
+  document.getElementById('drop-' + type).classList.add('drag-over');
+}
+function handleDragLeave(type) {
+  document.getElementById('drop-' + type).classList.remove('drag-over');
+}
+function handleDrop(e, type) {
+  e.preventDefault();
+  document.getElementById('drop-' + type).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file, type);
+}
+function handleFileSelect(e, type) {
+  const file = e.target.files[0];
+  if (file) processFile(file, type);
+}
+
+function processFile(file, type) {
+  pendingFile[type] = file;
+  const preview = document.getElementById('preview-' + type);
+  document.getElementById('preview-name-' + type).textContent = '📄 ' + file.name;
+  document.getElementById('preview-info-' + type).textContent =
+    (file.size / 1024).toFixed(1) + ' KB · Aguardando processamento';
+  preview.classList.add('visible');
+  updateProcessBtn();
+}
+
+function updateProcessBtn() {
+  const hasFile = pendingFile[currentUploadTab] !== null;
+  document.getElementById('btn-process').disabled = !hasFile;
+}
+
+// ============================================================
+// PROCESS UPLOAD
+// ============================================================
+function processUpload() {
+  const file = pendingFile[currentUploadTab];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (rows.length === 0) {
+        showToast('Planilha vazia ou sem dados reconhecíveis.', 'error');
+        return;
+      }
+
+      if (currentUploadTab === 'acidentes') {
+        importAcidentes(XLSX.utils.sheet_to_json(ws, { defval: '' }), file.name);
+      } else if (currentUploadTab === 'atestados') {
+        importAtestados(XLSX.utils.sheet_to_json(ws, { defval: '' }), file.name);
+      } else {
+        importAfastados(rows, file.name);
+      }
+
+      addToHistory(file.name, currentUploadTab, rows.length);
+      closeModal();
+    } catch (err) {
+      showToast('Erro ao ler o arquivo: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ============================================================
+// IMPORT ACIDENTES
+// ============================================================
+function importAcidentes(rows, filename) {
+  const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const colMap = {};
+  const sampleKeys = Object.keys(rows[0]);
+  sampleKeys.forEach(k => {
+    const n = norm(k);
+    if (n.includes('data')) colMap.data = k;
+    else if (n.includes('colaborador') || n.includes('nome')) colMap.colaborador = k;
+    else if (n.includes('setor')) colMap.setor = k;
+    else if (n.includes('tipo')) colMap.tipo = k;
+    else if (n.includes('causa')) colMap.causa = k;
+    else if (n.includes('parte')) colMap.parte = k;
+    else if (n.includes('lesao')) colMap.lesao = k;
+    else if (n.includes('dias')) colMap.dias = k;
+  });
+
+  const acidentes = rows.map(r => ({
+    data: r[colMap.data] ? String(r[colMap.data]) : '—',
+    colaborador: r[colMap.colaborador] ? String(r[colMap.colaborador]) : '—',
+    setor: r[colMap.setor] ? String(r[colMap.setor]) : '—',
+    tipo: r[colMap.tipo] ? String(r[colMap.tipo]) : 'Típico',
+    causa: r[colMap.causa] ? String(r[colMap.causa]) : '—',
+    parte: r[colMap.parte] ? String(r[colMap.parte]) : '—',
+    lesao: r[colMap.lesao] ? String(r[colMap.lesao]) : '—',
+    dias: parseInt(r[colMap.dias]) || 0,
+  })).filter(r => r.colaborador !== '—');
+
+  state.acidentes = acidentes;
+  rebuildSeguranca();
+  showToast('✅ ' + acidentes.length + ' acidentes importados!', 'success');
+}
+
+// ============================================================
+// IMPORT ATESTADOS
+// ============================================================
+function importAtestados(rows, filename) {
+  const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const colMap = {};
+  const sampleKeys = Object.keys(rows[0]);
+  sampleKeys.forEach(k => {
+    const n = norm(k);
+    if (n.includes('colaborador') || n.includes('nome')) colMap.colaborador = k;
+    else if (n.includes('setor')) colMap.setor = k;
+    else if (n.includes('cid')) colMap.cid = k;
+    else if (n.includes('dias')) colMap.dias = k;
+    else if (n.includes('atestados') || n.includes('qtd')) colMap.atestados = k;
+  });
+
+  const atestados = rows.map(r => ({
+    colaborador: r[colMap.colaborador] ? String(r[colMap.colaborador]) : '—',
+    setor: r[colMap.setor] ? String(r[colMap.setor]) : '—',
+    cid: r[colMap.cid] ? String(r[colMap.cid]) : '—',
+    dias: parseInt(r[colMap.dias]) || 0,
+    nAtestados: parseInt(r[colMap.atestados]) || 1,
+  })).filter(r => r.colaborador !== '—');
+
+  // Atualizar top50 e KPIs
+  const byDias = [...atestados].sort((a,b) => b.dias - a.dias).slice(0,50);
+  state.top50Dias = byDias.map(r => [r.colaborador, r.setor, r.dias, r.nAtestados]);
+  const byAts = [...atestados].sort((a,b) => b.nAtestados - a.nAtestados).slice(0,50);
+  state.top50Ats = byAts.map(r => [r.colaborador, r.setor, r.nAtestados, r.dias]);
+
+  rebuildSaude();
+  rebuildTop();
+  showToast('✅ ' + atestados.length + ' atestados importados!', 'success');
+}
+
+// ============================================================
+// IMPORT AFASTADOS (NOVA LÓGICA)
+// ============================================================
+function importAfastados(rows, filename) {
+  // Pular linhas vazias iniciais e encontrar o cabeçalho
+  let startIdx = 0;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].some(cell => String(cell).includes('AFASTADOS'))) {
+      startIdx = i + 1;
+      break;
+    }
+  }
+
+  const data = [];
+  for (let i = startIdx; i < rows.length; i++) {
+    const r = rows[i];
+    if (r.length < 3 || !r[2] || String(r[2]).includes('Total')) continue;
+    data.push({
+      id: r[0] || '—',
+      setor: r[1] || '—',
+      nome: r[2] || '—',
+      motivo: r[4] || '—'
+    });
+  }
+
+  if (data.length === 0) {
+    showToast('Nenhum afastado encontrado na planilha.', 'error');
+    return;
+  }
+
+  state.afastados = data;
+  rebuildAfastados();
+  showToast('✅ ' + data.length + ' afastados importados!', 'success');
+}
+
+// ============================================================
+// REBUILD AFASTADOS
+// ============================================================
+function rebuildAfastados() {
+  const afa = state.afastados;
+  const total = afa.length;
+  const aux = afa.filter(a => {
+    const m = a.motivo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return m.includes('auxilio');
+  }).length;
+  const mat = afa.filter(a => a.motivo.toLowerCase().includes('maternidade')).length;
+  const aci = afa.filter(a => a.motivo.toLowerCase().includes('acidente')).length;
+
+  document.getElementById('k-afa-total').textContent = total;
+  document.getElementById('k-afa-aux').textContent = aux;
+  document.getElementById('k-afa-mat').textContent = mat;
+  document.getElementById('k-afa-aci').textContent = aci;
+
+  // Tabela
+  const tbody = document.getElementById('tbody-afa-lista');
+  tbody.innerHTML = afa.map(a => {
+    let badge = 'bt-info';
+    if (a.motivo.toLowerCase().includes('acidente')) badge = 'bt-crit';
+    if (a.motivo.toLowerCase().includes('maternidade')) badge = 'bt-purple';
+    if (a.motivo.toLowerCase().includes('auxilio')) badge = 'bt-warn';
+    return `<tr>
+      <td class="rank-num">${a.id}</td>
+      <td>${a.nome}</td>
+      <td>${a.setor}</td>
+      <td><span class="badge ${badge}">${a.motivo}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Gráfico Setor
+  const setorMap = {};
+  afa.forEach(a => { setorMap[a.setor] = (setorMap[a.setor]||0)+1; });
+  const setorSorted = Object.entries(setorMap).sort((a,b)=>b[1]-a[1]);
+  updateChart('cAfaSetor', 'bar', {
+    labels: setorSorted.map(e=>e[0]),
+    datasets: [{label:'Qtd', data:setorSorted.map(e=>e[1]), backgroundColor:'#2563eb'}]
+  }, {
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:9}}}}
+  });
+
+  // Gráfico Motivo
+  const motMap = {};
+  afa.forEach(a => { motMap[a.motivo] = (motMap[a.motivo]||0)+1; });
+  const motSorted = Object.entries(motMap).sort((a,b)=>b[1]-a[1]);
+  
+  // Mapeamento de cores por motivo para manter consistência
+  const colorMap = {
+    'auxilio': '#ea580c', // Laranja (Alerta)
+    'maternidade': '#9333ea', // Roxo
+    'acidente': '#dc2626', // Vermelho (Crítico)
+    'aposentadoria': '#16a34a', // Verde
+    'atestado': '#2563eb' // Azul (Info)
+  };
+
+  const getMotivoColor = (motivo) => {
+    const m = motivo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    for (const key in colorMap) {
+      if (m.includes(key)) return colorMap[key];
+    }
+    return '#94a3b8'; // Cinza padrão
+  };
+
+  updateChart('cAfaMotivo', 'doughnut', {
+    labels: motSorted.map(e=>e[0]),
+    datasets: [{
+      data: motSorted.map(e=>e[1]), 
+      backgroundColor: motSorted.map(e=>getMotivoColor(e[0])), 
+      borderWidth: 0
+    }]
+  }, {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:5}}}
+  });
+
+  // Atualizar cores do gráfico de barras por setor para usar cores variadas
+  updateChart('cAfaSetor', 'bar', {
+    labels: setorSorted.map(e=>e[0]),
+    datasets: [{
+      label: 'Qtd', 
+      data: setorSorted.map(e=>e[1]), 
+      backgroundColor: ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1']
+    }]
+  }, {
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{x:{ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:9}}}}
+  });
+}
+
+// ============================================================
+// REBUILD SEGURANÇA
+// ============================================================
+function rebuildSeguranca() {
+  const acc = state.acidentes;
+  const total = acc.length;
+  const tipico = acc.filter(a => normTipo(a.tipo) === 'tipico').length;
+  const trajeto = acc.filter(a => normTipo(a.tipo) === 'trajeto').length;
+  const diasTotal = acc.reduce((s,a) => s + a.dias, 0);
+
+  const nameCount = {};
+  acc.forEach(a => { nameCount[a.colaborador] = (nameCount[a.colaborador]||0)+1; });
+  const reincs = Object.entries(nameCount).filter(e => e[1]>1);
+  const graveAcc = [...acc].sort((a,b) => b.dias-a.dias)[0];
+
+  document.getElementById('k-total').textContent = total;
+  document.getElementById('k-tipico').textContent = tipico;
+  document.getElementById('k-tipico-pct').textContent = total ? Math.round(tipico/total*100)+'% do total' : '—';
+  document.getElementById('k-trajeto').textContent = trajeto;
+  document.getElementById('k-trajeto-pct').textContent = total ? Math.round(trajeto/total*100)+'% do total' : '—';
+  document.getElementById('k-dias').textContent = diasTotal;
+  document.getElementById('k-reinc').textContent = reincs.length;
+  document.getElementById('k-reinc-nome').textContent = reincs.length > 0 ? reincs[0][0].split(' ').slice(0,3).join(' ') : '—';
+  document.getElementById('k-grave').textContent = graveAcc ? graveAcc.dias+'d' : '—';
+  document.getElementById('k-grave-nome').textContent = graveAcc ? graveAcc.colaborador.split(' ')[0] + ' — ' + graveAcc.lesao.toLowerCase() : '—';
+
+  const tbody = document.getElementById('tbody-acidentes');
+  tbody.innerHTML = acc.map(a => {
+    const isReinc = nameCount[a.colaborador] > 1;
+    const isGrave = a.dias >= 30;
+    const tipoBadge = normTipo(a.tipo) === 'tipico' ? '<span class="badge bt-tip">Típico</span>' : '<span class="badge bt-tra">Trajeto</span>';
+    return `<tr>
+      <td>${a.data}</td>
+      <td style="${isReinc?'color:#dc2626;font-weight:500':''}">${a.colaborador}${isReinc?' ⚠️':''}</td>
+      <td>${a.setor}</td>
+      <td>${tipoBadge}</td>
+      <td>${a.causa}</td>
+      <td>${a.parte}</td>
+      <td>${a.lesao}</td>
+      <td style="text-align:right;${isGrave?'color:#dc2626;font-weight:600':''}">${a.dias}</td>
+    </tr>`;
+  }).join('');
+
+  // Charts
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesMap = { tip: {}, tra: {}, dias: {} };
+  meses.forEach(m => { mesMap.tip[m]=0; mesMap.tra[m]=0; mesMap.dias[m]=0; });
+  acc.forEach(a => {
+    const parts = String(a.data).split('/');
+    if (parts.length >= 2) {
+      const mesNome = meses[parseInt(parts[1])-1];
+      if (normTipo(a.tipo) === 'tipico') mesMap.tip[mesNome]++; else mesMap.tra[mesNome]++;
+      mesMap.dias[mesNome] += a.dias;
+    }
+  });
+  const usedMeses = meses.filter(m => mesMap.tip[m]>0 || mesMap.tra[m]>0);
+  updateChart('cMes', 'bar', { labels: usedMeses, datasets: [{label:'Típico', data:usedMeses.map(m=>mesMap.tip[m]), backgroundColor:'#2563eb'}, {label:'Trajeto', data:usedMeses.map(m=>mesMap.tra[m]), backgroundColor:'#ea580c'}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{stacked:true},y:{stacked:true}} });
+  updateChart('cTipo', 'doughnut', { labels: ['Típico','Trajeto'], datasets: [{data:[tipico,trajeto], backgroundColor:['#2563eb','#ea580c'], borderWidth:0}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} });
+  updateChart('cDias', 'bar', { labels: usedMeses, datasets: [{label:'Dias', data:usedMeses.map(m=>mesMap.dias[m]), backgroundColor:'#9333ea'}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+
+  // Gráficos adicionais de Segurança com cores variadas
+  const multiColors = ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1'];
+  
+  const lesaoMap = {};
+  acc.forEach(a => { lesaoMap[a.lesao] = (lesaoMap[a.lesao]||0)+1; });
+  const lesaoSorted = Object.entries(lesaoMap).sort((a,b)=>b[1]-a[1]);
+  updateChart('cLesao', 'bar', {
+    labels: lesaoSorted.map(e=>e[0]),
+    datasets: [{label:'Qtd', data:lesaoSorted.map(e=>e[1]), backgroundColor:multiColors}]
+  }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+
+  const setorTipMap = {};
+  acc.filter(a => normTipo(a.tipo) === 'tipico').forEach(a => { setorTipMap[a.setor] = (setorTipMap[a.setor]||0)+1; });
+  const setorTipSorted = Object.entries(setorTipMap).sort((a,b)=>b[1]-a[1]);
+  updateChart('cSetorTip', 'bar', {
+    labels: setorTipSorted.map(e=>e[0]),
+    datasets: [{label:'Qtd', data:setorTipSorted.map(e=>e[1]), backgroundColor:multiColors}]
+  }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+
+  const parteMap = {};
+  acc.forEach(a => { parteMap[a.parte] = (parteMap[a.parte]||0)+1; });
+  const parteSorted = Object.entries(parteMap).sort((a,b)=>b[1]-a[1]);
+  updateChart('cParte', 'bar', {
+    labels: parteSorted.map(e=>e[0]),
+    datasets: [{label:'Qtd', data:parteSorted.map(e=>e[1]), backgroundColor:multiColors}]
+  }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+
+  // Pontos de atenção
+  const topSetor = Object.entries(acc.reduce((m,a)=>{m[a.setor]=(m[a.setor]||0)+1;return m;},{})).sort((a,b)=>b[1]-a[1])[0];
+  let pontos = '';
+  if (topSetor) pontos += `<div class="alert-item">🏭 <strong>${topSetor[0]}</strong> lidera com ${topSetor[1]} acidentes.</div>`;
+  if (reincs.length > 0) pontos += `<div class="alert-item">🔁 <strong>Reincidente</strong> — ${reincs[0][0]}.</div>`;
+  document.getElementById('pontos-atencao').innerHTML = pontos || '<div class="alert-item">✅ Nenhum ponto crítico.</div>';
+}
+
+// ============================================================
+// REBUILD SAÚDE
+// ============================================================
+function rebuildSaude() {
+  const tbody = document.getElementById('tbody-afastamentos');
+  tbody.innerHTML = state.afastamentos.map(a => `<tr><td>${a.colaborador}</td><td>${a.setor}</td><td>${a.cid}</td><td style="text-align:right"><span class="badge bt-${a.nivel}">${a.dias}</span></td></tr>`).join('');
+  updateChart('cSetorSau', 'bar', { 
+    labels: state.setoresSau.labels, 
+    datasets: [{
+      label: 'Atestados', 
+      data: state.setoresSau.values, 
+      backgroundColor: ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1']
+    }] 
+  }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+}
+
+// ============================================================
+// REBUILD TOP 50
+// ============================================================
+function rebuildTop() {
+  const build = (id, data, max, colorFn, valIdx, barIdx) => {
+    document.getElementById(id).innerHTML = data.map((r,i) => `<tr><td class="rank-num">${i+1}</td><td>${r[0]}</td><td style="font-size:11px">${r[1]}</td><td style="text-align:right;font-weight:600;color:${colorFn(r[valIdx])}">${r[valIdx]}</td><td style="text-align:right">${r[barIdx]}</td><td><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(r[valIdx]/max*100)}%;background:${colorFn(r[valIdx])}"></div></div></td></tr>`).join('');
+  };
+  const dColor = d => d>=90?'#dc2626':d>=30?'#ea580c':'#2563eb';
+  const aColor = a => a>=20?'#dc2626':a>=12?'#ea580c':'#2563eb';
+  build('tbody-dias', state.top50Dias, state.top50Dias[0][2], dColor, 2, 3);
+  build('tbody-ats', state.top50Ats, state.top50Ats[0][2], aColor, 2, 3);
+}
+
+// ============================================================
+// REBUILD CIDs
+// ============================================================
+function rebuildCid() {
+  updateChart('cCid', 'bar', { 
+    labels: state.cids.labels, 
+    datasets: [{
+      label: 'Atestados', 
+      data: state.cids.values, 
+      backgroundColor: ['#dc2626','#2563eb','#9333ea','#0891b2','#ea580c','#16a34a','#475569','#f59e0b','#10b981','#6366f1','#2563eb','#ea580c','#9333ea','#dc2626','#16a34a']
+    }] 
+  }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+  updateChart('cCategoria', 'doughnut', { labels: state.cids.categorias.labels, datasets: [{data:state.cids.categorias.values, backgroundColor:['#dc2626','#2563eb','#9333ea','#0891b2','#ea580c','#16a34a','#94a3b8'], borderWidth:0}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} });
+}
+
+// ============================================================
+// REBUILD FINANCEIRO
+// ============================================================
+function rebuildFinanceiro() {
+  const salario = parseFloat(document.getElementById('input-salario').value) || 2500;
+  const custoDia = salario / 30;
+
+  // Nomes dos colaboradores com afastamento previdenciário (aba Afastados)
+  // Regra dos 15 dias se aplica SOMENTE a estes — para os demais, custo sobre total de dias
+  const nomesAfastadosPrevidenciarios = new Set(
+    (state.afastados || []).map(a => (a.colaborador || a.nome || '').trim().toLowerCase())
+  );
+  // Também inclui quem está em state.afastamentos (lista longa)
+  (state.afastamentos || []).forEach(a => {
+    const n = (a.colaborador || a.nome || '').trim().toLowerCase();
+    if (n) nomesAfastadosPrevidenciarios.add(n);
+  });
+
+  const isAfastadoPrevidenciario = nome =>
+    nomesAfastadosPrevidenciarios.has((nome || '').trim().toLowerCase());
+
+  // Consolidar dados de acidentes e atestados
+  const lista = [];
+  const setorCusto = {};
+  let totalAcc = 0;
+  let totalAts = 0;
+
+  // Processar Acidentes
+  state.acidentes.forEach(a => {
+    // Regra INSS (15 dias): aplica SOMENTE se o colaborador está na lista de afastados
+    // Caso contrário, empresa arca com o total de dias (sem benefício previdenciário)
+    const afastadoPrev = isAfastadoPrevidenciario(a.colaborador);
+    const diasEmpresa = afastadoPrev ? Math.min(a.dias, 15) : a.dias;
+    const custo = diasEmpresa * custoDia;
+    totalAcc += custo;
+    lista.push({
+      nome: a.colaborador, setor: a.setor, tipo: 'Acidente',
+      dias: a.dias, diasEmpresa, custo,
+      regra: afastadoPrev ? '≤15d (INSS)' : 'Total'
+    });
+    setorCusto[a.setor] = (setorCusto[a.setor] || 0) + custo;
+  });
+
+  // Processar Atestados
+  state.top50Dias.forEach(r => {
+    const jaExiste = lista.find(l => l.nome === r[0]);
+    if (!jaExiste) {
+      // Regra INSS (15 dias): aplica SOMENTE se o colaborador está na lista de afastados
+      // Para atestados comuns sem afastamento previdenciário, empresa paga o total de dias
+      const afastadoPrev = isAfastadoPrevidenciario(r[0]);
+      const diasEmpresa = afastadoPrev ? Math.min(r[2], 15) : r[2];
+      const custo = diasEmpresa * custoDia;
+      totalAts += custo;
+      lista.push({
+        nome: r[0], setor: r[1], tipo: 'Atestado',
+        dias: r[2], diasEmpresa, custo,
+        regra: afastadoPrev ? '≤15d (INSS)' : 'Total'
+      });
+      setorCusto[r[1]] = (setorCusto[r[1]] || 0) + custo;
+    }
+  });
+
+  const totalGeral = totalAcc + totalAts;
+
+  // Atualizar KPIs
+  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('k-fin-total').textContent = fmt(totalGeral);
+  document.getElementById('k-fin-acc').textContent = fmt(totalAcc);
+  document.getElementById('k-fin-ats').textContent = fmt(totalAts);
+  document.getElementById('k-fin-dia').textContent = fmt(custoDia);
+
+  // Nota sobre regra aplicada
+  const nAfastadosPrev = nomesAfastadosPrevidenciarios.size;
+
+  // Tabela
+  const tbody = document.getElementById('tbody-fin-lista');
+  tbody.innerHTML = lista.sort((a,b) => b.custo - a.custo).slice(0, 50).map(l => `
+    <tr>
+      <td>${l.nome}</td>
+      <td>${l.setor}</td>
+      <td><span class="badge ${l.tipo === 'Acidente' ? 'bt-crit' : 'bt-info'}">${l.tipo}</span></td>
+      <td style="text-align:right">${l.dias}d</td>
+      <td style="text-align:right">${l.diasEmpresa}d
+        <span style="font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px;
+          background:${l.regra.includes('INSS') ? '#fef3c7' : '#dcfce7'};
+          color:${l.regra.includes('INSS') ? '#92400e' : '#166534'}">${l.regra}</span>
+      </td>
+      <td style="text-align:right;font-weight:600">${fmt(l.custo)}</td>
+    </tr>
+  `).join('');
+
+  // Gráfico Setor
+  const setorSorted = Object.entries(setorCusto).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  updateChart('cFinSetor', 'bar', {
+    labels: setorSorted.map(e => e[0]),
+    datasets: [{
+      label: 'Custo (R$)',
+      data: setorSorted.map(e => e[1]),
+      backgroundColor: ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1']
+    }]
+  }, { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } });
+
+  // Gráfico Pizza
+  updateChart('cFinPizza', 'doughnut', {
+    labels: ['Acidentes', 'Atestados'],
+    datasets: [{
+      data: [totalAcc, totalAts],
+      backgroundColor: ['#dc2626', '#2563eb'],
+      borderWidth: 0
+    }]
+  }, { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } });
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function normTipo(t) {
+  const s = String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  return (s.includes('tip') || s === 't') ? 'tipico' : 'trajeto';
+}
+
+function updateChart(id, type, data, options) {
+  if (charts[id]) charts[id].destroy();
+  const canvas = document.getElementById(id);
+  if (canvas) charts[id] = new Chart(canvas, { type, data, options });
+}
+
+function go(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+function switchTop(name, el) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sub-' + name).classList.add('active');
+}
+
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+function addToHistory(filename, type, count) {
+  const histEl = document.getElementById('upload-history');
+  const listEl = document.getElementById('history-list');
+  histEl.style.display = 'block';
+  const item = document.createElement('div');
+  item.className = 'history-item';
+  const labels = {acidentes:'Acidentes', atestados:'Atestados', afastados:'Afastados'};
+  const classes = {acidentes:'ht-acc', atestados:'ht-att', afastados:'ht-afa'};
+  item.innerHTML = `<span class="history-icon">📄</span><span class="history-name">${filename}</span><span class="history-time">${new Date().toLocaleTimeString('pt-BR')} · ${count} registros</span><span class="history-type ${classes[type]}">${labels[type]}</span>`;
+  listEl.insertBefore(item, listEl.firstChild);
+}
+
+function downloadTemplate() {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Data','Colaborador','Setor','Tipo','Causa','Parte do corpo','Lesão','Dias afastados']]), 'Acidentes');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Colaborador','Setor','CID','Dias afastados','Nº atestados']]), 'Atestados');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Matrícula','Setor','Colaborador','Setor','Motivo']]), 'Afastados');
+  XLSX.writeFile(wb, 'modelo_sst_dashboard.xlsx');
+}
+function init() {
+  rebuildSeguranca();
+  rebuildSaude();
+  rebuildAfastados();
+  rebuildTop();
+  rebuildCid();
+  rebuildFinanceiro();
+}
+
+init();
+</script>
+</body>
+</html>
