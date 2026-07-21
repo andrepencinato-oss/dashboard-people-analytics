@@ -9,6 +9,7 @@ data/
 */data/
 module_frequencia_diaria/data/
 module_absenteismo_turnover/data/
+module_organograma/data/
 *.csv
 *.xls
 *.xlsx

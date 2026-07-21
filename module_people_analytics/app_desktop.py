@@ -11,14 +11,14 @@ if core_dir not in sys.path:
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-import excel_reader
+from module_people_analytics import excel_reader
 import json
 import re
 import webbrowser
 import threading
 import time
 import traceback
-import drive_sync
+from core import drive_sync
 import pandas as pd
 import io
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -203,9 +203,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 def main():
-    # Verifica atualizações antes de iniciar qualquer thread
-    import auto_updater
-    auto_updater.check_and_apply_updates(APP_VERSION)
+    # Atualizações são tratadas no main_launcher.py globalmente
 
     # Inicia a thread de carregamento em background
     load_thread = threading.Thread(target=background_load_data)

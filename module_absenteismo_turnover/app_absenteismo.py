@@ -5,7 +5,7 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
-from data_processor import get_dashboard_data
+from module_absenteismo_turnover.data_processor import get_dashboard_data
 
 app = Flask(__name__, template_folder='.', static_folder='.')
 

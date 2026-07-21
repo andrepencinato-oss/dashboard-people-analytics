@@ -1,0 +1,12 @@
+==================================================
+ SISTEMA PEOPLE ANALYTICS - MODULO ORGANOGRAMA
+==================================================
+
+Instruções de Acesso:
+1. Clique duas vezes no arquivo 'PeopleAnalytics_Organograma.exe'.
+2. O sistema irá iniciar silenciosamente em background.
+3. Aguarde cerca de 5 a 10 segundos para o carregamento inicial.
+4. Abra o seu navegador (Chrome, Edge, etc.) e acesse:
+   http://localhost:5009/
+
+Nota: O sistema é conectado à nuvem e receberá atualizações automáticas silenciosas sempre que houver novidades.
