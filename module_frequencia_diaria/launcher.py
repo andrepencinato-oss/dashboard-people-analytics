@@ -49,19 +49,59 @@ def run_server():
             f.write(traceback.format_exc())
         raise
 
+def open_browser_smart(url):
+    """Abre o navegador de forma otimizada para ambientes de desktop e servidor RDP/RemoteApp."""
+    import subprocess
+    
+    # 1. Tenta Microsoft Edge em modo App (padrão no Windows Server / RDP)
+    edge_paths = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe")
+    ]
+    for ep in edge_paths:
+        if ep and os.path.exists(ep):
+            try:
+                subprocess.Popen([ep, f"--app={url}"])
+                return
+            except Exception:
+                pass
+
+    # 2. Tenta Google Chrome em modo App
+    chrome_paths = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe")
+    ]
+    for cp in chrome_paths:
+        if cp and os.path.exists(cp):
+            try:
+                subprocess.Popen([cp, f"--app={url}"])
+                return
+            except Exception:
+                pass
+
+    # 3. Fallback via protocolo do sistema
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+
 def wait_and_open_browser():
-    """Aguarda o servidor subir e abre o browser."""
+    """Aguarda o servidor subir e abre o browser de forma resiliente."""
     import urllib.request
     for _ in range(30):          # Tenta por até 15 segundos
         time.sleep(0.5)
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{PORT}/api/status", timeout=1)
-            webbrowser.open(URL)
+            open_browser_smart(URL)
             return
         except Exception:
             continue
-    # Fallback: tenta abrir mesmo assim
-    webbrowser.open(URL)
+    # Fallback
+    open_browser_smart(URL)
 
 
 # ── OTA Bootloader ───────────────────────────────────────────
