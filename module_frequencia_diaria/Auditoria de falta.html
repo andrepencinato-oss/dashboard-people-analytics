@@ -447,10 +447,7 @@ function renderDashboard() {
       <div>
         <div class="flex items-center justify-between gap-2">
           <p class="font-semibold text-sm truncate" title="${s.setor}">${s.setor}</p>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <span class="px-2 py-0.5 rounded-full text-xs font-extrabold tabular" style="background:${metricBadgeBg}; color:${metricBadgeFg}" title="${pctVal}% do total de ${metricLabel}">${pctVal}%</span>
-            <span class="text-xs font-bold ${s.faltas > 0 ? 'text-[var(--coral)]' : 'text-[var(--ink-soft)]'} tabular">${s.total} Reg.</span>
-          </div>
+          <span class="text-xs font-bold ${s.faltas > 0 ? 'text-[var(--coral)]' : 'text-[var(--ink-soft)]'} tabular shrink-0">${s.total} Reg.</span>
         </div>
         
         <div class="sector-bar mt-2.5">
@@ -467,7 +464,7 @@ function renderDashboard() {
 
       <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--line)]">
         <span class="text-[10px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide">% sobre ${metricLabel}</span>
-        <span class="text-xs font-extrabold tabular" style="color:${metricBadgeFg}">${pctVal}%</span>
+        <span class="px-2 py-0.5 rounded-md text-xs font-bold tabular" style="background:${metricBadgeBg}; color:${metricBadgeFg}">${pctVal}%</span>
       </div>
     </div>`;
   }).join('');
