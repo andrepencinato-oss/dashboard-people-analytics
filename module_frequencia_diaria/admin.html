@@ -105,7 +105,7 @@
         <i data-lucide="shield-check" class="w-5 h-5 text-[var(--violet)]"></i>
       </div>
       <div>
-        <p class="text-[10px] font-bold tracking-[0.18em] text-[var(--violet)] uppercase">Modo Administrador</p>
+        <p id="header-mode-tag" class="text-[10px] font-bold tracking-[0.18em] text-[var(--violet)] uppercase">Modo Administrador</p>
         <h1 class="font-display text-lg font-800 text-[var(--ink)] leading-tight">Controle de Acesso</h1>
       </div>
     </div>
@@ -131,9 +131,9 @@
     <div>
       <p class="text-sm font-semibold text-[var(--ink)]">Como funciona o controle de acesso</p>
       <p class="text-xs text-[var(--ink-soft)] mt-0.5 leading-relaxed">
-        Cada usuário faz login com sua conta Google. O sistema verifica o e-mail e exibe apenas os setores que você cadastrou para ele aqui.
-        Se o e-mail não estiver cadastrado, o acesso é bloqueado automaticamente.
-        <strong>Setores vazios = acesso a todos os setores.</strong>
+        Cada usuário faz login com seu login e senha. O sistema verifica as credenciais e exibe apenas os setores cadastrados para ele aqui.
+        Se o usuário não estiver cadastrado, o acesso é bloqueado automaticamente.
+        <strong>Setores vazios = acesso a todos os setores permitidos.</strong>
       </p>
     </div>
   </div>
@@ -187,7 +187,7 @@
       </div>
       <div>
         <h3 class="font-display font-700 text-[var(--ink)]">Novo Usuário</h3>
-        <p class="text-xs text-[var(--ink-soft)]">Cadastre o e-mail e o nome do usuário</p>
+        <p class="text-xs text-[var(--ink-soft)]">Cadastre o login, senha e o nome do usuário</p>
       </div>
     </div>
     <div class="space-y-3">
@@ -255,11 +255,19 @@ async function init() {
         </div>`;
       return;
     }
-    // Mostra badge do email
+    // Mostra badge do email e ajusta título do modo
     const badge = document.getElementById('admin-email-badge');
     document.getElementById('admin-email-text').textContent = d.email;
     badge.classList.remove('hidden');
     badge.classList.add('flex');
+
+    if (d.is_gestor && !d.is_admin) {
+      const modeTag = document.getElementById('header-mode-tag');
+      if (modeTag) {
+        modeTag.textContent = 'Modo Gestor';
+        modeTag.className = 'text-[10px] font-bold tracking-[0.18em] text-[var(--emerald)] uppercase';
+      }
+    }
   } catch(e) {}
 
   // Carrega setores disponíveis
@@ -418,7 +426,7 @@ function openAddModal() {
   
   if (currentUser && currentUser.is_gestor && !currentUser.is_admin) {
     document.getElementById('adminCheckboxContainer').style.display = 'none';
-    document.getElementById('gestorCheckboxContainer').style.display = 'none';
+    document.getElementById('gestorCheckboxContainer').style.display = 'flex';
   } else {
     document.getElementById('adminCheckboxContainer').style.display = 'flex';
     document.getElementById('gestorCheckboxContainer').style.display = 'flex';
@@ -444,8 +452,9 @@ function confirmAddUser() {
   const login = document.getElementById('newLogin').value.trim();
   const senha = document.getElementById('newSenha').value.trim();
   const nome = document.getElementById('newNome').value.trim();
-  const admin = (currentUser && currentUser.is_gestor && !currentUser.is_admin) ? false : document.getElementById('newAdmin').checked;
-  const gestor = (currentUser && currentUser.is_gestor && !currentUser.is_admin) ? false : document.getElementById('newGestor').checked;
+  const isPureGestor = currentUser && currentUser.is_gestor && !currentUser.is_admin;
+  const admin = isPureGestor ? false : document.getElementById('newAdmin').checked;
+  const gestor = document.getElementById('newGestor').checked;
   if (!login || !senha) {
     showToast('Informe o login e a senha', 'error');
     return;

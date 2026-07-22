@@ -14,15 +14,17 @@ else:
 
 
 
-# ── Redirecionamento de logs ──────────────────────────────────
-log_file = os.path.join(app_root, 'launcher.log')
-sys.stdout = open(log_file, 'w', encoding='utf-8')
-sys.stderr = sys.stdout
-
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
-
 try:
+    log_file = os.path.join(app_root, 'launcher.log')
+    try:
+        sys.stdout = open(log_file, 'w', encoding='utf-8')
+        sys.stderr = sys.stdout
+    except Exception:
+        pass
+    
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+
     from module_organograma import app_organograma
 
     def run_app():

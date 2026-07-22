@@ -46,7 +46,7 @@ if core_dir not in sys.path:
 
 DRIVE_FOLDER_ID = '11G8qWpSj87bRo0EmK-JJCFqGQ82MLyRc'
 PORT = 5008
-APP_VERSION = "v2.1.4"
+APP_VERSION = "v2.1.5"
 
 # Gerenciamento de Sessão em Memória
 # Mapeia session_id -> dict do usuário (login, nome, setores, admin)
@@ -473,20 +473,22 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                 return
             config = load_acesso_config()
             
-            # Se for apenas gestor, filtrar usuários para não mostrar admins e somente usuários que ele tem acesso
+            # Se for apenas gestor (não admin), aplicar Cegueira Hierárquica e Delegação Restrita
             if not is_admin(user['login']) and is_gestor(user['login']):
-                gestor_setores = get_allowed_setores(user['login']) or []
+                gestor_setores = get_allowed_setores(user['login'])
+                gestor_set_set = set(gestor_setores) if gestor_setores is not None else None
+                
                 filtered_users = []
                 for u in config.get('usuarios', []):
-                    # Gestor não vê admin
+                    # Rule 3: Cegueira Hierárquica — Gestor nunca vê admin
                     if u.get('admin', False):
                         continue
-                    # Gestor só vê usuários cujos setores estão contidos nos setores do gestor
-                    u_setores = u.get('setores', [])
-                    # Se gestor tem acesso a tudo (gestor_setores == []), ele vê todos os não-admins
-                    # Senao, verificar subconjunto
-                    if not gestor_setores or all(s in gestor_setores for s in u_setores):
-                        filtered_users.append(u)
+                    # Rule 4: Delegação Restrita — Gestor só vê usuários cujos setores estão contidos em seus setores
+                    if gestor_set_set is not None:
+                        u_setores = u.get('setores', [])
+                        if not u_setores or not set(u_setores).issubset(gestor_set_set):
+                            continue
+                    filtered_users.append(u)
                 config['usuarios'] = filtered_users
 
             self.send_response(200)
@@ -509,8 +511,14 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
             if is_admin(user['login']):
                 setores = todos_setores
             else:
-                gestor_setores = get_allowed_setores(user['login']) or []
-                setores = [s for s in todos_setores if not gestor_setores or s in gestor_setores]
+                gestor_setores = get_allowed_setores(user['login'])
+                if gestor_setores is None:
+                    setores = todos_setores
+                else:
+                    if todos_setores:
+                        setores = [s for s in todos_setores if s in gestor_setores]
+                    else:
+                        setores = sorted(list(gestor_setores))
             self.send_response(200)
             self.send_cors_headers()
             self.send_header('Content-type', 'application/json')
@@ -657,25 +665,54 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                 body = self.rfile.read(length)
                 
                 if not is_admin(user['login']) and is_gestor(user['login']):
-                    gestor_setores = get_allowed_setores(user['login']) or []
+                    gestor_setores = get_allowed_setores(user['login'])
+                    gestor_set_set = set(gestor_setores) if gestor_setores is not None else None
                     incoming_config = json.loads(body.decode('utf-8'))
                     current_config = load_acesso_config()
                     
+                    # Validação de Segurança Backend: Rejeita com HTTP 403 se o Gestor tentar enviar admin:true ou setores fora de sua alçada
+                    for u in incoming_config.get('usuarios', []):
+                        if u.get('admin', False):
+                            self.send_response(403)
+                            self.send_cors_headers()
+                            self.send_header('Content-type', 'application/json')
+                            self.end_headers()
+                            self.wfile.write(json.dumps({"erro": "403 - Acesso Negado: Gestor não possui permissão para conceder perfil de Administrador."}).encode('utf-8'))
+                            return
+                        if gestor_set_set is not None:
+                            u_setores = u.get('setores', [])
+                            if not u_setores or not set(u_setores).issubset(gestor_set_set):
+                                self.send_response(403)
+                                self.send_cors_headers()
+                                self.send_header('Content-type', 'application/json')
+                                self.end_headers()
+                                self.wfile.write(json.dumps({"erro": "403 - Acesso Negado: Gestor não pode conceder setores fora de sua alçada."}).encode('utf-8'))
+                                return
+                    
                     preserved_users = []
+                    preserved_logins = set()
                     for u in current_config.get('usuarios', []):
+                        u_login = u.get('login', '').lower()
+                        # Rule 3: Cegueira Hierárquica — Preserva todos os admins intocados
                         if u.get('admin', False):
                             preserved_users.append(u)
+                            preserved_logins.add(u_login)
                             continue
-                        u_setores = u.get('setores', [])
-                        if gestor_setores and not all(s in gestor_setores for s in u_setores):
-                            preserved_users.append(u)
+                        # Rule 4: Preserva usuários fora do escopo deste gestor
+                        if gestor_set_set is not None:
+                            u_setores = u.get('setores', [])
+                            if not u_setores or not set(u_setores).issubset(gestor_set_set):
+                                preserved_users.append(u)
+                                preserved_logins.add(u_login)
                             
                     validated_incoming = []
                     for u in incoming_config.get('usuarios', []):
+                        inc_login = u.get('login', '').lower()
+                        if inc_login in preserved_logins:
+                            continue
+                        
                         u['admin'] = False
-                        u_setores = u.get('setores', [])
-                        if gestor_setores:
-                            u['setores'] = [s for s in u_setores if s in gestor_setores]
+                        u['gestor'] = bool(u.get('gestor', False))
                         validated_incoming.append(u)
                         
                     config = {'usuarios': preserved_users + validated_incoming}
