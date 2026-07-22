@@ -72,10 +72,26 @@ def api_afastamentos():
         print(f"[Organograma] Erro ao ler afastamentos.json: {e}")
         return jsonify([])
 
+@app.route('/api/afastamentos_historico')
+def api_afastamentos_historico():
+    try:
+        path = os.path.join(current_dir, 'data', 'afastamentos_historico.json')
+        if not os.path.exists(path):
+            return jsonify([])
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return jsonify(data)
+    except Exception as e:
+        print(f"[Organograma] Erro ao ler afastamentos_historico.json: {e}")
+        return jsonify([])
+
 @app.route('/api/storage/get/<path:key>')
 def api_storage_get(key):
     safe_key = key.replace(':', '_').replace('/', '_')
     path = os.path.join(current_dir, 'data', f"{safe_key}.json")
+    if not os.path.exists(path) and safe_key in ['organograma_contagem', 'organograma_posso_contar']:
+        alt_key = 'organograma_posso_contar' if safe_key == 'organograma_contagem' else 'organograma_contagem'
+        path = os.path.join(current_dir, 'data', f"{alt_key}.json")
     if os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
             return jsonify({"value": f.read()})
@@ -85,9 +101,14 @@ def api_storage_get(key):
 def api_storage_set(key):
     safe_key = key.replace(':', '_').replace('/', '_')
     os.makedirs(os.path.join(current_dir, 'data'), exist_ok=True)
-    path = os.path.join(current_dir, 'data', f"{safe_key}.json")
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(request.json.get('value', ''))
+    val = request.json.get('value', '')
+    keys_to_write = [safe_key]
+    if safe_key in ['organograma_contagem', 'organograma_posso_contar']:
+        keys_to_write = ['organograma_contagem', 'organograma_posso_contar']
+    for k in keys_to_write:
+        path = os.path.join(current_dir, 'data', f"{k}.json")
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(val)
     # Async cloud sync so the UI response is instant
     threading.Thread(target=_safe_cloud_sync, daemon=True).start()
     return jsonify({"success": True})
@@ -227,6 +248,10 @@ def inject_navigation(html):
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           <span class="ms-label">Visão Organograma</span>
         </a>
+        <a href="/sugestao" class="ms-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          <span class="ms-label">Sugestão de Organograma</span>
+        </a>
       </div>
       <button class="ms-refresh" id="msRefreshBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -326,6 +351,45 @@ def route_headcount():
 @app.route('/arvore')
 def route_arvore():
     return _render_page('organograma.html')
+
+@app.route('/sugestao')
+def route_sugestao():
+    import os
+    from flask import make_response, request
+    path = os.path.join(current_dir, 'Template_Sugestao_Excel.html')
+    if not os.path.exists(path) or request.args.get('refresh') == '1':
+        try:
+            from module_organograma.gen_template import generate_template
+            generate_template()
+        except Exception:
+            try:
+                from gen_template import generate_template
+                generate_template()
+            except Exception as e:
+                print(f"[Organograma] Erro ao auto-gerar sugestão: {e}")
+                
+    if not os.path.exists(path):
+        return "Arquivo de Sugestão não gerado ainda."
+    with open(path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    html = inject_navigation(html)
+    response = make_response(html)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
+
+@app.route('/api/sugestao/gerar', methods=['POST', 'GET'])
+def api_sugestao_gerar():
+    try:
+        try:
+            from module_organograma.gen_template import generate_template
+            generate_template()
+        except Exception:
+            from gen_template import generate_template
+            generate_template()
+        return jsonify({"success": True, "message": "Template de sugestão gerado com sucesso."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 # ─── background autopilot ───────────────────────────────────
 def vigia_autopilot():

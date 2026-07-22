@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Administrativo · Frequência Diária</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F7F5;
+    --panel: #FFFFFF;
+    --ink: #23282E;
+    --ink-soft: #5B6470;
+    --line: #E7E9E4;
+    --navy: #1D4E89;
+    --navy-soft: #EAF1FA;
+    --emerald: #0E8A5F;
+    --emerald-soft: #E6F5EE;
+    --coral: #C4523F;
+    --coral-soft: #FBEAE6;
+    --amber: #B8790A;
+    --amber-soft: #FCF1DE;
+    --gray-soft: #F3F4F1;
+    --violet: #6D28D9;
+    --violet-soft: #EDE9FE;
+  }
+  html { font-family: 'Inter', system-ui, sans-serif; }
+  body { background: var(--bg); color: var(--ink); }
+  .font-display { font-family: 'Manrope', system-ui, sans-serif; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+
+  /* Toggle Switch */
+  .toggle-track {
+    position: relative; display: inline-flex; align-items: center;
+    width: 44px; height: 24px; border-radius: 999px;
+    background: var(--line); cursor: pointer; transition: background 0.25s;
+    flex-shrink: 0;
+  }
+  .toggle-track.active { background: var(--emerald); }
+  .toggle-thumb {
+    position: absolute; left: 3px; width: 18px; height: 18px;
+    border-radius: 50%; background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    transition: left 0.2s;
+  }
+  .toggle-track.active .toggle-thumb { left: 23px; }
+
+  /* Chip de setor */
+  .setor-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid var(--line); background: white; cursor: pointer;
+    transition: all 0.15s; user-select: none;
+  }
+  .setor-chip:hover { border-color: var(--navy); background: var(--navy-soft); color: var(--navy); }
+  .setor-chip.selected { border-color: var(--navy); background: var(--navy-soft); color: var(--navy); }
+  .setor-chip.selected .chip-dot { background: var(--navy); }
+  .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); flex-shrink: 0; }
+
+  .fade-in { animation: fadeIn .3s ease both; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  .user-card { transition: box-shadow 0.2s; }
+  .user-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    padding: 12px 20px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    opacity: 0; transform: translateY(12px);
+    transition: all 0.3s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { background: var(--emerald); color: white; }
+  #toast.error { background: var(--coral); color: white; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(35,40,46,0.5); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-box { background: white; border-radius: 20px; padding: 28px; max-width: 440px; width: 100%; box-shadow: 0 24px 64px rgba(0,0,0,0.18); }
+
+  input[type="email"], input[type="text"] {
+    outline: none; border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; width: 100%; transition: border 0.2s;
+  }
+  input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px var(--navy-soft); }
+  .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #D6D9D2; border-radius: 10px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ======================= HEADER ======================= -->
+<header class="bg-white border-b border-[var(--line)] sticky top-0 z-50 shadow-sm">
+  <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-9 h-9 rounded-xl bg-[var(--violet-soft)] flex items-center justify-center">
+        <i data-lucide="shield-check" class="w-5 h-5 text-[var(--violet)]"></i>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold tracking-[0.18em] text-[var(--violet)] uppercase">Modo Administrador</p>
+        <h1 class="font-display text-lg font-800 text-[var(--ink)] leading-tight">Controle de Acesso</h1>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="admin-email-badge" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--violet-soft)] text-[var(--violet)] text-xs font-semibold">
+        <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+        <span id="admin-email-text"></span>
+      </div>
+      <a href="/dashboard" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-[var(--ink-soft)] hover:bg-[var(--gray-soft)] transition-colors">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        Voltar ao Dashboard
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= MAIN ======================= -->
+<main class="max-w-5xl mx-auto px-6 py-8 space-y-6">
+
+  <!-- Info Banner -->
+  <div class="card p-4 flex items-start gap-3 border-l-4 border-[var(--violet)] rounded-l-none">
+    <i data-lucide="info" class="w-5 h-5 text-[var(--violet)] shrink-0 mt-0.5"></i>
+    <div>
+      <p class="text-sm font-semibold text-[var(--ink)]">Como funciona o controle de acesso</p>
+      <p class="text-xs text-[var(--ink-soft)] mt-0.5 leading-relaxed">
+        Cada usuário faz login com sua conta Google. O sistema verifica o e-mail e exibe apenas os setores que você cadastrou para ele aqui.
+        Se o e-mail não estiver cadastrado, o acesso é bloqueado automaticamente.
+        <strong>Setores vazios = acesso a todos os setores.</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div>
+      <h2 class="font-display font-700 text-[17px] text-[var(--ink)]">Usuários com Acesso</h2>
+      <p class="text-xs text-[var(--ink-soft)] mt-0.5">Gerencie quem pode acessar o sistema e o que cada um vê</p>
+    </div>
+    <button id="btnAddUser" onclick="openAddModal()"
+      class="flex items-center gap-2 px-4 py-2.5 bg-[var(--violet)] hover:bg-[#5b21b6] text-white rounded-xl text-sm font-bold transition-colors shadow-sm shrink-0">
+      <i data-lucide="user-plus" class="w-4 h-4"></i>
+      Adicionar Usuário
+    </button>
+  </div>
+
+  <!-- User Cards List -->
+  <div id="user-list" class="space-y-4">
+    <!-- preenchido via JS -->
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state" class="hidden card p-12 flex flex-col items-center justify-center text-center gap-4">
+    <div class="w-16 h-16 rounded-2xl bg-[var(--gray-soft)] flex items-center justify-center">
+      <i data-lucide="users" class="w-8 h-8 text-[var(--ink-soft)]"></i>
+    </div>
+    <div>
+      <p class="font-display font-700 text-[var(--ink)]">Nenhum usuário cadastrado</p>
+      <p class="text-sm text-[var(--ink-soft)] mt-1">Clique em "Adicionar Usuário" para começar</p>
+    </div>
+  </div>
+
+  <!-- Save Button -->
+  <div class="flex justify-end pt-2">
+    <button id="btnSave" onclick="saveConfig()"
+      class="flex items-center gap-2.5 px-6 py-3 bg-[var(--emerald)] hover:bg-[#0b6c4a] text-white rounded-xl text-sm font-bold transition-colors shadow-sm">
+      <i data-lucide="save" class="w-4 h-4"></i>
+      Salvar Alterações
+    </button>
+  </div>
+
+</main>
+
+<!-- ======================= MODAL: ADICIONAR USUÁRIO ======================= -->
+<div id="addModal" class="modal-overlay hidden fade-in">
+  <div class="modal-box">
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 rounded-xl bg-[var(--violet-soft)] flex items-center justify-center">
+        <i data-lucide="user-plus" class="w-5 h-5 text-[var(--violet)]"></i>
+      </div>
+      <div>
+        <h3 class="font-display font-700 text-[var(--ink)]">Novo Usuário</h3>
+        <p class="text-xs text-[var(--ink-soft)]">Cadastre o e-mail e o nome do usuário</p>
+      </div>
+    </div>
+    <div class="space-y-3">
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="text-xs font-semibold text-[var(--ink-soft)] mb-1.5 block uppercase tracking-wide">Login</label>
+          <input id="newLogin" type="text" placeholder="Ex: joao" autocomplete="off">
+        </div>
+        <div class="flex-1">
+          <label class="text-xs font-semibold text-[var(--ink-soft)] mb-1.5 block uppercase tracking-wide">Senha</label>
+          <input id="newSenha" type="password" placeholder="Senha do usuário">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-semibold text-[var(--ink-soft)] mb-1.5 block uppercase tracking-wide">Nome / Descrição</label>
+        <input id="newNome" type="text" placeholder="Ex: Diretor Industrial">
+      </div>
+      <div class="flex items-center gap-2 mt-2" id="adminCheckboxContainer">
+        <input type="checkbox" id="newAdmin" class="w-4 h-4 rounded border-gray-300 text-[var(--violet)] focus:ring-[var(--violet)]">
+        <label for="newAdmin" class="text-sm font-semibold text-[var(--ink)]">É Administrador?</label>
+      </div>
+      <div class="flex items-center gap-2 mt-2" id="gestorCheckboxContainer">
+        <input type="checkbox" id="newGestor" class="w-4 h-4 rounded border-gray-300 text-[var(--emerald)] focus:ring-[var(--emerald)]">
+        <label for="newGestor" class="text-sm font-semibold text-[var(--ink)]">É Gestor (Diretor)?</label>
+      </div>
+    </div>
+    <div class="flex gap-2 mt-5 justify-end">
+      <button onclick="closeAddModal()" class="px-4 py-2.5 text-sm font-semibold text-[var(--ink-soft)] hover:bg-[var(--gray-soft)] rounded-lg transition-colors">Cancelar</button>
+      <button onclick="confirmAddUser()" class="px-5 py-2.5 bg-[var(--violet)] hover:bg-[#5b21b6] text-white text-sm font-bold rounded-lg transition-colors">
+        Adicionar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+lucide.createIcons();
+
+// ══════════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════════
+let config = { usuarios: [] };
+let allSetores = [];
+let currentUser = { is_admin: false, is_gestor: false };
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+async function init() {
+  // Verifica admin
+  try {
+    const r = await fetch('/api/check-admin');
+    const d = await r.json();
+    currentUser = d;
+    if (!d.is_admin && !d.is_gestor) {
+      document.body.innerHTML = `
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:Inter,sans-serif;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#C4523F" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <h2 style="font-size:20px;font-weight:700;color:#23282E;">Acesso Restrito</h2>
+          <p style="color:#5B6470;font-size:14px;">Apenas administradores ou gestores podem acessar esta página.</p>
+          <a href="/dashboard" style="margin-top:8px;padding:10px 20px;background:#1D4E89;color:white;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;">← Voltar ao Dashboard</a>
+        </div>`;
+      return;
+    }
+    // Mostra badge do email
+    const badge = document.getElementById('admin-email-badge');
+    document.getElementById('admin-email-text').textContent = d.email;
+    badge.classList.remove('hidden');
+    badge.classList.add('flex');
+  } catch(e) {}
+
+  // Carrega setores disponíveis
+  try {
+    const r = await fetch('/api/setores-disponiveis');
+    const d = await r.json();
+    allSetores = d.setores || [];
+  } catch(e) {}
+
+  // Carrega config
+  try {
+    const r = await fetch('/api/acesso-config');
+    config = await r.json();
+  } catch(e) {}
+
+  renderUsers();
+  lucide.createIcons();
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER USERS
+// ══════════════════════════════════════════════════════
+function renderUsers() {
+  const list = document.getElementById('user-list');
+  const empty = document.getElementById('empty-state');
+  const usuarios = config.usuarios || [];
+
+  if (usuarios.length === 0) {
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    empty.classList.add('flex');
+    lucide.createIcons();
+    return;
+  }
+
+  empty.classList.add('hidden');
+  empty.classList.remove('flex');
+
+  list.innerHTML = usuarios.map((u, idx) => renderUserCard(u, idx)).join('');
+  lucide.createIcons();
+}
+
+function renderUserCard(u, idx) {
+  const isActive = u.ativo !== false;
+  const todosSetores = !u.setores || u.setores.length === 0;
+
+  const setoresHtml = allSetores.length > 0 ? `
+    <div class="mt-3">
+      <div class="flex items-center gap-2 mb-2">
+        <label class="text-[11px] font-bold text-[var(--ink-soft)] uppercase tracking-wide">Setores Visíveis</label>
+        <button onclick="toggleAllSetores(${idx})"
+          class="text-[10px] px-2 py-0.5 rounded-full border border-[var(--line)] text-[var(--ink-soft)] hover:border-[var(--navy)] hover:text-[var(--navy)] transition-colors font-semibold">
+          ${todosSetores ? 'Nenhum selecionado (todos)' : 'Limpar seleção'}
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        ${allSetores.map(s => {
+          const sel = u.setores && u.setores.includes(s);
+          return `<span class="setor-chip ${sel ? 'selected' : ''}" onclick="toggleSetor(${idx}, '${s.replace(/'/g,"\\'")}')">
+            <span class="chip-dot"></span>${s}
+          </span>`;
+        }).join('')}
+      </div>
+    </div>` : `
+    <div class="mt-3 p-3 bg-[var(--amber-soft)] rounded-lg text-xs text-[var(--amber)] flex items-center gap-2">
+      <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+      <span>Sincronize os dados para ver os setores disponíveis</span>
+    </div>`;
+
+  return `
+  <div class="card user-card p-5 fade-in ${!isActive ? 'opacity-60' : ''}">
+    <div class="flex items-start gap-4">
+      <div class="w-10 h-10 rounded-xl bg-[var(--gray-soft)] flex items-center justify-center shrink-0">
+        <i data-lucide="user" class="w-5 h-5 text-[var(--ink-soft)]"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-semibold text-[var(--ink)] truncate">${u.login || '—'} ${u.admin ? '<span class="ml-2 text-[10px] bg-[var(--violet-soft)] text-[var(--violet)] px-2 py-0.5 rounded uppercase">Admin</span>' : (u.gestor ? '<span class="ml-2 text-[10px] bg-[var(--emerald-soft)] text-[var(--emerald)] px-2 py-0.5 rounded uppercase">Gestor</span>' : '')}</p>
+            <p class="text-xs text-[var(--ink-soft)] mt-0.5">${u.nome || 'Sem descrição'}</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Toggle ativo/inativo -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-semibold ${isActive ? 'text-[var(--emerald)]' : 'text-[var(--ink-soft)]'}">${isActive ? 'Ativo' : 'Inativo'}</span>
+              <div class="toggle-track ${isActive ? 'active' : ''}" onclick="toggleAtivo(${idx})">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+            <!-- Deletar -->
+            <button onclick="removeUser(${idx})"
+              class="p-2 rounded-lg hover:bg-[var(--coral-soft)] text-[var(--ink-soft)] hover:text-[var(--coral)] transition-colors"
+              title="Remover usuário">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Badge de setores -->
+        <div class="flex flex-wrap gap-1.5 mt-2">
+          ${todosSetores
+            ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--emerald-soft);color:var(--emerald)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Todos os setores
+              </span>`
+            : `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;background:var(--navy-soft);color:var(--navy)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                ${u.setores.length} setor${u.setores.length > 1 ? 'es' : ''} selecionado${u.setores.length > 1 ? 's' : ''}
+              </span>`
+          }
+        </div>
+
+        ${setoresHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// AÇÕES
+// ══════════════════════════════════════════════════════
+function toggleAtivo(idx) {
+  config.usuarios[idx].ativo = !(config.usuarios[idx].ativo !== false);
+  renderUsers();
+}
+
+function removeUser(idx) {
+  if (!confirm(`Remover o usuário "${config.usuarios[idx].login}"?`)) return;
+  config.usuarios.splice(idx, 1);
+  renderUsers();
+}
+
+function toggleSetor(idx, setor) {
+  let arr = config.usuarios[idx].setores || [];
+  const pos = arr.indexOf(setor);
+  if (pos >= 0) arr.splice(pos, 1);
+  else arr.push(setor);
+  config.usuarios[idx].setores = arr;
+  renderUsers();
+}
+
+function toggleAllSetores(idx) {
+  const arr = config.usuarios[idx].setores || [];
+  // Se há seleção → limpar; se vazio → manter vazio (= todos)
+  config.usuarios[idx].setores = arr.length > 0 ? [] : [];
+  renderUsers();
+}
+
+// Modal
+function openAddModal() {
+  document.getElementById('newLogin').value = '';
+  document.getElementById('newSenha').value = '';
+  document.getElementById('newNome').value = '';
+  document.getElementById('newAdmin').checked = false;
+  document.getElementById('newGestor').checked = false;
+  
+  if (currentUser && currentUser.is_gestor && !currentUser.is_admin) {
+    document.getElementById('adminCheckboxContainer').style.display = 'none';
+    document.getElementById('gestorCheckboxContainer').style.display = 'none';
+  } else {
+    document.getElementById('adminCheckboxContainer').style.display = 'flex';
+    document.getElementById('gestorCheckboxContainer').style.display = 'flex';
+  }
+  
+  document.getElementById('addModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('newLogin').focus(), 100);
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').classList.add('hidden');
+}
+
+document.getElementById('addModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddModal();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAddModal();
+});
+
+function confirmAddUser() {
+  const login = document.getElementById('newLogin').value.trim();
+  const senha = document.getElementById('newSenha').value.trim();
+  const nome = document.getElementById('newNome').value.trim();
+  const admin = (currentUser && currentUser.is_gestor && !currentUser.is_admin) ? false : document.getElementById('newAdmin').checked;
+  const gestor = (currentUser && currentUser.is_gestor && !currentUser.is_admin) ? false : document.getElementById('newGestor').checked;
+  if (!login || !senha) {
+    showToast('Informe o login e a senha', 'error');
+    return;
+  }
+  if (config.usuarios.some(u => u.login.toLowerCase() === login.toLowerCase())) {
+    showToast('Este login já está cadastrado', 'error');
+    return;
+  }
+  config.usuarios.push({ login, senha, nome, admin, gestor, setores: [], ativo: true });
+  closeAddModal();
+  renderUsers();
+  showToast('Usuário adicionado! Lembre de salvar.', 'success');
+}
+
+async function saveConfig() {
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Salvando...';
+  try {
+    const r = await fetch('/api/acesso-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    const d = await r.json();
+    if (d.status === 'ok') showToast('Configurações salvas com sucesso!', 'success');
+    else showToast('Erro ao salvar: ' + (d.erro || 'desconhecido'), 'error');
+  } catch(e) {
+    showToast('Erro de conexão ao salvar', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Salvar Alterações';
+  lucide.createIcons();
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+let toastTimeout;
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

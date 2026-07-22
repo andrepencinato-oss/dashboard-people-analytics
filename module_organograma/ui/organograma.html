@@ -26,9 +26,9 @@
   .title h1 { font-family: var(--font-display); margin: 0 0 8px 0; }
   .title p { margin: 0; color: var(--ink-soft); }
   .kpi-board { display: flex; gap: 16px; }
-  .kpi-card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px 24px; min-width: 140px; }
-  .kpi-card .val { font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--blue); }
-  .kpi-card .lbl { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; margin-top: 4px; }
+  .kpi-card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; min-width: 120px; }
+  .kpi-card .val { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--blue); }
+  .kpi-card .lbl { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; margin-top: 2px; }
   
   .controls { margin-bottom: 24px; }
   #ccSelect { padding: 10px; border-radius: 6px; border: 1px solid var(--line); font-size: 14px; width: 100%; max-width: 400px; outline: none; }
@@ -174,8 +174,8 @@
   <div class="header">
     <div class="title" style="display: flex; align-items: center; gap: 16px;">
       <div style="display:flex; flex-direction:column; align-items:flex-start; gap:0px;">
-        <h1 style="margin: 0; line-height: 1.1;">Organograma</h1>
-        <span id="headerSubtitle" style="font-size: 13px; font-weight: 600; color: var(--copper); letter-spacing: 0.5px; text-transform: uppercase;">Árvore Matricial</span>
+        <h1 id="mainTitle" style="margin: 0; line-height: 1.1; font-size: 24px; color: var(--ink);">Visão por Centro de Custo</h1>
+        <span id="headerSubtitle" style="font-size: 13px; font-weight: 500; color: var(--ink-faint); margin-top: 4px;"></span>
       </div>
       <button id="btnVoltarTopo" onclick="voltarParaMatriz()" style="display:none; background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:600;color:var(--ink-soft);transition:0.2s;">&larr; Voltar à Árvore Matricial</button>
       <input type="search" id="ccSelect" list="ccList" style="display:none;" onfocus="this.select()">
@@ -183,7 +183,8 @@
     </div>
     <div class="kpi-board">
       <div class="kpi-card"><div class="val" id="kpiCount">0</div><div class="lbl">Pessoas Ativas</div></div>
-      <div class="kpi-card"><div class="val" id="kpiTotal">R$ 0</div><div class="lbl">Folha Salarial</div></div>
+      <div class="kpi-card"><div class="val" id="kpiTotal">R$ 0</div><div class="lbl">Custo Total</div></div>
+      <div class="kpi-card"><div class="val" id="kpiTotalPJ" style="color:var(--copper);">R$ 0</div><div class="lbl">Custo PJ</div></div>
       <div class="kpi-card"><div class="val" id="kpiAvg">R$ 0</div><div class="lbl">Média Salarial</div></div>
     </div>
   </div>
@@ -222,6 +223,7 @@ let afastamentosStats = {};
 let responsaveis = {};
 let possoContar = {};
 let costCenters = [];
+let totalSalarialPJ = 0;
 
 const fmtMoney = (v) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 
@@ -286,6 +288,29 @@ async function init() {
   }
 }
 
+function checkIsPJ(r) {
+  if (!r) return false;
+  const tipo = String(r.tipo || '').toLowerCase();
+  const cad = String(r.cad || '').toUpperCase();
+  const label = String(r.label || '').toLowerCase();
+  const cargo = String(r.cargo || '').toLowerCase();
+  return tipo === 'pj' || cad.startsWith('PJ-') || label.includes('pj') || cargo.includes('pj');
+}
+
+function getPJKey(r) {
+  if (!r) return '';
+  const n = (r.nome || '').trim().toUpperCase();
+  if (n) return n;
+  const c = String(r.cad || '').replace(/^PJ-/i, '').trim().toUpperCase();
+  return c;
+}
+
+function showCardSalary(data, role) {
+  if (!data || !data.salario || Number(data.salario) <= 0) return false;
+  const r = String(role || '').toLowerCase();
+  return r.includes('diretor') || r.includes('gerente') || checkIsPJ(data);
+}
+
 function calcularTempoDeCasa(admissao) {
   if(!admissao) return 'Data não informada';
   const parts = admissao.split('/');
@@ -346,7 +371,7 @@ function renderTree() {
   
   ccsToRender.forEach(ccCod => {
     const resp = responsaveis[ccCod] || [];
-    if(resp.length === 0) return;
+    // if(resp.length === 0) return; // FIX: Do not skip unmanaged CCs
     
     
     const ccObj = costCenters.find(c => c.cod === ccCod);
@@ -384,8 +409,7 @@ function renderTree() {
         
         if (!allGestores[key]) {
             allGestores[key] = r;
-            totalSalarial += (r.salario || 0);
-            totalPessoas += 1;
+            // No longer summing managers here to prevent double counting
         }
     };
     
@@ -484,9 +508,8 @@ rolesHtml += `<div class="role-group" id="rg-${safeId}" onclick="showColabs('${s
       
       gestoresSorted.forEach(g => {
           if (g.roleTitle === 'Diretor') return;
-          // Truncate long list of CCs
+          
           let ccsStr = g.ccsManaged.join(', ');
-          if(ccsStr.length > 50) ccsStr = ccsStr.substring(0, 47) + '...';
           
           gestoresHtml += `
             <div class="gestor-pill">
@@ -546,7 +569,29 @@ ${allHeadersHtml}
 `;
 }
   
+  totalSalarialPJ = 0;
+  const pjMap = {};
+  const targetCCs = (ccsToRender && ccsToRender.length > 0) ? ccsToRender : Object.keys(responsaveis);
+  targetCCs.forEach(ccCod => {
+    const resp = responsaveis[ccCod] || [];
+    resp.forEach(r => {
+      if (r && r.nome && checkIsPJ(r)) {
+        const key = getPJKey(r);
+        pjMap[key] = Number(r.salario || 0);
+      }
+    });
+    const baseHC = activeHC.filter(e => e.ccCod === ccCod);
+    baseHC.forEach(e => {
+      if (e && e.nome && checkIsPJ(e)) {
+        const key = getPJKey(e);
+        pjMap[key] = Number(e.salario || 0);
+      }
+    });
+  });
+  totalSalarialPJ = Object.values(pjMap).reduce((sum, v) => sum + v, 0);
+  
   document.getElementById('kpiTotal').innerText = fmtMoney(totalSalarial);
+  if (document.getElementById('kpiTotalPJ')) document.getElementById('kpiTotalPJ').innerText = fmtMoney(totalSalarialPJ);
   document.getElementById('kpiCount').innerText = totalPessoas;
   document.getElementById('kpiAvg').innerText = fmtMoney(totalPessoas > 0 ? totalSalarial / totalPessoas : 0);
   
@@ -580,18 +625,16 @@ let currentView = 'matrix';
 function switchView(view) {
   currentView = view;
   const headerSubtitle = document.getElementById('headerSubtitle');
-  if (headerSubtitle) {
-      
-        if(view === 'matrix') {
-            headerSubtitle.innerHTML = 'Árvore Matricial';
-        } else {
-            const pIni = globalMetadata.periodo_inicio || '';
-            const pFim = globalMetadata.periodo_fim || '';
-            const periodStr = pIni && pFim ? `Período: ${pIni} à ${pFim}` : (globalMetadata.periodo_afastamento || '').replace('.CSV','');
-            headerSubtitle.innerHTML = `Visão por Centro de Custo <div style="font-size:12px; color:var(--ink-faint); margin-top:4px; font-weight: 400; text-transform:none;">${periodStr}</div>`;
+        const pIni = globalMetadata.periodo_inicio || '01/01/2000';
+        const pFim = globalMetadata.periodo_fim || '01/01/2030';
+        const periodStr = `Período: ${pIni} à ${pFim}`;
+        
+        const mainTitle = document.getElementById('mainTitle');
+        if(mainTitle) mainTitle.innerHTML = 'Organograma';
+        if(headerSubtitle) {
+            const subName = view === 'matrix' ? 'Árvore Matricial' : 'Visão por Centro de Custo';
+            headerSubtitle.innerHTML = `${subName} &nbsp;&middot;&nbsp; ${periodStr}`;
         }
-
-  }
   document.getElementById('btnViewCC').className = view === 'cc' ? 'active' : '';
   document.getElementById('btnViewMatrix').className = view === 'matrix' ? 'active' : '';
   
@@ -620,9 +663,16 @@ function buildMatrixTree(ccsToRender) {
   
   ccsToRender.forEach(ccCod => {
     const resp = responsaveis[ccCod] || [];
-    if(resp.length === 0) return;
     
     let currentLevel = rootNode;
+    if(resp.length === 0) {
+        if (!currentLevel.children['DIR_UNASSIGNED']) {
+            currentLevel.children['DIR_UNASSIGNED'] = {
+                id: 'DIR_UNASSIGNED', role: 'Diretor', name: 'Sem Diretoria Atribuída', data: null, ccList: new Set(), children: {}, parent: currentLevel
+            };
+        }
+        currentLevel = currentLevel.children['DIR_UNASSIGNED'];
+    }
     
     const insertLevel = (roleData) => {
       if(!roleData) return;
@@ -691,6 +741,21 @@ function buildMatrixTree(ccsToRender) {
     };
   });
   
+    const getSubtreeStats = (node) => {
+        let s = 0;
+        const traverse = (n) => {
+            if(n.isCC) {
+                Object.values(n.roles).forEach(arr => arr.forEach(emp => { s += (emp.salario||0); }));
+            } else {
+                if(n.children) Object.values(n.children).forEach(traverse);
+            }
+        };
+        traverse(node);
+        return { salario: s };
+    };
+    
+    const companyTotalSalarial = getSubtreeStats(rootNode).salario;
+    
     const renderNode = (node, pathNodes, targetNode, hasPassedTarget = false) => {
       let html = '<li>';
       
@@ -720,6 +785,13 @@ function buildMatrixTree(ccsToRender) {
           const escapedName = node.name.replace(/'/g, "\\'");
           const clickHandler = level ? `handleMenuSelect('${level}', '${escapedName}')` : `handleMenuSelect('Dir', 'all')`;
           
+          let pctHtml = '';
+          if (level === 'Dir' && companyTotalSalarial > 0) {
+              const nodeStats = getSubtreeStats(node);
+              const pct = (nodeStats.salario / companyTotalSalarial * 100).toFixed(1) + '%';
+              pctHtml = `<div style="font-size:10px; color:var(--ink-soft); margin-top: 6px; border-top:1px solid var(--line); padding-top:4px;"><strong>Massa:</strong> ${fmtMoney(nodeStats.salario)} <br><span style="color:var(--blue); font-weight:600;">(${pct} do total)</span></div>`;
+          }
+          
           if (node.staffList && node.staffList.length > 0) {
               let cards = '';
               node.staffList.forEach((st) => {
@@ -727,7 +799,7 @@ function buildMatrixTree(ccsToRender) {
                       <div class="matrix-card staff-card" style="border-top:3px solid var(--copper); min-width: 140px; max-width: 180px; background:#fffcfb; margin-bottom: 8px;">
                           <div class="role" style="font-size:9px; color:var(--copper);">${st.label}</div>
                           <div class="name" style="font-size: 13px;">${st.nome}</div>
-                          ${st.salario ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--copper);">${fmtMoney(st.salario)}</div>` : ''}
+                          ${checkIsPJ(st) && st.salario ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--copper);">${fmtMoney(st.salario)}</div>` : ''}
                       </div>
                   `;
               });
@@ -742,7 +814,8 @@ function buildMatrixTree(ccsToRender) {
                           <div class="matrix-card" style="border-top:3px solid var(--blue); min-width: 140px; max-width: 180px; cursor: pointer; transition: 0.2s;" onclick="${clickHandler}" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" title="Clique para focar na hierarquia deste gestor">
                               <div class="role" style="font-size:9px;">${node.role}</div>
                               <div class="name" style="font-size: 13px;">${node.name}</div>
-                              ${node.data ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--blue);">${fmtMoney(node.data.salario)}</div>` : ''}
+                              ${showCardSalary(node.data, node.role) ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--blue); margin-bottom: 2px;">Vencimentos: ${fmtMoney(node.data.salario)}</div>` : ''}
+                              ${pctHtml}
                           </div>
                       </div>
                       
@@ -756,7 +829,8 @@ function buildMatrixTree(ccsToRender) {
                   <div class="matrix-card" style="border-top:3px solid var(--blue); min-width: 140px; max-width: 180px; cursor: pointer; transition: 0.2s;" onclick="${clickHandler}" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" title="Clique para focar na hierarquia deste gestor">
                       <div class="role" style="font-size:9px;">${node.role}</div>
                       <div class="name" style="font-size: 13px;">${node.name}</div>
-                      ${node.data ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--blue);">${fmtMoney(node.data.salario)}</div>` : ''}
+                      ${showCardSalary(node.data, node.role) ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--blue); margin-bottom: 2px;">Vencimentos: ${fmtMoney(node.data.salario)}</div>` : ''}
+                              ${pctHtml}
                   </div>
               `;
           }
@@ -792,10 +866,10 @@ function buildMatrixTree(ccsToRender) {
       return found || 'all';
   };
 
-  const rawDir = document.getElementById('matrixFilterDir').value;
-  const rawGer = document.getElementById('matrixFilterGer').value;
-  const rawCoo = document.getElementById('matrixFilterCoo').value;
-  const rawLid = document.getElementById('matrixFilterLid').value;
+  const rawDir = document.getElementById('matrixFilterDir')?.value || 'all';
+  const rawGer = document.getElementById('matrixFilterGer')?.value || 'all';
+  const rawCoo = document.getElementById('matrixFilterCoo')?.value || 'all';
+  const rawLid = document.getElementById('matrixFilterLid')?.value || 'all';
   
   const getDescendantsByRole = (node, roleTitle) => {
       let results = {};
@@ -831,17 +905,17 @@ function buildMatrixTree(ccsToRender) {
   
   let temp = initialTarget;
   while(temp && temp !== rootNode) {
-      if(temp.role === 'Líder') document.getElementById('matrixFilterLid').value = temp.name;
-      if(temp.role === 'Coordenador') document.getElementById('matrixFilterCoo').value = temp.name;
-      if(temp.role === 'Gerente') document.getElementById('matrixFilterGer').value = temp.name;
-      if(temp.role === 'Diretor') document.getElementById('matrixFilterDir').value = temp.name;
+      if(temp.role === 'Líder' && document.getElementById('matrixFilterLid')) document.getElementById('matrixFilterLid').value = temp.name;
+      if(temp.role === 'Coordenador' && document.getElementById('matrixFilterCoo')) document.getElementById('matrixFilterCoo').value = temp.name;
+      if(temp.role === 'Gerente' && document.getElementById('matrixFilterGer')) document.getElementById('matrixFilterGer').value = temp.name;
+      if(temp.role === 'Diretor' && document.getElementById('matrixFilterDir')) document.getElementById('matrixFilterDir').value = temp.name;
       temp = temp.parent;
   }
   
-  const newRawDir = document.getElementById('matrixFilterDir').value;
-  const newRawGer = document.getElementById('matrixFilterGer').value;
-  const newRawCoo = document.getElementById('matrixFilterCoo').value;
-  const newRawLid = document.getElementById('matrixFilterLid').value;
+  const newRawDir = document.getElementById('matrixFilterDir')?.value || 'all';
+  const newRawGer = document.getElementById('matrixFilterGer')?.value || 'all';
+  const newRawCoo = document.getElementById('matrixFilterCoo')?.value || 'all';
+  const newRawLid = document.getElementById('matrixFilterLid')?.value || 'all';
 
   const valDir = getSelectedKey(newRawDir, allDirs);
     
@@ -874,30 +948,55 @@ function buildMatrixTree(ccsToRender) {
   // Calculate KPIs for targetNode subtree
   let kpiPessoas = 0;
   let kpiSalario = 0;
-  let uniqueGestores = new Set();
+  let kpiSalarioPJ = 0;
+  let uniqueGestoresPj = new Set();
   const collectTargetStats = (node) => {
       if(node.isCC) {
           Object.values(node.roles).forEach(arr => {
               arr.forEach(emp => {
                   kpiPessoas++;
                   kpiSalario += (emp.salario || 0);
+                  if (emp && emp.nome && checkIsPJ(emp)) {
+                      const key = getPJKey(emp);
+                      if (!uniqueGestoresPj.has(key)) {
+                          uniqueGestoresPj.add(key);
+                          kpiSalarioPJ += Number(emp.salario || 0);
+                      }
+                  }
               });
           });
       } else {
-          if(node.data && node.data.cad) {
-              uniqueGestores.add(node.data);
+          if (node.data && node.data.nome) {
+              if (checkIsPJ(node.data)) {
+                  const key = getPJKey(node.data);
+                  if (!uniqueGestoresPj.has(key)) {
+                      uniqueGestoresPj.add(key);
+                      kpiSalarioPJ += Number(node.data.salario || 0);
+                  }
+              }
           }
-          if(node.children) Object.values(node.children).forEach(collectTargetStats);
+          if (node.staffList && Array.isArray(node.staffList)) {
+              node.staffList.forEach(st => {
+                  if (st && st.nome && checkIsPJ(st)) {
+                      const key = getPJKey(st);
+                      if (!uniqueGestoresPj.has(key)) {
+                          uniqueGestoresPj.add(key);
+                          kpiSalarioPJ += Number(st.salario || 0);
+                      }
+                  }
+              });
+          }
+          if (node.children) Object.values(node.children).forEach(collectTargetStats);
       }
   };
   collectTargetStats(targetNode);
-  uniqueGestores.forEach(g => {
-      kpiPessoas++;
-      kpiSalario += (g.salario || 0);
-  });
+  if (targetNode === rootNode && totalSalarialPJ > 0) {
+      kpiSalarioPJ = Math.max(kpiSalarioPJ, totalSalarialPJ);
+  }
   
   if (document.getElementById('kpiCount')) document.getElementById('kpiCount').innerText = kpiPessoas;
   if (document.getElementById('kpiTotal')) document.getElementById('kpiTotal').innerText = fmtMoney(kpiSalario);
+  if (document.getElementById('kpiTotalPJ')) document.getElementById('kpiTotalPJ').innerText = fmtMoney(kpiSalarioPJ);
   if (document.getElementById('kpiAvg')) document.getElementById('kpiAvg').innerText = fmtMoney(kpiPessoas > 0 ? kpiSalario / kpiPessoas : 0);
 
   let finalHtml = '<ul>';
@@ -919,19 +1018,23 @@ function buildMatrixTree(ccsToRender) {
 }
 
 function handleMenuSelect(level, val) {
-  document.getElementById('matrixFilter' + level).value = val;
+  const target = document.getElementById('matrixFilter' + level);
+  if (target) target.value = val;
   
+  const ger = document.getElementById('matrixFilterGer');
+  const coo = document.getElementById('matrixFilterCoo');
+  const lid = document.getElementById('matrixFilterLid');
+
   if(level === 'Dir') {
-     document.getElementById('matrixFilterGer').value = 'all';
-     document.getElementById('matrixFilterCoo').value = 'all';
-     document.getElementById('matrixFilterLid').value = 'all';
+     if(ger) ger.value = 'all';
+     if(coo) coo.value = 'all';
+     if(lid) lid.value = 'all';
   } else if(level === 'Ger') {
-     document.getElementById('matrixFilterCoo').value = 'all';
-     document.getElementById('matrixFilterLid').value = 'all';
+     if(coo) coo.value = 'all';
+     if(lid) lid.value = 'all';
   } else if(level === 'Coo') {
-     document.getElementById('matrixFilterLid').value = 'all';
+     if(lid) lid.value = 'all';
   }
-  
   
   updateMatrixFilters(level.toLowerCase());
 }
@@ -942,9 +1045,9 @@ function updateMatrixFilters(level) {
     const coo = document.getElementById('matrixFilterCoo');
     const lid = document.getElementById('matrixFilterLid');
     
-    if(level === 'dir') { ger.value = ''; coo.value = ''; lid.value = ''; }
-    if(level === 'ger') { coo.value = ''; lid.value = ''; }
-    if(level === 'coo') { lid.value = ''; }
+    if(level === 'dir') { if(ger) ger.value = ''; if(coo) coo.value = ''; if(lid) lid.value = ''; }
+    if(level === 'ger') { if(coo) coo.value = ''; if(lid) lid.value = ''; }
+    if(level === 'coo') { if(lid) lid.value = ''; }
     
     renderTree();
 }

@@ -1,0 +1,44 @@
+{
+  "admin_email": "andrepencinato@gmail.com",
+  "usuarios": [
+    {
+      "login": "Andre",
+      "senha": "*Savoia10",
+      "nome": "Administrador",
+      "setores": [],
+      "admin": true,
+      "ativo": true
+    },
+    {
+      "login": "Vagner Dutra",
+      "senha": "123@mudar",
+      "nome": "Diretor Industrial",
+      "admin": false,
+      "gestor": true,
+      "setores": [
+        "ALMOXARIFADO",
+        "APOSENTADOS",
+        "COLAGEM DE BORDAS",
+        "CENTRO DE TRABALHO CNC",
+        "CONTROLE DE QUALIDADE",
+        "DESENVOLVIMENTO DE PRODUTOS",
+        "EMPILHADEIRA",
+        "FURAÇÃO",
+        "LINHA DE EMBALAGEM",
+        "LIXAMENTO",
+        "METALURGICA GERAL",
+        "METALURGICA PINTURA",
+        "PINTURA P.U.",
+        "MOTORISTAS",
+        "PINTURA U.V.",
+        "PRENSAGEM",
+        "PRODUÇÃO DE EMBALAGEM",
+        "TAPEÇARIA COLAGEM",
+        "TAPEÇARIA GERAL",
+        "TUPIAS, FRESAS E MARCENARIA",
+        "USINAGEM"
+      ],
+      "ativo": true
+    }
+  ]
+}

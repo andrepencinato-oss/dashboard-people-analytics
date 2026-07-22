@@ -85,8 +85,19 @@
     <header class="p-6 pb-5 border-b border-[var(--line)] flex flex-col gap-5">
       <div>
         <div class="flex justify-between items-center mb-1">
-          <p class="text-[10px] font-semibold tracking-[0.18em] text-[var(--coral)] uppercase">Análise de Absenteísmo</p>
-          <span class="badge badge-navy" style="font-size: 0.65rem;">v2.0.4</span>
+          <p class="text-[10px] font-semibold tracking-[0.18em] text-[var(--coral)] uppercase">Análise de Absentismo</p>
+          <div class="flex items-center gap-1.5">
+            <span class="badge badge-navy" style="font-size: 0.65rem;">v2.1.0</span>
+            <button id="btnAdmin" title="Painel Administrativo"
+              class="p-1.5 rounded-lg hover:bg-[var(--violet-soft)] text-[var(--ink-soft)] hover:text-[#6D28D9] transition-colors hidden"
+              onclick="openAdmin()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <a href="/logout" title="Sair"
+              class="p-1.5 rounded-lg hover:bg-[var(--coral-soft)] text-[var(--ink-soft)] hover:text-[var(--coral)] transition-colors">
+              <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
         </div>
         <h1 class="font-display text-xl lg:text-2xl font-800 text-[var(--ink)] tracking-tight leading-tight">Auditoria de Marcação de Ponto</h1>
       </div>
@@ -194,6 +205,18 @@
   <!-- Fim dos dados -->
     </div>
   </main>
+
+<!-- ======================= OVERLAY: ACESSO NEGADO ======================= -->
+<div id="accessDeniedOverlay" class="fixed inset-0 z-[200] hidden items-center justify-center bg-[var(--bg)]">
+  <div class="text-center flex flex-col items-center gap-4 p-8">
+    <div class="w-20 h-20 rounded-2xl bg-[var(--coral-soft)] flex items-center justify-center">
+      <i data-lucide="shield-x" class="w-10 h-10 text-[var(--coral)]"></i>
+    </div>
+    <h2 class="font-display text-2xl font-800 text-[var(--ink)]">Acesso Não Autorizado</h2>
+    <p class="text-sm text-[var(--ink-soft)] max-w-sm leading-relaxed">Seu e-mail não possui permissão para acessar este sistema. Entre em contato com o administrador.</p>
+    <p id="denied-email" class="text-xs font-semibold text-[var(--coral)] mt-1"></p>
+  </div>
+</div>
 
 <!-- ======================= MODAL DE ERRO DE CSV ======================= -->
 <div id="csvErrorModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-[var(--ink)]/50 backdrop-blur-sm p-4 fade-in">
@@ -482,7 +505,7 @@ document.getElementById('btnSyncDrive').addEventListener('click', function(e) {
     text.textContent = 'Sincronizando...';
     btn.style.pointerEvents = 'none';
     
-    fetch('http://127.0.0.1:5008/api/sync-drive')
+    fetch('/api/sync-drive')
       .then(r => r.json())
       .then(data => {
           if(data.status === 'sucesso') {
@@ -503,8 +526,44 @@ document.getElementById('btnSyncDrive').addEventListener('click', function(e) {
       });
 });
 
-// Iniciar a página
-initDashboard();
+// Iniciar a página com verificação de acesso
+async function checkAccess() {
+  try {
+    const r = await fetch('/api/meu-acesso');
+    const acesso = await r.json();
+
+    if (acesso.acesso_negado) {
+      // Mostra tela de acesso negado
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (acesso.email) {
+        document.getElementById('denied-email').textContent = 'E-mail: ' + acesso.email;
+      }
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      return;
+    }
+
+    // Se admin, exibe o botão de configurações
+    if (acesso.admin) {
+      document.getElementById('btnAdmin').classList.remove('hidden');
+    }
+
+    // Se tem setores restritos, filtra os dados
+    if (acesso.setores && acesso.setores.length > 0) {
+      DATA = DATA.filter(d => acesso.setores.includes(d.setor));
+    }
+  } catch(e) {
+    // Sem backend (modo dev offline) → não bloqueia
+    console.warn('Aviso: não foi possível verificar o acesso.', e);
+  }
+  initDashboard();
+}
+
+function openAdmin() {
+  window.open('/admin', '_blank');
+}
+
+checkAccess();
 
 // Toggle Sidebar Logic
 const sidebar = document.getElementById('sidebar');

@@ -179,13 +179,11 @@
       <thead>
         <tr>
           <th>Centro de custo</th>
-          <th>Diretor</th>
-          <th>Gerente 1</th>
-          <th>Gerente 2</th>
-          <th>Coordenador 1</th>
-          <th>Coordenador 2</th>
-          <th>Líder 1</th>
-          <th>Líder 2</th>
+          <th>Diretoria</th>
+          <th>Gerência</th>
+          <th>Coordenação</th>
+          <th>Liderança</th>
+          <th>Cargos Customizados</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -217,6 +215,44 @@ let costCenters = [];
 let responsaveis = {};
 let saveTimer = null;
 let sourceLabel = 'base enviada (18/07/2026)';
+
+
+function migrateResponsaveis() {
+  for (let cc in responsaveis) {
+    if (!Array.isArray(responsaveis[cc])) {
+      let arr = [];
+      const roleLabels = {'diretor':'Diretor', 'gerente':'Gerente', 'gerente2':'Gerente', 'coordenador':'Coordenador', 'coordenador2':'Coordenador', 'lider':'Líder', 'lider2':'Líder'};
+      for (let k in responsaveis[cc]) {
+        let r = responsaveis[cc][k];
+        if (r) {
+          r.roleKey = k.includes('custom') ? 'custom' : k.replace('2','');
+          r.label = roleLabels[k] || r.roleLabel || 'Gestor';
+          arr.push(r);
+        }
+      }
+      responsaveis[cc] = arr;
+    }
+  }
+}
+
+
+function migrateResponsaveis() {
+  for (let cc in responsaveis) {
+    if (!Array.isArray(responsaveis[cc])) {
+      let arr = [];
+      const roleLabels = {'diretor':'Diretor', 'gerente':'Gerente', 'gerente2':'Gerente', 'coordenador':'Coordenador', 'coordenador2':'Coordenador', 'lider':'Líder', 'lider2':'Líder'};
+      for (let k in responsaveis[cc]) {
+        let r = responsaveis[cc][k];
+        if (r) {
+          r.roleKey = k.includes('custom') ? 'custom' : k.replace('2','');
+          r.label = roleLabels[k] || r.roleLabel || 'Gestor';
+          arr.push(r);
+        }
+      }
+      responsaveis[cc] = arr;
+    }
+  }
+}
 
 function normalize(s){
   return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -287,7 +323,7 @@ function buildCostCenters(emp){
 async function loadResponsaveis(){
   try{
     const r = await window.storage.get('organograma:responsaveis', false);
-    responsaveis = r && r.value ? JSON.parse(r.value) : {};
+    responsaveis = r && r.value ? JSON.parse(r.value) : {}; migrateResponsaveis(); migrateResponsaveis();
   }catch(e){
     responsaveis = {};
   }
@@ -318,25 +354,25 @@ let openEditor = null; // {ccCod, roleKey}
 function renderStats(){
   const total=costCenters.length;
   let done=0;
-  const requiredKeys = ['diretor', 'gerente', 'coordenador', 'lider'];
   costCenters.forEach(cc=>{
     const r=responsaveis[cc.ccCod];
-    if(r && requiredKeys.every(k=>r[k])) done++;
+    if(r && r.length > 0) done++;
   });
   const el=document.getElementById('stats');
   el.innerHTML = `
     <div class="stat"><div class="n">${total}</div><div class="l">centros de custo</div></div>
-    <div class="stat done"><div class="n">${done}</div><div class="l">completos</div></div>
+    <div class="stat done"><div class="n">${done}</div><div class="l">com gestor</div></div>
     <div class="stat pending"><div class="n">${total-done}</div><div class="l">pendentes</div></div>
   `;
   document.getElementById('sourceNote').textContent = `${headcount.length} colaboradores · ${sourceLabel}`;
 }
-
 function assignmentLabel(a){
   if(!a) return '';
   if(a.tipo==='pj') return `${a.nome} · PJ`;
   return a.nome;
 }
+
+
 
 function renderTable(){
   const filter = normalize(document.getElementById('ccFilter').value);
@@ -345,15 +381,14 @@ function renderTable(){
   costCenters
     .filter(cc=> !filter || normalize(cc.ccNome).includes(filter) || cc.ccCod.includes(filter))
     .forEach(cc=>{
-      const r = responsaveis[cc.ccCod] || {};
-      const filledCount = ROLES.filter(role=>r[role.key]).length;
+      const rArr = responsaveis[cc.ccCod] || [];
       const tr=document.createElement('tr');
 
-      const stripHtml = ROLES.map(role=>`<i class="${r[role.key]?'on':''}"></i>`).join('');
+      const filledCount = rArr.length;
       const tdCc=document.createElement('td');
       tdCc.innerHTML = `
         <div class="cc-cell">
-          <div class="strip">${stripHtml}</div>
+          <div class="strip"><i class="${filledCount>0?'on':''}"></i></div>
           <div>
             <div class="cc-name">${cc.ccNome}</div>
             <div class="cc-sub">${cc.ccCod} · ${cc.count} colab.</div>
@@ -361,56 +396,76 @@ function renderTable(){
         </div>`;
       tr.appendChild(tdCc);
 
-      ROLES.forEach(role=>{
+      const groups = [
+        { keys: ['Diretor'], id: 'dir' },
+        { keys: ['Gerente'], id: 'ger' },
+        { keys: ['Coordenador'], id: 'coo' },
+        { keys: ['Líder'], id: 'lid' },
+        { keys: ['Custom'], id: 'custom' }
+      ];
+
+      groups.forEach(g => {
         const td=document.createElement('td');
         td.className='slot';
-        const isOpen = openEditor && openEditor.ccCod===cc.ccCod && openEditor.roleKey===role.key;
-        if(isOpen){
-          td.appendChild(buildEditor(cc, role));
-        } else {
-          const a=r[role.key];
-          if(a){
+        td.style.verticalAlign = 'top';
+
+        const filtered = rArr.filter(r => g.id === 'custom' ? (!['Diretor','Gerente','Coordenador','Líder'].includes(r.label)) : g.keys.includes(r.label));
+        
+        filtered.forEach((a, idx) => {
             const chip=document.createElement('div');
             chip.className='chip';
+            chip.style.marginBottom = '6px';
             chip.innerHTML = `
               <div class="row1">
                 <div class="name">${a.nome}</div>
                 ${a.tipo==='pj' ? '<span class="badge">PJ</span>' : ''}
               </div>
-              ${a.cargo ? `<div class="sub">${a.cargo}</div>` : ''}
+              <div class="sub" style="color:var(--blue);font-weight:600;">${a.label} ${a.cargo ? ' - '+a.cargo : ''}</div>
               <div class="sal">${fmtMoney(a.salario)}</div>
               <button class="rm" title="Remover">×</button>
             `;
             chip.querySelector('.rm').onclick=(ev)=>{
               ev.stopPropagation();
               if(!responsaveis[cc.ccCod]) return;
-              delete responsaveis[cc.ccCod][role.key];
+              responsaveis[cc.ccCod] = responsaveis[cc.ccCod].filter(item => item !== a);
               scheduleSave(); renderStats(); renderTable();
             };
-            chip.onclick=()=>{ openEditor={ccCod:cc.ccCod, roleKey:role.key, query:''}; renderTable(); };
             td.appendChild(chip);
-          } else {
-            const btn=document.createElement('button');
-            btn.className='empty-btn';
-            btn.textContent='+ atribuir';
-            btn.onclick=()=>{ openEditor={ccCod:cc.ccCod, roleKey:role.key, query:''}; renderTable(); };
+        });
+
+        const btn=document.createElement('button');
+        btn.className='empty-btn';
+        btn.textContent = g.id === 'custom' ? '+ cargo custom' : '+ atribuir';
+        btn.onclick=()=>{ 
+            let defaultLabel = g.keys[0];
+            if(g.id === 'custom') defaultLabel = 'Custom';
+            openEditor={ccCod:cc.ccCod, defaultLabel: defaultLabel, query:''}; 
+            renderTable(); 
+        };
+        
+        if (openEditor && openEditor.ccCod===cc.ccCod && openEditor.defaultLabel === (g.id==='custom'?'Custom':g.keys[0])) {
+            td.appendChild(buildEditor(cc));
+        } else {
             td.appendChild(btn);
-          }
         }
+
         tr.appendChild(td);
       });
 
       tbody.appendChild(tr);
     });
 }
-
-function buildEditor(cc, role){
+function buildEditor(cc){
   const wrap=document.createElement('div');
   wrap.className='editor';
+  
+  const customLabelInput = openEditor.defaultLabel === 'Custom' || !['Diretor','Gerente','Coordenador','Líder'].includes(openEditor.defaultLabel) ? 
+    `<input type="text" id="customRoleName" placeholder="Nome do Cargo (Ex: Supervisor)" style="border-color:var(--copper); margin-bottom:8px;">` : '';
 
   if(openEditor.pjMode){
     wrap.innerHTML = `
       <div class="pj-form">
+        ${customLabelInput}
         <label>Nome (PJ)</label>
         <input type="text" id="pjNome" placeholder="Nome completo">
         <label>Salário / valor de contrato</label>
@@ -426,8 +481,12 @@ function buildEditor(cc, role){
       const nome=document.getElementById('pjNome').value.trim();
       const salario=parseFloat(document.getElementById('pjSalario').value)||0;
       if(!nome) return;
-      if(!responsaveis[cc.ccCod]) responsaveis[cc.ccCod]={};
-      responsaveis[cc.ccCod][role.key]={tipo:'pj', nome, salario, cargo:''};
+      let lbl = openEditor.defaultLabel;
+      if(wrap.querySelector('#customRoleName')) {
+         lbl = wrap.querySelector('#customRoleName').value.trim() || 'Supervisor';
+      }
+      if(!responsaveis[cc.ccCod]) responsaveis[cc.ccCod]=[];
+      responsaveis[cc.ccCod].push({tipo:'pj', nome, salario, cargo:'', label: lbl});
       openEditor=null;
       scheduleSave(); renderStats(); renderTable();
     };
@@ -435,11 +494,14 @@ function buildEditor(cc, role){
   }
 
   const query = openEditor.query || '';
-  const q = normalize(query);
-
-  let topOptionsHtml = '';
-  if (role.key === 'diretor') {
-    topOptionsHtml = `
+  
+  let topOptionsHtml = `
+      <div class="pj-option" id="pjOption">
+        <span>+ Pessoa jurídica (PJ) — cadastro manual</span>
+      </div>
+  `;
+  if (openEditor.defaultLabel === 'Diretor') {
+      topOptionsHtml = `
       <div class="pj-option socio-opt" data-nome="Fernando Costa" style="background:var(--blue-soft);color:var(--blue-800);border-bottom:1px solid var(--line);">
         <span>+ Atribuir Fernando Costa (Diretoria)</span>
       </div>
@@ -447,15 +509,10 @@ function buildEditor(cc, role){
         <span>+ Atribuir Daniela Costa (Diretoria)</span>
       </div>
     `;
-  } else {
-    topOptionsHtml = `
-      <div class="pj-option" id="pjOption">
-        <span>+ Pessoa jurídica (PJ) — cadastro manual</span>
-      </div>
-    `;
   }
 
   wrap.innerHTML = `
+    ${customLabelInput}
     <input type="text" id="editorSearch" placeholder="Buscar no headcount..." value="${query.replace(/"/g,'&quot;')}">
     ${topOptionsHtml}
     <div class="opts" id="optsList"></div>
@@ -497,12 +554,12 @@ function buildEditor(cc, role){
         const ccLabel = e.ccNome ? ` · ${e.ccNome}` : '';
         d.innerHTML = `<div class="n">${e.nome}</div><div class="c">${e.cargo}${ccLabel} · ${fmtMoney(e.salario)}</div>`;
         d.onclick=()=>{
-          if(!responsaveis[cc.ccCod]) responsaveis[cc.ccCod]={};
-          if(e.tipo === 'pj') {
-             responsaveis[cc.ccCod][role.key]={tipo:'pj', nome:e.nome, salario:e.salario, cargo:''};
-          } else {
-             responsaveis[cc.ccCod][role.key]={tipo:'clt', cad:e.cad, nome:e.nome, cargo:e.cargo, salario:e.salario};
+          if(!responsaveis[cc.ccCod]) responsaveis[cc.ccCod]=[];
+          let lbl = openEditor.defaultLabel;
+          if(wrap.querySelector('#customRoleName')) {
+             lbl = wrap.querySelector('#customRoleName').value.trim() || 'Supervisor';
           }
+          responsaveis[cc.ccCod].push({tipo:'clt', cad:e.cad, nome:e.nome, cargo:e.cargo, salario:e.salario, label: lbl});
           openEditor=null;
           scheduleSave(); renderStats(); renderTable();
         };
@@ -511,19 +568,16 @@ function buildEditor(cc, role){
     }
   }
 
-  // Initial render
   renderDropdown(query);
 
   const pjOpt = wrap.querySelector('#pjOption');
-  if(pjOpt) {
-    pjOpt.onclick=()=>{ openEditor.pjMode=true; renderTable(); };
-  }
+  if(pjOpt) pjOpt.onclick=()=>{ openEditor.pjMode=true; renderTable(); };
 
   wrap.querySelectorAll('.socio-opt').forEach(el => {
     el.onclick = () => {
       const nome = el.dataset.nome;
-      if(!responsaveis[cc.ccCod]) responsaveis[cc.ccCod]={};
-      responsaveis[cc.ccCod][role.key] = {tipo:'socio', nome: nome, salario: 0, cargo: 'Diretoria'};
+      if(!responsaveis[cc.ccCod]) responsaveis[cc.ccCod]=[];
+      responsaveis[cc.ccCod].push({tipo:'socio', nome: nome, salario: 0, cargo: 'Diretoria', label: 'Diretor'});
       openEditor=null;
       scheduleSave(); renderStats(); renderTable();
     };
@@ -540,7 +594,6 @@ function buildEditor(cc, role){
 
   return wrap;
 }
-
 document.addEventListener('click', (ev)=>{
   if(openEditor && !ev.target.closest('.editor') && !ev.target.closest('.empty-btn') && !ev.target.closest('.chip')){
     openEditor=null; renderTable();
@@ -595,5 +648,10 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 </script>
+
+<footer style="text-align: center; padding: 20px; font-size: 12px; color: var(--ink-faint); font-family: var(--font-mono);">
+  v2.0.7 &middot; Organograma Tool
+</footer>
+
 </body>
 </html>

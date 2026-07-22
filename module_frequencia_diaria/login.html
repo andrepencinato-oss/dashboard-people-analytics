@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>People Analytics - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #1f2937;
+        }
+
+        .login-container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-area h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .logo-area p {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            outline: none;
+            transition: border-color 0.15s ease-in-out;
+        }
+
+        .form-group input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #111827;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:hover {
+            background-color: #374151;
+        }
+
+        .error-message {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="logo-area">
+            <h1>Acesso Restrito</h1>
+            <p>People Analytics - Frequência</p>
+        </div>
+
+        <div class="error-message" id="errorMsg">
+            Usuário ou senha incorretos.
+        </div>
+
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="login">Usuário</label>
+                <input type="text" id="login" name="login" placeholder="Seu login" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input type="password" id="senha" name="senha" placeholder="Sua senha" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn-submit">Entrar</button>
+        </form>
+    </div>
+
+    <script>
+        // Check if URL has ?error=1
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === '1') {
+            document.getElementById('errorMsg').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

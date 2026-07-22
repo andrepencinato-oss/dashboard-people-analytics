@@ -12,35 +12,7 @@ else:
     app_root = os.path.dirname(os.path.abspath(__file__))
     current_dir = app_root
 
-# ── Verificação de senha (ANTES do redirecionamento de logs) ──
-if __name__ == '__main__':
-    vbs_script = 'WScript.Echo InputBox("Digite a senha para iniciar o sistema:", "Autenticação", "")'
-    vbs_path = os.path.join(app_root, 'prompt.vbs')
-    try:
-        with open(vbs_path, 'w', encoding='utf-8') as f:
-            f.write(vbs_script)
-        # CREATE_NO_WINDOW = 0x08000000
-        result = subprocess.run(['cscript', '//nologo', vbs_path], capture_output=True, text=True, creationflags=0x08000000)
-        _password = result.stdout.strip()
-    except Exception:
-        _password = ""
-    finally:
-        if os.path.exists(vbs_path):
-            try: os.remove(vbs_path)
-            except: pass
 
-    if _password != "*Savoia10":
-        if _password != "":
-            vbs_err = 'MsgBox "Senha incorreta!", 16, "Erro"'
-            try:
-                with open(vbs_path, 'w', encoding='utf-8') as f:
-                    f.write(vbs_err)
-                subprocess.run(['wscript', '//nologo', vbs_path], creationflags=0x08000000)
-                if os.path.exists(vbs_path):
-                    os.remove(vbs_path)
-            except:
-                pass
-        sys.exit(0)
 
 # ── Redirecionamento de logs ──────────────────────────────────
 log_file = os.path.join(app_root, 'launcher.log')

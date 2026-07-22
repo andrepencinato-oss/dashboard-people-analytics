@@ -11,11 +11,11 @@ from googleapiclient.http import MediaIoBaseDownload
 
 def get_drive_service():
     import sys
-    if getattr(sys, 'frozen', False):
-        base_dir = sys._MEIPASS
-    else:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    creds_path = os.path.join(base_dir, 'core', 'token.json')
+    
+    # Busca o token no LOCALAPPDATA onde o app_frequencia.py salva
+    core_data_dir = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'PeopleAnalytics', 'core')
+    creds_path = os.path.join(core_data_dir, 'token.json')
+    
     if not os.path.exists(creds_path):
         return None
     creds = Credentials.from_authorized_user_file(creds_path)
@@ -30,11 +30,20 @@ def check_and_download_update():
     if getattr(sys, 'frozen', False):
         base_dir = sys._MEIPASS
         app_root = os.path.dirname(sys.executable)
+        app_name = os.path.basename(sys.executable).replace('.exe', '')
     else:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         app_root = base_dir
+        app_name = "source"
+
     ota_config_path = os.path.join(base_dir, 'core', 'ota_config.json')
-    version_path = os.path.join(base_dir, 'core', 'version.json')
+    version_path = os.path.join(base_dir, 'core', f'version_{app_name}.json')
+    
+    # Fallback para o arquivo genérico caso o específico não exista localmente ainda
+    if not os.path.exists(version_path):
+        fallback_path = os.path.join(base_dir, 'core', 'version.json')
+        if os.path.exists(fallback_path):
+            version_path = fallback_path
     
     if not os.path.exists(ota_config_path):
         return False
@@ -56,8 +65,8 @@ def check_and_download_update():
     if not service:
         return False
 
-    # Checar version.json no drive
-    query = f"'{folder_id}' in parents and name='version.json' and trashed=false"
+    # Checar version_{app_name}.json no drive
+    query = f"'{folder_id}' in parents and name='version_{app_name}.json' and trashed=false"
     results = service.files().list(q=query, fields="files(id, name)").execute()
     items = results.get('files', [])
     
@@ -83,12 +92,12 @@ def check_and_download_update():
         print(f"\n[OTA UPDATE] Nova versao detectada: {remote_version} (Atual: {current_version})")
         print("[OTA UPDATE] Iniciando download silencioso...")
         
-        query = f"'{folder_id}' in parents and name='update.zip' and trashed=false"
+        query = f"'{folder_id}' in parents and name='update_{app_name}.zip' and trashed=false"
         results = service.files().list(q=query, fields="files(id, name)").execute()
         items = results.get('files', [])
         
         if not items:
-            print("[OTA UPDATE] Arquivo update.zip nao encontrado no Drive. Abortando update.")
+            print(f"[OTA UPDATE] Arquivo update_{app_name}.zip nao encontrado no Drive. Abortando update.")
             return False
             
         zip_file_id = items[0]['id']

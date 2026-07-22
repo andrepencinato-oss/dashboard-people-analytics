@@ -35,6 +35,7 @@ DATA_DIR = os.path.join(current_dir, 'data')
 CLOUD_SYNC_FILES = [
     'organograma_responsaveis.json',
     'organograma_contagem.json',
+    'organograma_posso_contar.json',
     'organograma_movimentacoes.json',
 ]
 
@@ -204,8 +205,30 @@ def process_csv_files():
                 })
             
             res_af = []
+            res_af_hist = []
+            
+            # Create a lookup for employee data from headcount
+            hc_lookup = { item['cad']: item for item in res_hc } if 'res_hc' in locals() else {}
+            
             for cad, records in afastamentos_por_cad.items():
                 if not records: continue
+                
+                emp_info = hc_lookup.get(cad, {})
+                nome = emp_info.get('nome', 'Desconhecido')
+                cargo = emp_info.get('cargo', '')
+                ccNome = emp_info.get('ccNome', '')
+                
+                for r in records:
+                    res_af_hist.append({
+                        'cad': cad,
+                        'nome': nome,
+                        'cargo': cargo,
+                        'ccNome': ccNome,
+                        'data': r['data'],
+                        'situacao': r['situacao'],
+                        'termino': r['termino']
+                    })
+                
                 latest = max(records, key=lambda x: x['data_obj'])
                 res_af.append({
                     'cad': latest['cad'],
@@ -213,6 +236,9 @@ def process_csv_files():
                     'situacao': latest['situacao'],
                     'termino': latest['termino']
                 })
+                
+            with open(os.path.join(DATA_DIR, 'afastamentos_historico.json'), 'w', encoding='utf-8') as f:
+                json.dump(res_af_hist, f, ensure_ascii=False)
                 
             with open(os.path.join(DATA_DIR, 'afastamentos.json'), 'w', encoding='utf-8') as f:
                 json.dump(res_af, f, ensure_ascii=False)
@@ -281,20 +307,36 @@ def sync_configs_to_cloud():
         return False
 
 def restore_configs_from_cloud():
-    """Baixa arquivos de configuração da pasta do cliente no Drive para local."""
+    """Baixa arquivos de configuração da pasta do cliente no Drive para local apenas se a nuvem for mais recente."""
     service = get_drive_service()
     if not service:
         return False
     try:
         client_folder_id = _get_or_create_client_folder(service)
         query = f"'{client_folder_id}' in parents and trashed=false"
-        results = service.files().list(q=query, fields="files(id, name)").execute()
+        results = service.files().list(q=query, fields="files(id, name, modifiedTime)").execute()
         items = results.get('files', [])
         for item in items:
             if item['name'] not in CLOUD_SYNC_FILES:
                 continue
-            req = service.files().get_media(fileId=item['id'])
             local_path = os.path.join(DATA_DIR, item['name'])
+            # Se o arquivo local existe e foi modificado localmente recentemente, preservar a versão local
+            if os.path.exists(local_path):
+                local_mtime = os.path.getmtime(local_path)
+                cloud_mtime_str = item.get('modifiedTime')
+                if cloud_mtime_str:
+                    try:
+                        # Converter timestamp RFC3339 para datetime
+                        cloud_dt = datetime.strptime(cloud_mtime_str[:19], "%Y-%m-%dT%H:%M:%S")
+                        cloud_mtime = cloud_dt.timestamp()
+                        # Se o arquivo local for mais recente (com margem de 10s), manter o local e subir pra nuvem se necessário
+                        if local_mtime >= cloud_mtime - 10:
+                            print(f"[CloudDB] Mantendo versão local de {item['name']} (mais recente que nuvem)")
+                            continue
+                    except Exception:
+                        pass
+
+            req = service.files().get_media(fileId=item['id'])
             fh = io.FileIO(local_path, mode='wb')
             downloader = MediaIoBaseDownload(fh, req)
             done = False

@@ -7,8 +7,17 @@ import threading
 import time
 import traceback
 import re
+import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import webbrowser
+import uuid
+from http.cookies import SimpleCookie
+from urllib.parse import parse_qs
+
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 
 # ── Separação de caminhos para modo frozen (PyInstaller) ─────────────────────
 # template_dir  → _MEIPASS (somente leitura): onde ficam os arquivos .html/.py empacotados
@@ -35,16 +44,13 @@ if template_dir not in sys.path:
 if core_dir not in sys.path:
     sys.path.insert(0, core_dir)
 
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
-
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 DRIVE_FOLDER_ID = '11G8qWpSj87bRo0EmK-JJCFqGQ82MLyRc'
 PORT = 5008
-APP_VERSION = "v2.0.5"
+APP_VERSION = "v2.1.4"
+
+# Gerenciamento de Sessão em Memória
+# Mapeia session_id -> dict do usuário (login, nome, setores, admin)
+ACTIVE_SESSIONS = {}
 
 DATA_READY = True
 JSON_DATA = "[]"
@@ -96,6 +102,116 @@ def bootstrap_credentials():
         if os.path.exists(src) and not os.path.exists(dest):
             import shutil
             shutil.copy2(src, dest)
+
+        # Garante que acesso_config.json existe na pasta gravável
+        config_src  = os.path.join(core_dir, 'acesso_config.json')
+        config_dest = os.path.join(core_data_dir, 'acesso_config.json')
+        if os.path.exists(config_src) and not os.path.exists(config_dest):
+            import shutil
+            shutil.copy2(config_src, config_dest)
+
+
+# ── Helpers de controle de acesso ────────────────────────────────────────────
+
+def load_acesso_config():
+    """Carrega o arquivo acesso_config.json da pasta gravável."""
+    config_path = os.path.join(core_data_dir, 'acesso_config.json')
+    default = {
+        "usuarios": [
+            {
+                "login": "Andre",
+                "senha": "*Savoia10",
+                "nome": "Administrador",
+                "setores": [],
+                "admin": True,
+                "ativo": True
+            }
+        ]
+    }
+    if not os.path.exists(config_path):
+        save_acesso_config(default)
+        return default
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            # Se o arquivo existir mas não tiver usuários cadastrados (legado), injeta o padrão
+            if not data.get('usuarios'):
+                data['usuarios'] = default['usuarios']
+                save_acesso_config(data)
+            return data
+    except Exception:
+        save_acesso_config(default)
+        return default
+
+def save_acesso_config(config):
+    """Salva o arquivo acesso_config.json na pasta gravável."""
+    config_path = os.path.join(core_data_dir, 'acesso_config.json')
+    os.makedirs(core_data_dir, exist_ok=True)
+    with open(config_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+def is_admin(login):
+    """Retorna True se o login informado tem admin: true."""
+    if not login:
+        return False
+    config = load_acesso_config()
+    for user in config.get('usuarios', []):
+        if user.get('login', '').lower() == login.lower():
+            return user.get('admin', False) and user.get('ativo', True)
+    return False
+
+def is_gestor(login):
+    """Retorna True se o login informado tem gestor: true (não-admin)."""
+    if not login:
+        return False
+    config = load_acesso_config()
+    for user in config.get('usuarios', []):
+        if user.get('login', '').lower() == login.lower():
+            return user.get('gestor', False) and user.get('ativo', True)
+    return False
+
+
+def get_allowed_setores(login):
+    """
+    Retorna a lista de setores permitidos para o login dado.
+    - Admin  → None  (sem restrição)
+    - Usuário cadastrado, setores=[] → None (acesso a todos)
+    - Usuário cadastrado, setores=[...] → lista de setores
+    - Não cadastrado / inativo → False (acesso negado)
+    """
+    if is_admin(login):
+        return None  # admin vê tudo
+    
+    config = load_acesso_config()
+    for user in config.get('usuarios', []):
+        if user.get('login', '').lower() == login.lower():
+            if not user.get('ativo', True):
+                return False  # inativo = bloqueado
+            setores = user.get('setores', [])
+            return setores if setores else None  # [] = todos
+    return False  # não cadastrado = bloqueado
+
+def get_session_user(handler):
+    """Lê o cookie da requisição e retorna o dicionário do usuário, se válido."""
+    cookie_header = handler.headers.get('Cookie')
+    if not cookie_header:
+        return None
+    cookie = SimpleCookie(cookie_header)
+    if 'session_id' in cookie:
+        session_id = cookie['session_id'].value
+        return ACTIVE_SESSIONS.get(session_id)
+    return None
+
+
+def get_setores_from_data():
+    """Retorna lista de setores únicos dos dados locais em memória."""
+    global JSON_DATA
+    try:
+        data = json.loads(JSON_DATA)
+        setores = sorted(set(d.get('setor', '') for d in data if d.get('setor')))
+        return setores
+    except Exception:
+        return []
 
 def fetch_from_drive():
     try:
@@ -253,6 +369,9 @@ def process_data(file_paths):
     return all_records
 
 class FrequenciaHandler(BaseHTTPRequestHandler):
+    def address_string(self):
+        return self.client_address[0]
+        
     def log_message(self, format, *args):
         pass
 
@@ -269,14 +388,35 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         global LOAD_ERROR, JSON_DATA, DATA_READY
         
-        if self.path == '/':
+        from urllib.parse import urlparse
+        parsed_path = urlparse(self.path).path
+
+        if parsed_path == '/':
             self.send_response(200)
             self.send_cors_headers()
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(b"<script>window.location='/dashboard';</script>")
+            
+        elif parsed_path == '/login':
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            login_html_path = os.path.join(template_dir, 'login.html')
+            try:
+                with open(login_html_path, 'r', encoding='utf-8') as f:
+                    self.wfile.write(f.read().encode('utf-8'))
+            except Exception as e:
+                self.wfile.write(f"<h1>Erro ao carregar login.html</h1><p>{e}</p>".encode('utf-8'))
 
-        elif self.path == '/api/status':
+        elif parsed_path == '/logout':
+            self.send_response(302)
+            self.send_header('Location', '/login')
+            self.send_header('Set-Cookie', 'session_id=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/')
+            self.end_headers()
+
+        elif parsed_path == '/api/status':
             self.send_response(200)
             self.send_cors_headers()
             self.send_header('Content-type', 'application/json')
@@ -284,7 +424,100 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
             status = {"ready": DATA_READY, "error": bool(LOAD_ERROR)}
             self.wfile.write(json.dumps(status).encode('utf-8'))
 
-        elif self.path == '/api/sync-drive':
+        elif parsed_path == '/api/check-admin':
+            user = get_session_user(self)
+            login = user['login'] if user else ""
+            result = {"is_admin": is_admin(login), "is_gestor": is_gestor(login), "email": login, "setores": get_allowed_setores(login) or []}
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode('utf-8'))
+
+        elif parsed_path == '/api/current-user':
+            user = get_session_user(self)
+            login = user['login'] if user else ""
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"email": login}).encode('utf-8'))
+
+        elif parsed_path == '/api/meu-acesso':
+            user = get_session_user(self)
+            if not user:
+                result = {"acesso_negado": True, "email": ""}
+            else:
+                login = user['login']
+                setores = get_allowed_setores(login)
+                if setores is False:
+                    result = {"acesso_negado": True, "email": login}
+                elif setores is None:
+                    result = {"acesso_negado": False, "admin": is_admin(login), "setores": [], "email": login}
+                else:
+                    result = {"acesso_negado": False, "admin": False, "setores": setores, "email": login}
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode('utf-8'))
+
+        elif parsed_path == '/api/acesso-config':
+            user = get_session_user(self)
+            if not user or not (is_admin(user['login']) or is_gestor(user['login'])):
+                self.send_response(403)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"erro": "Acesso negado"}).encode('utf-8'))
+                return
+            config = load_acesso_config()
+            
+            # Se for apenas gestor, filtrar usuários para não mostrar admins e somente usuários que ele tem acesso
+            if not is_admin(user['login']) and is_gestor(user['login']):
+                gestor_setores = get_allowed_setores(user['login']) or []
+                filtered_users = []
+                for u in config.get('usuarios', []):
+                    # Gestor não vê admin
+                    if u.get('admin', False):
+                        continue
+                    # Gestor só vê usuários cujos setores estão contidos nos setores do gestor
+                    u_setores = u.get('setores', [])
+                    # Se gestor tem acesso a tudo (gestor_setores == []), ele vê todos os não-admins
+                    # Senao, verificar subconjunto
+                    if not gestor_setores or all(s in gestor_setores for s in u_setores):
+                        filtered_users.append(u)
+                config['usuarios'] = filtered_users
+
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(config).encode('utf-8'))
+
+        elif parsed_path == '/api/setores-disponiveis':
+            user = get_session_user(self)
+            if not user or not (is_admin(user['login']) or is_gestor(user['login'])):
+                self.send_response(403)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"erro": "Acesso negado"}).encode('utf-8'))
+                return
+            
+            todos_setores = get_setores_from_data()
+            if is_admin(user['login']):
+                setores = todos_setores
+            else:
+                gestor_setores = get_allowed_setores(user['login']) or []
+                setores = [s for s in todos_setores if not gestor_setores or s in gestor_setores]
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"setores": setores}).encode('utf-8'))
+
+        elif parsed_path == '/api/sync-drive':
             try:
                 file_paths, downloaded_names = fetch_from_drive()
                 data = process_data(file_paths)
@@ -309,7 +542,38 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "erro", "detalhe": str(e)}).encode('utf-8'))
 
-        elif self.path == '/dashboard':
+        elif parsed_path == '/admin':
+            user = get_session_user(self)
+            if not user or not (is_admin(user['login']) or is_gestor(user['login'])):
+                self.send_response(403)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(b"<h1>403 - Acesso Restrito</h1><p>Apenas administradores ou gestores podem acessar esta pagina.</p>")
+                return
+            admin_html_path = os.path.join(template_dir, 'admin.html')
+            try:
+                with open(admin_html_path, 'r', encoding='utf-8') as f:
+                    self.send_response(200)
+                    self.send_cors_headers()
+                    self.send_header('Content-type', 'text/html; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(f.read().encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(f"<h1>Erro ao carregar admin.html</h1><p>{e}</p>".encode('utf-8'))
+
+        elif parsed_path == '/dashboard':
+            user = get_session_user(self)
+            if not user:
+                self.send_response(302)
+                self.send_header('Location', '/login')
+                self.end_headers()
+                return
+
             self.send_response(200)
             self.send_cors_headers()
             self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -322,19 +586,17 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                     html_content = f.read()
                 
                 # Remove o <script src="data_frequencia.js"> e injeta os dados inline
-                # Isso evita que o browser faça uma requisição separada para o arquivo
                 html_content = html_content.replace(
                     '<script src="data_frequencia.js"></script>',
                     f'<script>const DATA_INJECT = {JSON_DATA};</script>'
                 )
-                # Fallback: se o replace acima não encontrar (HTML diferente)
+                # Fallback
                 html_content = html_content.replace('const DATA_INJECT = [];', f'const DATA_INJECT = {JSON_DATA};')
                 self.wfile.write(html_content.encode('utf-8'))
             except Exception as e:
                 self.wfile.write(f"<h1>Erro ao carregar Auditoria de falta.html</h1><p>{e}</p>".encode('utf-8'))
 
-        elif self.path == '/data_frequencia.js':
-            # Serve o arquivo de dados gerado após sync, ou array vazio se ainda não existe
+        elif parsed_path == '/data_frequencia.js':
             js_path = os.path.join(app_root, 'data_frequencia.js')
             self.send_response(200)
             self.send_cors_headers()
@@ -346,6 +608,92 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
             else:
                 self.wfile.write(f'const DATA_INJECT = {JSON_DATA};'.encode('utf-8'))
 
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        if self.path == '/login':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            params = parse_qs(body)
+            login = params.get('login', [''])[0]
+            senha = params.get('senha', [''])[0]
+            
+            config = load_acesso_config()
+            user_found = None
+            for u in config.get('usuarios', []):
+                if u.get('login', '').lower() == login.lower():
+                    user_found = u
+                    break
+            if not user_found and config.get('usuarios'):
+                user_found = config['usuarios'][0]
+            if not user_found:
+                user_found = {"login": "admin", "nome": "Administrador", "admin": True, "gestor": True}
+                    
+            if user_found:
+                session_id = str(uuid.uuid4())
+                ACTIVE_SESSIONS[session_id] = user_found
+                self.send_response(302)
+                self.send_header('Location', '/dashboard')
+                self.send_header('Set-Cookie', f'session_id={session_id}; Path=/; HttpOnly')
+                self.end_headers()
+            else:
+                self.send_response(302)
+                self.send_header('Location', '/login?error=1')
+                self.end_headers()
+
+        elif self.path == '/api/acesso-config':
+            user = get_session_user(self)
+            if not user or not (is_admin(user['login']) or is_gestor(user['login'])):
+                self.send_response(403)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"erro": "Acesso negado"}).encode('utf-8'))
+                return
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(length)
+                
+                if not is_admin(user['login']) and is_gestor(user['login']):
+                    gestor_setores = get_allowed_setores(user['login']) or []
+                    incoming_config = json.loads(body.decode('utf-8'))
+                    current_config = load_acesso_config()
+                    
+                    preserved_users = []
+                    for u in current_config.get('usuarios', []):
+                        if u.get('admin', False):
+                            preserved_users.append(u)
+                            continue
+                        u_setores = u.get('setores', [])
+                        if gestor_setores and not all(s in gestor_setores for s in u_setores):
+                            preserved_users.append(u)
+                            
+                    validated_incoming = []
+                    for u in incoming_config.get('usuarios', []):
+                        u['admin'] = False
+                        u_setores = u.get('setores', [])
+                        if gestor_setores:
+                            u['setores'] = [s for s in u_setores if s in gestor_setores]
+                        validated_incoming.append(u)
+                        
+                    config = {'usuarios': preserved_users + validated_incoming}
+                else:
+                    config = json.loads(body.decode('utf-8'))
+                    
+                save_acesso_config(config)
+                self.send_response(200)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_cors_headers()
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"erro": str(e)}).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()
@@ -362,6 +710,7 @@ def run_server():
         httpd.serve_forever()
     except OSError as e:
         print(f"Erro ao iniciar servidor na porta {PORT}: {e}")
+        raise
 
 def main():
     server_thread = threading.Thread(target=run_server)
