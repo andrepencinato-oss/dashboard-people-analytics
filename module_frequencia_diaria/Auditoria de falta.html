@@ -399,6 +399,31 @@ function renderDashboard() {
     else s.atrasos++;
   });
 
+  // Determinar a categoria base para o cálculo percentual (Falta por padrão)
+  const metricCategory = (activeGlobalFilter === 'Afastamento' || activeGlobalFilter === 'Atraso') ? activeGlobalFilter : 'Falta';
+  
+  let baseTotal = 0;
+  let metricLabel = 'Faltas';
+  let metricBadgeBg = 'var(--coral-soft)';
+  let metricBadgeFg = 'var(--coral)';
+
+  if (metricCategory === 'Afastamento') {
+    baseTotal = totalAfastamentos;
+    metricLabel = 'Afastados';
+    metricBadgeBg = 'var(--amber-soft)';
+    metricBadgeFg = 'var(--amber)';
+  } else if (metricCategory === 'Atraso') {
+    baseTotal = totalAtrasos;
+    metricLabel = 'Atrasados';
+    metricBadgeBg = 'var(--emerald-soft)';
+    metricBadgeFg = 'var(--emerald)';
+  } else {
+    baseTotal = totalFaltasNJ;
+    metricLabel = 'Faltas';
+    metricBadgeBg = 'var(--coral-soft)';
+    metricBadgeFg = 'var(--coral)';
+  }
+
   const setores = Object.values(setorMap).sort((a,b) => {
     if(b.faltas !== a.faltas) return b.faltas - a.faltas;
     return (b.afastamentos) - (a.afastamentos);
@@ -411,22 +436,35 @@ function renderDashboard() {
     const pctFalta = (s.faltas / maxFaltas) * 100;
     const pctOutros = (s.afastamentos / maxFaltas) * 100;
     
+    let targetCount = s.faltas;
+    if (metricCategory === 'Afastamento') targetCount = s.afastamentos;
+    else if (metricCategory === 'Atraso') targetCount = s.atrasos;
+
+    const pctVal = baseTotal > 0 ? ((targetCount / baseTotal) * 100).toFixed(1) : '0.0';
+    
     return `
-    <div class="border border-[var(--line)] rounded-xl p-4 fade-in hover:border-[var(--coral-soft)] transition-colors cursor-pointer" onclick="filterBySector('${s.setor}')">
-      <div class="flex items-center justify-between gap-2">
-        <p class="font-semibold text-sm truncate" title="${s.setor}">${s.setor}</p>
-        <span class="text-xs font-bold ${s.faltas > 0 ? 'text-[var(--coral)]' : 'text-[var(--ink-soft)]'} tabular shrink-0">${s.total} Reg.</span>
+    <div class="border border-[var(--line)] rounded-xl p-4 fade-in hover:border-[var(--coral-soft)] transition-colors cursor-pointer flex flex-col justify-between" onclick="filterBySector('${s.setor}')">
+      <div>
+        <div class="flex items-center justify-between gap-2">
+          <p class="font-semibold text-sm truncate" title="${s.setor}">${s.setor}</p>
+          <span class="text-xs font-bold ${s.faltas > 0 ? 'text-[var(--coral)]' : 'text-[var(--ink-soft)]'} tabular shrink-0">${s.total} Reg.</span>
+        </div>
+        
+        <div class="sector-bar mt-2.5">
+          <div class="bar-falta" style="width:${pctFalta}%" title="${s.faltas} Faltas"></div>
+          <div class="bar-outros" style="width:${pctOutros}%" title="${s.afastamentos} Afastamentos"></div>
+        </div>
+        
+        <div class="flex flex-wrap gap-1.5 mt-3">
+          ${s.faltas ? `<span class="badge badge-coral"><i data-lucide="user-x" class="w-3 h-3"></i>Faltas · ${s.faltas}</span>` : ''}
+          ${motivosHtml}
+          ${s.atrasos ? `<span class="badge badge-emerald"><i data-lucide="clock" class="w-3 h-3"></i>Atrasos · ${s.atrasos}</span>` : ''}
+        </div>
       </div>
-      
-      <div class="sector-bar mt-2.5">
-        <div class="bar-falta" style="width:${pctFalta}%" title="${s.faltas} Faltas"></div>
-        <div class="bar-outros" style="width:${pctOutros}%" title="${s.afastamentos} Afastamentos"></div>
-      </div>
-      
-      <div class="flex flex-wrap gap-1.5 mt-3">
-        ${s.faltas ? `<span class="badge badge-coral"><i data-lucide="user-x" class="w-3 h-3"></i>Faltas · ${s.faltas}</span>` : ''}
-        ${motivosHtml}
-        ${s.atrasos ? `<span class="badge badge-emerald"><i data-lucide="clock" class="w-3 h-3"></i>Atrasos · ${s.atrasos}</span>` : ''}
+
+      <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--line)]">
+        <span class="text-[10px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide">% em ${metricLabel}</span>
+        <span class="px-2 py-0.5 rounded-md text-xs font-bold tabular" style="background:${metricBadgeBg}; color:${metricBadgeFg}">${pctVal}%</span>
       </div>
     </div>`;
   }).join('');
