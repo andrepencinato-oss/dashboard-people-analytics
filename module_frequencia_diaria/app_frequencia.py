@@ -625,19 +625,19 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
             params = parse_qs(body)
-            login = params.get('login', [''])[0]
-            senha = params.get('senha', [''])[0]
+            login = params.get('login', [''])[0].strip()
+            senha = params.get('senha', [''])[0].strip()
             
             config = load_acesso_config()
             user_found = None
-            for u in config.get('usuarios', []):
-                if u.get('login', '').lower() == login.lower():
-                    user_found = u
-                    break
-            if not user_found and config.get('usuarios'):
-                user_found = config['usuarios'][0]
-            if not user_found:
-                user_found = {"login": "admin", "nome": "Administrador", "admin": True, "gestor": True}
+            if login and senha:
+                for u in config.get('usuarios', []):
+                    u_login = u.get('login', '').strip()
+                    u_senha = u.get('senha', '').strip()
+                    u_ativo = u.get('ativo', True)
+                    if u_login.lower() == login.lower() and u_senha == senha and u_ativo:
+                        user_found = u
+                        break
                     
             if user_found:
                 session_id = str(uuid.uuid4())
