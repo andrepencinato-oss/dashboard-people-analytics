@@ -12,10 +12,18 @@ from googleapiclient.http import MediaIoBaseDownload
 def get_drive_service():
     import sys
     
-    # Busca o token no LOCALAPPDATA onde o app_frequencia.py salva
+    # 1. Busca no LOCALAPPDATA onde o app_frequencia.py salva
     core_data_dir = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'PeopleAnalytics', 'core')
     creds_path = os.path.join(core_data_dir, 'token.json')
     
+    # 2. Fallbacks de localizacao caso o LOCALAPPDATA ainda nao tenha sido populado
+    if not os.path.exists(creds_path):
+        if getattr(sys, 'frozen', False):
+            creds_path = os.path.join(sys._MEIPASS, 'core', 'token.json')
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            creds_path = os.path.join(base_dir, 'core', 'token.json')
+
     if not os.path.exists(creds_path):
         return None
     creds = Credentials.from_authorized_user_file(creds_path)
@@ -88,7 +96,13 @@ def check_and_download_update():
     except:
         return False
 
-    if remote_version and remote_version > current_version:
+    def parse_version(v_str):
+        try:
+            return tuple(map(int, v_str.strip().split('.')))
+        except Exception:
+            return (0, 0, 0)
+
+    if remote_version and parse_version(remote_version) > parse_version(current_version):
         print(f"\n[OTA UPDATE] Nova versao detectada: {remote_version} (Atual: {current_version})")
         print("[OTA UPDATE] Iniciando download silencioso...")
         

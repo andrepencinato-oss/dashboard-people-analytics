@@ -77,7 +77,7 @@ def run_git(args):
 def git_release():
     print(f"\n[GIT] Automatizando commit e tag no GitHub...")
     run_git(['add', '.'])
-    commit_msg = f"Release v{VERSION} - Atualizacao dos percentuais por centro de custo/setor"
+    commit_msg = f"Release v{VERSION} - Correcao de OTA updater fallback e badge v2.1.6"
     run_git(['commit', '-m', commit_msg])
     
     tag_name = f'v{VERSION}'
@@ -92,7 +92,7 @@ def git_release():
         print(f"[GIT] Tag e commits criados localmente.")
 
 def main():
-    print(f"=== INICIANDO PUBLICAÇÃO OTA V{VERSION} ===")
+    print(f"=== RE-PUBLICANDO OTA V{VERSION} ===")
     update_version_files()
     
     ota_config_path = os.path.join(PROJECT_ROOT, 'core', 'ota_config.json')
@@ -129,7 +129,7 @@ def main():
     
     git_release()
     
-    print(f"\n[SUCESSO] OTA Release v{VERSION} publicada no Drive e GitHub com sucesso!")
+    print(f"\n[SUCESSO] OTA Release v{VERSION} atualizada e publicada no Drive e GitHub com sucesso!")
 
 if __name__ == '__main__':
     main()
