@@ -104,6 +104,14 @@ def wait_and_open_browser():
     open_browser_smart(URL)
 
 
+def kill_port_5008():
+    """Mata qualquer processo antigo pendurado na porta 5008."""
+    try:
+        cmd = 'for /f "tokens=5" %a in (\'netstat -aon ^| findstr :5008\') do taskkill /f /pid %a'
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
 # ── OTA Bootloader ───────────────────────────────────────────
 def check_ota():
     try:
@@ -113,12 +121,19 @@ def check_ota():
             bat_path = os.path.join(app_root, "apply_update.bat")
 
             if getattr(sys, 'frozen', False):
-                exe_command = f'start "" "{os.path.basename(sys.executable)}"'
+                exe_name = os.path.basename(sys.executable)
+                exe_command = f'start "" "{exe_name}"'
+                kill_exe_cmd = f'taskkill /f /im "{exe_name}" > nul 2>&1'
             else:
+                exe_name = "python.exe"
                 exe_command = 'start "" "python" "module_frequencia_diaria\\launcher.py"'
+                kill_exe_cmd = 'echo.'
 
             bat_content = f"""@echo off
-ping 127.0.0.1 -n 4 > nul
+ping 127.0.0.1 -n 3 > nul
+{kill_exe_cmd}
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5008') do taskkill /f /pid %%a > nul 2>&1
+ping 127.0.0.1 -n 2 > nul
 xcopy /s /y /q "{update_stage}\\*" "{app_root}\\"
 rmdir /s /q "{update_stage}"
 cd /d "{app_root}"
@@ -144,7 +159,10 @@ if __name__ == '__main__':
         # 1. Checar atualizações OTA
         check_ota()
 
-        # 2. Iniciar servidor em thread daemon
+        # 2. Garantir porta 5008 livre de instâncias antigas
+        kill_port_5008()
+
+        # 3. Iniciar servidor em thread daemon
         server_thread = threading.Thread(target=run_server, daemon=True)
         server_thread.start()
 

@@ -77,7 +77,7 @@ def run_git(args):
 def git_release():
     print(f"\n[GIT] Automatizando commit e tag no GitHub...")
     run_git(['add', '.'])
-    commit_msg = f"Release v{VERSION} - Correcao de OTA updater fallback e badge v2.1.6"
+    commit_msg = f"Release v{VERSION} - Adicionar liberacao forçada de processos antigos no launcher"
     run_git(['commit', '-m', commit_msg])
     
     tag_name = f'v{VERSION}'
@@ -129,7 +129,7 @@ def main():
     
     git_release()
     
-    print(f"\n[SUCESSO] OTA Release v{VERSION} atualizada e publicada no Drive e GitHub com sucesso!")
+    print(f"\n[SUCESSO] OTA Release v{VERSION} atualizada com kill-process logic!")
 
 if __name__ == '__main__':
     main()
