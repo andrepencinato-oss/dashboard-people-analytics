@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-VERSION = "2.1.6"
+VERSION = "2.1.7"
 
 def update_version_files():
     v_data = {"version": VERSION}
@@ -77,7 +77,7 @@ def run_git(args):
 def git_release():
     print(f"\n[GIT] Automatizando commit e tag no GitHub...")
     run_git(['add', '.'])
-    commit_msg = f"Release v{VERSION} - Adicionar liberacao forçada de processos antigos no launcher"
+    commit_msg = f"Release v{VERSION} - Bump de versão para forçar atualização OTA com % por setor"
     run_git(['commit', '-m', commit_msg])
     
     tag_name = f'v{VERSION}'
@@ -92,7 +92,7 @@ def git_release():
         print(f"[GIT] Tag e commits criados localmente.")
 
 def main():
-    print(f"=== RE-PUBLICANDO OTA V{VERSION} ===")
+    print(f"=== PUBLICANDO OTA V{VERSION} ===")
     update_version_files()
     
     ota_config_path = os.path.join(PROJECT_ROOT, 'core', 'ota_config.json')
@@ -129,7 +129,7 @@ def main():
     
     git_release()
     
-    print(f"\n[SUCESSO] OTA Release v{VERSION} atualizada com kill-process logic!")
+    print(f"\n[SUCESSO] OTA Release v{VERSION} publicada no Drive e GitHub com sucesso!")
 
 if __name__ == '__main__':
     main()
