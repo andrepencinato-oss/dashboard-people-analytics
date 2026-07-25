@@ -80,74 +80,119 @@ def get_drive_service():
     return service
 
 def sync_vagas_files():
-    folder_id = '1R-DWrbqlocRx09BXF9s6KQbX0S9Es2Y0'
-    service = get_drive_service()
-    
-    query = f"'{folder_id}' in parents and trashed = false"
-    results = service.files().list(
-        q=query,
-        pageSize=10,
-        fields="files(id, name)"
-    ).execute()
-    
-    items = results.get('files', [])
-    
     os.makedirs(DATA_DIR, exist_ok=True)
-    
     downloaded = {}
-    for item in items:
-        file_id = item['id']
-        file_name = item['name']
-        
-        name_lower = file_name.lower()
-        
-        # Skip the instruction document to prevent API crash (Google Docs cannot be downloaded directly via get_media)
-        if 'passo a passo' in name_lower:
+    
+    # 1. Check local 'Atualização' and 'data' directories first
+    search_dirs = [
+        os.path.join(BASE_DIR, 'Atualização'),
+        DATA_DIR
+    ]
+    
+    for sdir in search_dirs:
+        if not os.path.exists(sdir):
             continue
-            
-        request = service.files().get_media(fileId=file_id)
-        file_path = os.path.join(DATA_DIR, file_name)
-        
+        for fname in os.listdir(sdir):
+            fpath = os.path.join(sdir, fname)
+            if not os.path.isfile(fpath):
+                continue
+            nl = fname.lower()
+            # Explicitly skip legacy '03 quadro de colaboradores.xls'
+            if '03 quadro' in nl or 'quadro de colaboradores.xls' in nl:
+                continue
+            if 'headcount' in nl or 'consolidad' in nl or 'colaboradores' in nl:
+                if 'cons' not in downloaded:
+                    downloaded['cons'] = fpath
+            elif 'afastamento' in nl:
+                if 'afas' not in downloaded:
+                    downloaded['afas'] = fpath
+            elif 'aviso' in nl:
+                if 'aviso' not in downloaded:
+                    downloaded['aviso'] = fpath
+
+    # 2. If missing any mandatory files, download from Google Drive
+    if 'cons' not in downloaded or 'afas' not in downloaded or 'aviso' not in downloaded:
         try:
-            fh = io.FileIO(file_path, mode='wb')
-            downloader = MediaIoBaseDownload(fh, request)
-            done = False
-            while not done:
-                status, done = downloader.next_chunk()
-            fh.close()
+            folder_id = '1R-DWrbqlocRx09BXF9s6KQbX0S9Es2Y0'
+            service = get_drive_service()
+            query = f"'{folder_id}' in parents and trashed = false"
+            results = service.files().list(q=query, pageSize=10, fields="files(id, name)").execute()
+            items = results.get('files', [])
+            for item in items:
+                file_id = item['id']
+                file_name = item['name']
+                name_lower = file_name.lower()
+                if 'passo a passo' in name_lower:
+                    continue
+                request = service.files().get_media(fileId=file_id)
+                file_path = os.path.join(DATA_DIR, file_name)
+                try:
+                    fh = io.FileIO(file_path, mode='wb')
+                    downloader = MediaIoBaseDownload(fh, request)
+                    done = False
+                    while not done:
+                        status, done = downloader.next_chunk()
+                    fh.close()
+                except Exception as e:
+                    print(f"[SYNC WARNING] Failed to download {file_name}: {e}")
+                    continue
+                if ('consolidad' in name_lower or 'colaboradores' in name_lower or 'headcount' in name_lower) and 'cons' not in downloaded:
+                    downloaded['cons'] = file_path
+                elif 'afastamento' in name_lower and 'afas' not in downloaded:
+                    downloaded['afas'] = file_path
+                elif 'aviso' in name_lower and 'aviso' not in downloaded:
+                    downloaded['aviso'] = file_path
         except Exception as e:
-            print(f"[SYNC WARNING] Failed to download {file_name}: {e}")
-            continue
-        
-        if 'consolidad' in name_lower or 'colaboradores' in name_lower:
-            downloaded['cons'] = file_path
-        elif 'afastamento' in name_lower:
-            downloaded['afas'] = file_path
-        elif 'aviso' in name_lower:
-            downloaded['aviso'] = file_path
-            
+            print(f"[SYNC WARNING] Drive sync fallback error: {e}")
+
     return downloaded
 
+import csv
+
 def parse_excel_to_2d_array(file_path):
-    df = pd.read_excel(file_path, header=None, engine='xlrd')
-    for col in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].dt.strftime('%d/%m/%Y')
-            
-    data = df.values.tolist()
-    for i in range(len(data)):
-        for j in range(len(data[i])):
-            val = data[i][j]
-            if pd.isna(val):
-                data[i][j] = ''
-            elif isinstance(val, float):
-                if val.is_integer():
-                    data[i][j] = int(val)
-                elif math.isnan(val):
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == '.csv':
+        try:
+            with open(file_path, 'r', encoding='utf-8-sig') as f:
+                raw_text = f.read()
+        except Exception:
+            with open(file_path, 'r', encoding='latin1') as f:
+                raw_text = f.read()
+        
+        lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
+        data = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            parts = [p.strip() for p in csv.reader([line]).__next__()]
+            # Handle Afastamento CSV multi-line split if present
+            if len(parts) < 4 and i + 1 < len(lines) and not any(k in line for k in ['MOVEIS', 'Controle', 'Horário', 'Previsto', 'AVISO', 'Relação', 'Cad.']):
+                line = line + ',' + lines[i+1]
+                i += 1
+                parts = [p.strip() for p in csv.reader([line]).__next__()]
+            data.append(parts)
+            i += 1
+        return data
+    else:
+        df = pd.read_excel(file_path, header=None, engine='xlrd' if ext == '.xls' else None)
+        for col in df.columns:
+            if pd.api.types.is_datetime64_any_dtype(df[col]):
+                df[col] = df[col].dt.strftime('%d/%m/%Y')
+                
+        data = df.values.tolist()
+        for i in range(len(data)):
+            for j in range(len(data[i])):
+                val = data[i][j]
+                if pd.isna(val):
                     data[i][j] = ''
-            elif isinstance(val, pd.Timestamp):
-                data[i][j] = val.strftime('%d/%m/%Y')
-    return data
+                elif isinstance(val, float):
+                    if val.is_integer():
+                        data[i][j] = int(val)
+                    elif math.isnan(val):
+                        data[i][j] = ''
+                elif isinstance(val, pd.Timestamp):
+                    data[i][j] = val.strftime('%d/%m/%Y')
+        return data
 
 class VagasHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -166,28 +211,26 @@ class VagasHandler(BaseHTTPRequestHandler):
             elif self.path == '/api/sync-vagas':
                 print("\n[API] Recebida requisicao em /api/sync-vagas", flush=True)
                 try:
-                    print("[API] Iniciando sincronizacao e autenticacao do Drive...", flush=True)
-                    folder_id = '1R-DWrbqlocRx09BXF9s6KQbX0S9Es2Y0'
-                    print(f"[DEBUG] Autenticando e listando arquivos na pasta ID {folder_id}...", flush=True)
-                    service = get_drive_service()
-                    
-                    debug_results = service.files().list(q=f"'{folder_id}' in parents and trashed = false", fields="files(id, name)").execute()
-                    debug_items = debug_results.get('files', [])
-                    print(f"[DEBUG] Encontrados {len(debug_items)} arquivos na pasta:", flush=True)
-                    for i in debug_items:
-                        print(f"   - {i['name']} (ID: {i['id']})", flush=True)
-
                     files = sync_vagas_files()
-                    
-                    print(f"[API] Arquivos baixados: {list(files.keys())}", flush=True)
+                    print(f"[API] Arquivos locais/sincronizados: {files}", flush=True)
                     if 'cons' not in files or 'afas' not in files or 'aviso' not in files:
                         raise Exception(f"Arquivos obrigatorios nao encontrados. Encontrados: {list(files.keys())}")
                         
-                    print("[API] Convertendo planilhas para JSON...", flush=True)
+                    print("[API] Convertendo planilhas/CSVs para JSON...", flush=True)
+                    excecoes_data = {}
+                    exc_path = os.path.join(DATA_DIR, 'excecoes_diretoria.json')
+                    if os.path.exists(exc_path):
+                        try:
+                            with open(exc_path, 'r', encoding='utf-8') as ef:
+                                excecoes_data = json.load(ef)
+                        except Exception as ee:
+                            print(f"[API WARNING] Erro ao ler excecoes_diretoria.json: {ee}")
+
                     response_data = {
                         'cons': parse_excel_to_2d_array(files['cons']),
                         'afas': parse_excel_to_2d_array(files['afas']),
-                        'aviso': parse_excel_to_2d_array(files['aviso'])
+                        'aviso': parse_excel_to_2d_array(files['aviso']),
+                        'excecoes': excecoes_data
                     }
                     
                     print("[API] Conversao concluida com sucesso. Enviando resposta 200 OK.", flush=True)

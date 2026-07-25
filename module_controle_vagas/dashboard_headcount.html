@@ -3,24 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Headcount Dashboard</title>
+<title>Quadro de Lotação Executivo - Headcount</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:     #080c10;
-  --bg2:    #0f1520;
-  --bg3:    #16202e;
-  --border: #1e2d40;
-  --text:   #dce8f5;
-  --muted:  #4a6280;
-  --blue:   #2f80ed;
-  --green:  #0fd68f;
-  --amber:  #f5a623;
-  --red:    #f04f4f;
-  --purple: #a07cf8;
-  --cyan:   #22d3ee;
-  --orange: #fb8c42;
+  --bg:     #f8fafc;
+  --bg2:    #ffffff;
+  --bg3:    #f1f5f9;
+  --border: #e2e8f0;
+  --text:   #0f172a;
+  --muted:  #64748b;
+  --blue:   #2563eb;
+  --green:  #059669;
+  --amber:  #d97706;
+  --red:    #dc2626;
+  --purple: #7c3aed;
+  --cyan:   #0284c7;
+  --orange: #ea580c;
   --font:   'IBM Plex Sans', sans-serif;
   --font-c: 'IBM Plex Sans Condensed', sans-serif;
   --font-m: 'IBM Plex Mono', monospace;
@@ -33,23 +33,24 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
   min-height: 100vh;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 40px 20px;
-  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(47,128,237,0.18) 0%, transparent 70%), var(--bg);
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(37,99,235,0.08) 0%, transparent 70%), var(--bg);
 }
 .import-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
-.import-title { font-family: var(--font-c); font-size: 44px; font-weight: 700; text-align: center; line-height: 1.1; margin-bottom: 10px; }
+.import-title { font-family: var(--font-c); font-size: 44px; font-weight: 700; text-align: center; line-height: 1.1; margin-bottom: 10px; color: var(--text); }
 .import-title span { color: var(--blue); }
 .import-sub { color: var(--muted); text-align: center; font-size: 15px; margin-bottom: 48px; max-width: 480px; line-height: 1.6; }
 .import-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 820px; margin-bottom: 32px; }
 .file-card {
   background: var(--bg2); border: 2px dashed var(--border); border-radius: 12px;
   padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.22s; position: relative; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.file-card:hover { border-color: var(--blue); background: rgba(47,128,237,0.06); }
-.file-card.loaded { border-style: solid; border-color: var(--green); background: rgba(15,214,143,0.05); }
-.file-card.drag-over { border-color: var(--blue); background: rgba(47,128,237,0.1); transform: scale(1.02); }
+.file-card:hover { border-color: var(--blue); background: rgba(37,99,235,0.03); transform: translateY(-2px); }
+.file-card.loaded { border-style: solid; border-color: var(--green); background: rgba(5,150,105,0.04); }
+.file-card.drag-over { border-color: var(--blue); background: rgba(37,99,235,0.08); transform: scale(1.02); }
 .file-card input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .file-icon { font-size: 34px; margin-bottom: 12px; }
-.file-card-title { font-family: var(--font-c); font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.file-card-title { font-family: var(--font-c); font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
 .file-card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .file-card-status { margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--muted); min-height: 18px; }
 .file-card.loaded .file-card-status { color: var(--green); }
@@ -59,61 +60,94 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
   cursor: pointer; transition: all 0.2s; opacity: 0.4; pointer-events: none; letter-spacing: 0.3px;
 }
 .import-btn.ready { opacity: 1; pointer-events: auto; }
-.import-btn.ready:hover { background: #1a6fd4; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(47,128,237,0.3); }
+.import-btn.ready:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(37,99,235,0.25); }
 .import-hint { margin-top: 16px; font-size: 12px; color: var(--muted); text-align: center; }
 .import-hint a { color: var(--blue); cursor: pointer; text-decoration: underline; }
 
-/* ── DASHBOARD ── */
+/* ── DASHBOARD HEADER ── */
 #dashScreen { display: none; }
 
 .header {
-  background: rgba(8,12,16,0.97);
+  background: rgba(255,255,255,0.95);
   border-bottom: 1px solid var(--border);
   padding: 14px 28px;
   display: flex; align-items: center; justify-content: space-between;
   position: sticky; top: 0; z-index: 100;
   backdrop-filter: blur(12px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-.header-brand { font-family: var(--font-c); font-size: 20px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.header-brand { font-family: var(--font-c); font-size: 20px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
 .header-brand span { color: var(--blue); }
 .header-meta { font-size: 11px; color: var(--muted); font-family: var(--font-m); margin-top: 2px; }
 .header-actions { display: flex; gap: 10px; align-items: center; }
 .hbtn {
   border: 1px solid var(--border); border-radius: 6px; padding: 7px 16px;
   font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer;
-  transition: all 0.15s; background: transparent; color: var(--text);
+  transition: all 0.15s; background: #ffffff; color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
-.hbtn:hover { border-color: var(--blue); color: var(--blue); }
+.hbtn:hover { border-color: var(--blue); color: var(--blue); background: rgba(37,99,235,0.04); }
 .hbtn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-.hbtn-primary:hover { background: #1a6fd4; border-color: #1a6fd4; color: #fff; }
+.hbtn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
 
 .main { padding: 20px 28px; max-width: 1800px; margin: 0 auto; }
+
+/* EXECUTIVE CARDS */
+.exec-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.exec-card {
+  background: #ffffff; border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 14px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.exec-card:hover { border-color: var(--blue); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(37,99,235,0.08); }
+.exec-card.active { border-color: var(--blue); background: rgba(37,99,235,0.03); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+.exec-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background: var(--blue); }
+.exec-card.c-purple::after { background: var(--purple); }
+.exec-card.c-red::after { background: var(--red); }
+.exec-card.c-amber::after { background: var(--amber); }
+.exec-card.c-orange::after { background: var(--orange); }
+.exec-card.c-green::after { background: var(--green); }
+
+.exec-card-icon { font-size: 20px; margin-bottom: 6px; }
+.exec-card-title { font-family: var(--font-c); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 4px; }
+.exec-card-val { font-family: var(--font-c); font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 4px; }
+.exec-card.c-purple .exec-card-val { color: var(--purple); }
+.exec-card.c-red .exec-card-val { color: var(--red); }
+.exec-card.c-amber .exec-card-val { color: var(--amber); }
+.exec-card.c-orange .exec-card-val { color: var(--orange); }
+.exec-card.c-green .exec-card-val { color: var(--green); }
+.exec-card-sub { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* VIEW TABS */
 .view-tabs {
   display: flex; gap: 4px;
-  background: var(--bg2); border: 1px solid var(--border);
+  background: #ffffff; border: 1px solid var(--border);
   border-radius: 10px; padding: 4px;
   margin-bottom: 20px; width: fit-content;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 .vtab {
-  padding: 8px 22px; border-radius: 7px; border: none; background: transparent;
+  padding: 8px 22px; border-radius: 7px; border: 1px solid transparent; background: transparent;
   font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--muted);
   cursor: pointer; transition: all 0.18s; display: flex; align-items: center; gap: 8px;
   white-space: nowrap;
 }
 .vtab:hover { color: var(--text); }
-.vtab.active { background: var(--bg3); color: var(--text); font-weight: 600; border: 1px solid var(--border); }
+.vtab.active { background: var(--bg3); color: var(--text); font-weight: 600; border-color: var(--border); }
 .vtab .vtab-badge {
   font-family: var(--font-m); font-size: 11px; font-weight: 600;
-  padding: 1px 6px; border-radius: 4px; background: rgba(47,128,237,0.15); color: var(--blue);
+  padding: 1px 6px; border-radius: 4px; background: rgba(37,99,235,0.1); color: var(--blue);
 }
-.vtab.active .vtab-badge { background: rgba(47,128,237,0.2); }
+.vtab.active .vtab-badge { background: rgba(37,99,235,0.15); }
 
 /* KPI ROW */
 .kpi-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 10px; margin-bottom: 18px; }
-.kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; position: relative; overflow: hidden; }
-.kpi::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; }
+.kpi {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; position: relative; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.kpi::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; }
 .kpi.c-blue::after{background:var(--blue);} .kpi.c-green::after{background:var(--green);}
 .kpi.c-red::after{background:var(--red);} .kpi.c-amber::after{background:var(--amber);}
 .kpi.c-purple::after{background:var(--purple);} .kpi.c-cyan::after{background:var(--cyan);}
@@ -131,155 +165,163 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
   padding: 11px 18px; margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .sla-label { font-family: var(--font-c); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .sla-pills { display: flex; gap: 8px; flex-wrap: wrap; }
 .sla-pill { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.pill-g{background:rgba(15,214,143,0.1);color:var(--green);border:1px solid rgba(15,214,143,0.25);}
-.pill-a{background:rgba(245,166,35,0.1);color:var(--amber);border:1px solid rgba(245,166,35,0.25);}
-.pill-r{background:rgba(240,79,79,0.1);color:var(--red);border:1px solid rgba(240,79,79,0.25);}
+.pill-g{background:rgba(5,150,105,0.08);color:var(--green);border:1px solid rgba(5,150,105,0.2);}
+.pill-a{background:rgba(217,119,6,0.08);color:var(--amber);border:1px solid rgba(217,119,6,0.2);}
+.pill-r{background:rgba(220,38,38,0.08);color:var(--red);border:1px solid rgba(220,38,38,0.2);}
 .sla-pill .dot{width:7px;height:7px;border-radius:50%;}
 .pill-g .dot{background:var(--green);} .pill-a .dot{background:var(--amber);} .pill-r .dot{background:var(--red);}
 .sla-pill-num { font-family: var(--font-c); font-size: 17px; font-weight: 700; }
 .sla-config { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .sla-config input {
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 6px;
   padding: 4px 6px; color: var(--amber); font-family: var(--font-m); font-size: 14px;
   font-weight: 600; width: 46px; text-align: center; outline: none;
 }
-.sla-config input:focus { border-color: var(--amber); }
+.sla-config input:focus { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
 
 /* TOOLBAR */
 .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .search-wrap { position: relative; flex: 1; max-width: 300px; }
 .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search-inp {
-  width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: 7px;
+  width: 100%; background: #ffffff; border: 1px solid var(--border); border-radius: 7px;
   padding: 8px 10px 8px 32px; color: var(--text); font-family: var(--font); font-size: 13px; outline: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
-.search-inp:focus { border-color: var(--blue); }
+.search-inp:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
 .fbtn {
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 7px;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 7px;
   padding: 7px 12px; color: var(--muted); font-family: var(--font); font-size: 12px;
   font-weight: 500; cursor: pointer; transition: all 0.14s; white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
-.fbtn:hover { border-color: var(--blue); color: var(--blue); }
-.fbtn.on { border-color: var(--blue); color: var(--blue); background: rgba(47,128,237,0.08); font-weight: 600; }
+.fbtn:hover { border-color: var(--blue); color: var(--blue); background: rgba(37,99,235,0.03); }
+.fbtn.on { border-color: var(--blue); color: var(--blue); background: rgba(37,99,235,0.08); font-weight: 600; }
 .tinfo { margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--font-m); }
 
 /* TABLE */
-.tw { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; overflow-x: auto; }
+.tw {
+  background: #ffffff; border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden; overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
 table { width: 100%; border-collapse: collapse; min-width: 1100px; }
 thead th {
-  background: var(--bg3); padding: 10px 12px;
+  background: #f1f5f9; padding: 11px 12px;
   font-family: var(--font-c); font-size: 11px; font-weight: 700;
-  letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted);
-  border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; text-align: left;
+  letter-spacing: 0.8px; text-transform: uppercase; color: #475569;
+  border-bottom: 1px solid #cbd5e1; white-space: nowrap; cursor: pointer; user-select: none; text-align: left;
 }
-thead th:hover { color: var(--text); }
-.th-sub { font-family: var(--font); font-size: 10px; font-weight: 400; color: #253548; letter-spacing: 0; text-transform: none; display: block; margin-top: 1px; }
-tbody tr { border-bottom: 1px solid rgba(30,45,64,0.6); transition: background 0.12s; }
-tbody tr:hover { background: rgba(47,128,237,0.04); }
-tbody tr.row-crit { border-left: 3px solid var(--red); }
-tbody tr.row-warn { border-left: 3px solid var(--amber); }
-tbody tr.row-over { border-left: 3px solid var(--cyan); background: rgba(34,211,238,0.04); }
-tbody tr.row-over:hover { background: rgba(34,211,238,0.08); }
-tbody td { padding: 9px 12px; vertical-align: middle; }
-.over-badge { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:8px; font-size:11px; font-weight:700; background:rgba(34,211,238,0.15); color:var(--cyan); border:1px solid rgba(34,211,238,0.3); margin-left:6px; font-family:var(--font-m); }
+thead th:hover { color: var(--text); background: #e2e8f0; }
+.th-sub { font-family: var(--font); font-size: 10px; font-weight: 400; color: #94a3b8; letter-spacing: 0; text-transform: none; display: block; margin-top: 1px; }
+tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.12s; }
+tbody tr:hover { background: rgba(37,99,235,0.03); }
+tbody tr.row-crit { border-left: 4px solid var(--red); }
+tbody tr.row-warn { border-left: 4px solid var(--amber); }
+tbody tr.row-over { border-left: 4px solid var(--cyan); background: rgba(2,132,199,0.03); }
+tbody tr.row-over:hover { background: rgba(2,132,199,0.06); }
+tbody td { padding: 9px 12px; vertical-align: middle; color: var(--text); }
+.over-badge { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:8px; font-size:11px; font-weight:700; background:rgba(2,132,199,0.12); color:var(--cyan); border:1px solid rgba(2,132,199,0.25); margin-left:6px; font-family:var(--font-m); }
 .mono.over { color: var(--cyan); }
-.retorno-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:700; background:rgba(251,140,66,0.15); color:var(--orange); border:1px solid rgba(251,140,66,0.35); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
-.retorno-badge:hover { background:rgba(251,140,66,0.25); }
+.retorno-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:700; background:rgba(234,88,12,0.12); color:var(--orange); border:1px solid rgba(234,88,12,0.25); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.retorno-badge:hover { background:rgba(234,88,12,0.2); }
 .retorno-pulse { animation: pulse-orange 2s infinite; }
-@keyframes pulse-orange { 0%,100%{box-shadow:0 0 0 0 rgba(251,140,66,0.4);} 50%{box-shadow:0 0 0 5px rgba(251,140,66,0);} }
-.ditem.retorno-iminente { background:rgba(251,140,66,0.07); border-radius:6px; padding:7px 8px; margin:-1px 0; border-bottom:1px solid rgba(251,140,66,0.2) !important; }
+@keyframes pulse-orange { 0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,0.4);} 50%{box-shadow:0 0 0 5px rgba(234,88,12,0);} }
+.ditem.retorno-iminente { background:rgba(234,88,12,0.06); border-radius:6px; padding:7px 8px; margin:-1px 0; border-bottom:1px solid rgba(234,88,12,0.15) !important; }
 .retorno-dias { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:8px; font-size:11px; font-weight:700; white-space:nowrap; font-family:var(--font-m); }
-.retorno-dias.hoje { background:rgba(240,79,79,0.15); color:var(--red); border:1px solid rgba(240,79,79,0.3); }
-.retorno-dias.amanha { background:rgba(245,166,35,0.15); color:var(--amber); border:1px solid rgba(245,166,35,0.3); }
-.retorno-dias.semana { background:rgba(251,140,66,0.15); color:var(--orange); border:1px solid rgba(251,140,66,0.3); }
-.retorno-secao-title { font-family:var(--font-c); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--orange); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid rgba(251,140,66,0.3); display:flex; align-items:center; gap:6px; }
+.retorno-dias.hoje { background:rgba(220,38,38,0.12); color:var(--red); border:1px solid rgba(220,38,38,0.25); }
+.retorno-dias.amanha { background:rgba(217,119,6,0.12); color:var(--amber); border:1px solid rgba(217,119,6,0.25); }
+.retorno-dias.semana { background:rgba(234,88,12,0.12); color:var(--orange); border:1px solid rgba(234,88,12,0.25); }
+.retorno-secao-title { font-family:var(--font-c); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--orange); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid rgba(234,88,12,0.25); display:flex; align-items:center; gap:6px; }
 
-.s-name { font-weight: 500; font-size: 13px; max-width: 230px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s-name { font-weight: 600; font-size: 13px; max-width: 230px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
 .s-tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-top: 3px; letter-spacing: 0.5px; font-family: var(--font-c); }
-.tag-c{background:rgba(160,124,248,0.12);color:#a07cf8;} .tag-d{background:rgba(34,211,238,0.12);color:#22d3ee;} .tag-p{background:rgba(15,214,143,0.12);color:#0fd68f;}
-.tag-mod-i  {background:rgba(15,214,143,0.12); color:#0fd68f;  border:1px solid rgba(15,214,143,0.25);}
-.tag-moi-i  {background:rgba(160,124,248,0.12);color:#a07cf8;  border:1px solid rgba(160,124,248,0.25);}
-.tag-mod-c  {background:rgba(34,211,238,0.12); color:#22d3ee;  border:1px solid rgba(34,211,238,0.25);}
-.tag-moi-c  {background:rgba(245,166,35,0.12); color:#f5a623;  border:1px solid rgba(245,166,35,0.25);}
-.tag-serv   {background:rgba(47,128,237,0.12); color:#2f80ed;  border:1px solid rgba(47,128,237,0.25);}
+.tag-c{background:rgba(124,58,237,0.1);color:#6d28d9;} .tag-d{background:rgba(2,132,199,0.1);color:#0369a1;} .tag-p{background:rgba(5,150,105,0.1);color:#047857;}
+.tag-mod-i  {background:rgba(5,150,105,0.1); color:#047857; border:1px solid rgba(5,150,105,0.25);}
+.tag-moi-i  {background:rgba(124,58,237,0.1);color:#6d28d9; border:1px solid rgba(124,58,237,0.25);}
+.tag-mod-c  {background:rgba(2,132,199,0.1); color:#0369a1; border:1px solid rgba(2,132,199,0.25);}
+.tag-moi-c  {background:rgba(217,119,6,0.1); color:#b45309; border:1px solid rgba(217,119,6,0.25);}
+.tag-serv   {background:rgba(37,99,235,0.1); color:#1d4ed8; border:1px solid rgba(37,99,235,0.25);}
 
 .ninp {
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 5px;
   padding: 4px 5px; color: var(--text); font-family: var(--font-m); font-size: 15px;
   font-weight: 600; text-align: center; outline: none; transition: border-color 0.15s;
 }
-.ninp:focus { border-color: var(--blue); }
+.ninp:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
 .ninp.teto-inp { width: 60px; }
 .ninp.docs-inp { width: 50px; color: var(--cyan); }
 
 .date-cell { display: flex; flex-direction: column; gap: 4px; }
 .date-inp {
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+  background: #ffffff; border: 1px solid var(--border); border-radius: 5px;
   padding: 4px 7px; color: var(--muted); font-family: var(--font-m); font-size: 11px;
-  outline: none; width: 122px; color-scheme: dark; transition: border-color 0.15s;
+  outline: none; width: 122px; color-scheme: light; transition: border-color 0.15s;
 }
-.date-inp:focus { border-color: var(--blue); }
+.date-inp:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
 .date-inp.filled { color: var(--text); }
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;font-family:var(--font);}
-.badge-g{background:rgba(15,214,143,0.12);color:var(--green);border:1px solid rgba(15,214,143,0.25);}
-.badge-a{background:rgba(245,166,35,0.12);color:var(--amber);border:1px solid rgba(245,166,35,0.25);}
-.badge-r{background:rgba(240,79,79,0.12);color:var(--red);border:1px solid rgba(240,79,79,0.25);}
-.badge-m{background:rgba(74,98,128,0.12);color:var(--muted);border:1px solid rgba(74,98,128,0.2);}
+.badge-g{background:rgba(5,150,105,0.1);color:#047857;border:1px solid rgba(5,150,105,0.25);}
+.badge-a{background:rgba(217,119,6,0.1);color:#b45309;border:1px solid rgba(217,119,6,0.25);}
+.badge-r{background:rgba(220,38,38,0.1);color:#b91c1c;border:1px solid rgba(220,38,38,0.25);}
+.badge-m{background:rgba(100,116,139,0.1);color:#475569;border:1px solid rgba(100,116,139,0.2);}
 
 .mono{font-family:var(--font-c);font-weight:700;font-size:18px;text-align:center;}
-.mono.vaga{color:var(--red);} .mono.ok-full{color:var(--green);font-size:13px;font-weight:500;}
+.mono.vaga{color:var(--red);} .mono.ok-full{color:var(--green);font-size:13px;font-weight:600;}
 .mono.liq{color:var(--orange);font-size:20px;} .mono.dim{color:var(--muted);font-size:13px;font-weight:400;}
 
 .prog-wrap{min-width:80px;}
 .prog-pct{font-size:10px;color:var(--muted);text-align:right;font-family:var(--font-m);}
-.prog-bg{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:3px;}
+.prog-bg{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:3px;}
 .prog-fill{height:100%;border-radius:3px;}
 
-.dbtn{background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:3px;transition:all 0.12s;font-family:var(--font);}
-.dbtn-a{color:var(--amber);border-color:rgba(245,166,35,0.3);}
-.dbtn-a:hover{background:rgba(245,166,35,0.1);}
-.dbtn-v{color:var(--purple);border-color:rgba(160,124,248,0.3);}
-.dbtn-v:hover{background:rgba(160,124,248,0.1);}
+.dbtn{background:#ffffff;border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:3px;transition:all 0.12s;font-family:var(--font);}
+.dbtn-a{color:var(--amber);border-color:rgba(217,119,6,0.3);}
+.dbtn-a:hover{background:rgba(217,119,6,0.08);}
+.dbtn-v{color:var(--purple);border-color:rgba(124,58,237,0.3);}
+.dbtn-v:hover{background:rgba(124,58,237,0.08);}
 
 /* DETAIL ROW */
 .drow{display:none;} .drow.open{display:table-row;}
-.dcell{padding:0 16px 14px;background:rgba(0,0,0,0.3);}
+.dcell{padding:0 16px 14px;background:#f8fafc;}
 .dinner{display:flex;gap:20px;flex-wrap:wrap;padding-top:14px;}
 .dsec{flex:1;min-width:280px;}
 .dsec-title{font-family:var(--font-c);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
-.ditem{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(30,45,64,0.5);font-size:12px;}
+.ditem{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #e2e8f0;font-size:12px;}
 .ditem:last-child{border-bottom:none;}
-.ditem-name{flex:1;}
+.ditem-name{flex:1;color:var(--text);}
 .ditem-tipo{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;white-space:nowrap;}
-.t-doenca{background:rgba(240,79,79,0.12);color:#fca5a5;} .t-mat{background:rgba(160,124,248,0.12);color:#c4b5fd;}
-.t-acid{background:rgba(245,166,35,0.12);color:#fcd34d;} .t-inval{background:rgba(100,116,139,0.15);color:#94a3b8;}
+.t-doenca{background:rgba(220,38,38,0.1);color:#b91c1c;} .t-mat{background:rgba(124,58,237,0.1);color:#6d28d9;}
+.t-acid{background:rgba(217,119,6,0.1);color:#b45309;} .t-inval{background:rgba(100,116,139,0.15);color:#334155;}
 .ditem-ret{color:var(--muted);font-size:11px;white-space:nowrap;font-family:var(--font-m);}
 .ditem-date{font-size:11px;font-weight:600;color:var(--purple);white-space:nowrap;font-family:var(--font-m);}
 .ditem-motivo{color:var(--muted);font-size:11px;max-width:220px;}
 
 /* FOOTER ROW */
-.frow td{background:var(--bg3);border-top:2px solid var(--border);padding:10px 12px;}
+.frow td{background:#f1f5f9;border-top:2px solid #cbd5e1;padding:10px 12px;}
 .ftotal{font-family:var(--font-c);font-size:20px;font-weight:700;text-align:center;display:block;}
 
 /* TOAST */
-.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all 0.25s;z-index:999;pointer-events:none;}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;transform:translateY(8px);transition:all 0.25s;z-index:999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
 .toast.show{opacity:1;transform:translateY(0);}
-.toast.ok{background:var(--green);color:#000;} .toast.err{background:var(--red);color:#fff;}
+.toast.ok{background:var(--green);color:#fff;} .toast.err{background:var(--red);color:#fff;}
 
+@media(max-width:1200px){.exec-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(4,1fr);}.import-grid{grid-template-columns:1fr;}}
-@media(max-width:700px){.main{padding:12px;}.kpi-row{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.main{padding:12px;}.exec-grid{grid-template-columns:repeat(2,1fr);}.kpi-row{grid-template-columns:repeat(2,1fr);}}
 </style>
 </head>
 <body>
 
 <!-- ══ DEBUG SCREEN ══ -->
-<div id="debugScreen" style="display:none; padding: 20px; background: #0f1520; color: #f04f4f; font-family: monospace;">
+<div id="debugScreen" style="display:none; padding: 20px; background: #ffffff; color: #dc2626; font-family: monospace;">
   <h2>⚠️ Erro de Sincronização</h2>
-  <pre id="debugLog" style="background: #080c10; padding: 15px; border: 1px solid #1e2d40; border-radius: 8px; overflow: auto; max-height: 400px; white-space: pre-wrap; margin-bottom: 20px; color: #dce8f5;"></pre>
+  <pre id="debugLog" style="background: #f8fafc; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: auto; max-height: 400px; white-space: pre-wrap; margin-bottom: 20px; color: #0f172a;"></pre>
   <button onclick="copyDebugLog()" style="background: #2f80ed; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; cursor: pointer;">📋 Copiar Log de Erro</button>
 </div>
 
@@ -287,24 +329,24 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 <div id="importScreen">
   <div class="import-eyebrow">Sistema de Gestão de Pessoas</div>
   <h1 class="import-title">HEAD<span>COUNT</span><br>Dashboard</h1>
-  <p class="import-sub">Selecione ou arraste os 3 arquivos Excel do dia para carregar o painel automaticamente.</p>
+  <p class="import-sub">Selecione ou arraste os 3 arquivos (CSV ou Excel) do dia para carregar o painel automaticamente.</p>
   <div class="import-grid">
     <div class="file-card" id="card-cons" ondragover="dragOver(event,'cons')" ondragleave="dragLeave('cons')" ondrop="drop(event,'cons')">
-      <input type="file" accept=".xls,.xlsx" onchange="loadFile(event,'cons')">
+      <input type="file" accept=".csv,.xls,.xlsx" onchange="loadFile(event,'cons')">
       <div class="file-icon">📋</div>
       <div class="file-card-title">Consolidado</div>
       <div class="file-card-desc">Quadro atual de colaboradores ativos</div>
       <div class="file-card-status" id="st-cons">Clique ou arraste o arquivo</div>
     </div>
     <div class="file-card" id="card-afas" ondragover="dragOver(event,'afas')" ondragleave="dragLeave('afas')" ondrop="drop(event,'afas')">
-      <input type="file" accept=".xls,.xlsx" onchange="loadFile(event,'afas')">
+      <input type="file" accept=".csv,.xls,.xlsx" onchange="loadFile(event,'afas')">
       <div class="file-icon">🤕</div>
       <div class="file-card-title">Afastamentos</div>
       <div class="file-card-desc">Colaboradores afastados por setor</div>
       <div class="file-card-status" id="st-afas">Clique ou arraste o arquivo</div>
     </div>
     <div class="file-card" id="card-aviso" ondragover="dragOver(event,'aviso')" ondragleave="dragLeave('aviso')" ondrop="drop(event,'aviso')">
-      <input type="file" accept=".xls,.xlsx" onchange="loadFile(event,'aviso')">
+      <input type="file" accept=".csv,.xls,.xlsx" onchange="loadFile(event,'aviso')">
       <div class="file-icon">⚠️</div>
       <div class="file-card-title">Avisos Prévios</div>
       <div class="file-card-desc">Colaboradores em aviso prévio</div>
@@ -319,28 +361,118 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 <div id="dashScreen">
   <div class="header">
     <div>
-      <div class="header-brand">HEAD<span>COUNT</span></div>
+      <div class="header-brand">HEAD<span>COUNT</span> <small style="font-size:12px;color:var(--muted);font-weight:600;margin-left:8px;">| Quadro de Lotação Executivo</small></div>
       <div class="header-meta" id="hdMeta"></div>
     </div>
     <div class="header-actions">
       <button class="hbtn" onclick="goImport()">📂 Atualizar arquivos</button>
-      <button class="hbtn hbtn-primary" onclick="saveState()">💾 Salvar</button>
+      <button class="hbtn hbtn-primary" onclick="saveState()">💾 Salvar Estado</button>
     </div>
   </div>
 
   <div class="main">
 
-    <!-- VIEW TABS -->
+    <!-- 6 CARDS EXECUTIVOS DA DIRETORIA -->
+    <div style="margin-bottom: 24px;">
+      <div style="font-family:var(--font-c); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+        <span>📊 Resumo Executivo & Exceções da Diretoria</span>
+        <span style="font-size:11px; font-weight:600; text-transform:none; color:var(--blue);">💡 Clique em qualquer card para ver a lista detalhada</span>
+      </div>
+
+      <div class="exec-grid">
+        <!-- Card 1: Total Head (Bruto) -->
+        <div class="exec-card" id="card-exec-bruto" onclick="selectExecCard('bruto')">
+          <div class="exec-card-icon">👥</div>
+          <div class="exec-card-title">Total Head (Bruto)</div>
+          <div class="exec-card-val" id="val-exec-bruto">464</div>
+          <div class="exec-card-sub">Base total de registros</div>
+        </div>
+
+        <!-- Card 2: Aposentados -->
+        <div class="exec-card c-purple" id="card-exec-aposentados" onclick="selectExecCard('aposentados')">
+          <div class="exec-card-icon">👴</div>
+          <div class="exec-card-title">Aposentados</div>
+          <div class="exec-card-val" id="val-exec-aposentados">3</div>
+          <div class="exec-card-sub">Invalidez / Aposentadoria</div>
+        </div>
+
+        <!-- Card 3: Reclusos -->
+        <div class="exec-card c-red" id="card-exec-reclusos" onclick="selectExecCard('reclusos')">
+          <div class="exec-card-icon">⚖️</div>
+          <div class="exec-card-title">Licença Reclusão</div>
+          <div class="exec-card-val" id="val-exec-reclusos">1</div>
+          <div class="exec-card-sub">Afastamento jurídico</div>
+        </div>
+
+        <!-- Card 4: Pedidos de Demissão -->
+        <div class="exec-card c-amber" id="card-exec-pedidos" onclick="selectExecCard('pedidos')">
+          <div class="exec-card-icon">📜</div>
+          <div class="exec-card-title">Aviso Prévio (Pedidos)</div>
+          <div class="exec-card-val" id="val-exec-pedidos">3</div>
+          <div class="exec-card-sub">Desligamento voluntário</div>
+        </div>
+
+        <!-- Card 5: Previsão de Demissão -->
+        <div class="exec-card c-orange" id="card-exec-previsao" onclick="selectExecCard('previsao')">
+          <div class="exec-card-icon">⚠️</div>
+          <div class="exec-card-title">Previsão de Demissão</div>
+          <div class="exec-card-val" id="val-exec-previsao">10</div>
+          <div class="exec-card-sub">Planejadas pela gestão</div>
+        </div>
+
+        <!-- Card 6: Total Head Líquido / Real Ativo -->
+        <div class="exec-card c-green active" id="card-exec-liquido" onclick="selectExecCard('liquido')">
+          <div class="exec-card-icon">✅</div>
+          <div class="exec-card-title">Head Líquido</div>
+          <div class="exec-card-val" id="val-exec-liquido">447</div>
+          <div class="exec-card-sub">Bruto − (Ap + Rec + Ped + Prev)</div>
+        </div>
+      </div>
+
+      <!-- PAINEL DINÂMICO DE DETALHES DOS CARDS EXECUTIVOS -->
+      <div id="execDetailPanel" style="display:none; margin-top: 16px; background:#ffffff; border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span id="execDetailIcon" style="font-size:22px;">📋</span>
+            <div>
+              <h3 id="execDetailTitle" style="font-family:var(--font-c); font-size:18px; font-weight:700; color:var(--text);">Listagem Executiva</h3>
+              <p id="execDetailSub" style="font-size:12px; color:var(--muted); margin-top:1px;"></p>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <input type="text" id="execSearchInp" placeholder="🔍 Filtrar por nome, cargo ou setor..." oninput="renderExecTable()" style="background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:12px; width:280px; outline:none;">
+            <button onclick="closeExecDetail()" style="background:#f1f5f9; border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; color:var(--text);">✕ Fechar Lista</button>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f1f5f9; text-align:left; font-family:var(--font-c); font-size:11px; font-weight:700; text-transform:uppercase; color:#475569;">
+                <th style="padding:10px 12px;">Cad</th>
+                <th style="padding:10px 12px;">Nome Colaborador</th>
+                <th style="padding:10px 12px;">Cargo / Função</th>
+                <th style="padding:10px 12px;">Centro de Custo / Setor</th>
+                <th style="padding:10px 12px;">Status / Data / Observação</th>
+              </tr>
+            </thead>
+            <tbody id="execTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW TABS SEITORIAIS -->
     <div class="view-tabs">
       <button class="vtab active" id="tab-geral" onclick="setView('geral')">
-        🏢 Visão Geral <span class="vtab-badge" id="badge-geral">—</span>
+        🏢 Visão Geral por Setor <span class="vtab-badge" id="badge-geral">—</span>
       </button>
       <button class="vtab" id="tab-prod" onclick="setView('prod')">
         🏭 Produção & Suporte <span class="vtab-badge" id="badge-prod">—</span>
       </button>
     </div>
 
-    <!-- KPIs -->
+    <!-- KPIs DE VAGAS -->
     <div class="kpi-row">
       <div class="kpi c-blue"><div class="kpi-lbl">Teto Total</div><div class="kpi-val" id="kTeto">—</div><div class="kpi-sub" id="kTetoSub">Quadro ideal</div></div>
       <div class="kpi c-green"><div class="kpi-lbl">Real Ativo</div><div class="kpi-val" id="kReal">—</div><div class="kpi-sub">Hoje</div></div>
@@ -352,7 +484,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
     </div>
 
     <!-- RETORNO ALERT -->
-    <div id="retornoAlert" style="display:none;background:rgba(251,140,66,0.08);border:1px solid rgba(251,140,66,0.3);border-radius:10px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div id="retornoAlert" style="display:none;background:rgba(234,88,12,0.06);border:1px solid rgba(234,88,12,0.25);border-radius:10px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
       <span style="font-family:var(--font-c);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--orange);">⏰ Retornos Previstos — 7 dias</span>
       <div id="retornoList" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;"></div>
       <span id="retornoTotal" style="font-family:var(--font-c);font-size:22px;font-weight:700;color:var(--orange);margin-left:auto;white-space:nowrap;"></span>
@@ -369,7 +501,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
       <div class="sla-config">SLA: <input id="slaVal" type="number" min="1" max="90" value="10" onchange="rerender()"> dias úteis</div>
     </div>
 
-    <!-- TOOLBAR -->
+    <!-- TOOLBAR SEITORIAL -->
     <div class="toolbar">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
@@ -385,7 +517,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
       <span class="tinfo" id="tinfo"></span>
     </div>
 
-    <!-- TABLE -->
+    <!-- TABLE SEITORIAL -->
     <div class="tw">
       <table>
         <thead>
@@ -440,21 +572,18 @@ const PROD_SETORES = new Set([
   "USINAGEM"
 ]);
 
-// also match with stripped accents for safety
 function normSetor(s) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 }
 const PROD_NORM = new Set([...PROD_SETORES].map(normSetor));
 function isProd(setor) { return PROD_SETORES.has(setor) || PROD_NORM.has(normSetor(setor)); }
 
-// Strip cost/expense prefixes for display
 function displaySetor(s) {
   return s
     .replace(/^CUSTOS?\s+C\/\s+PESSOAL\s+-\s+/i, '')
     .replace(/^DESPESAS?\s+C\/\s+PESSOAL\s+-\s+/i, '');
 }
 
-// Sectors to completely exclude from headcount
 const EXCLUIR = new Set([
   'CENTRO DE DISTRIBUIÇÃO','CENTRO DE DISTRIBUICAO',
   'CUSTOS C/ PESSOAL - CENTRO PRODUTIVO','CUSTO C/ PESSOAL - CENTRO PRODUTIVO',
@@ -464,7 +593,6 @@ function isExcluido(setor) {
   return EXCLUIR.has(setor) || EXCLUIR.has(normSetor(setor));
 }
 
-// Category tag map (keyed by displaySetor name)
 const CATEGORIA = {
   "CENTRO DE TRABALHO - CNC":             "MOD INDUSTRIA",
   "COLAGEM DE BORDAS":                    "MOD INDUSTRIA",
@@ -510,16 +638,47 @@ function getTagHtml(setor) {
   return cat ? `<span class="s-tag ${cls}">${cat}</span>` : '';
 }
 
-// Permanent absences — should NOT count in Real Ativo
 function isPermanente(tipo) {
   if (!tipo) return false;
   const t = tipo.toLowerCase();
   return t.includes('invalidez') || t.includes('aposentadoria') || t.includes('permanente');
 }
+
 let DATA = [];
+let ALL_EMPLOYEES = [];
 let ST = { tetos:{}, docs:{}, datas:{}, sla:10 };
 let curFilt = 'all', sortCol = 'real', sortDir = -1, curView = 'geral';
-let loaded = { cons:null, afas:null, aviso:null };
+let loaded = { cons:null, afas:null, aviso:null, excecoes:null };
+let activeExecCard = 'liquido';
+
+// EXCEPTION DATA (DEFAULT FALLBACK / SYNCED FROM BACKEND)
+let EXCECOES = {
+  pedidos_demissao: [
+    { cad: "4970", nome: "JÉSSICA PONTE BARROS", cargo: "Auxiliar Produção - Lixa", setor: "LIXAMENTO", data: "21/07/2026" },
+    { cad: "4955", nome: "ANTÔNIO PEDRO DA SILVA NETO", cargo: "Auxiliar Produção - Metalúrgica", setor: "CUSTOS C/ PESSOAL - METALÚRGICA", data: "20/07/2026" },
+    { cad: "4993", nome: "VAGNER ROGÉRIO SOARES", cargo: "Soldador Júnior - Metalúrgica", setor: "CUSTOS C/ PESSOAL - METALÚRGICA", data: "22/07/2026" }
+  ],
+  aposentados: [
+    { cad: "1135", nome: "SUELI ALVES DA CRUZ", cargo: "Aposentada", setor: "DESPESAS C/ PESSOAL - ZELADORIA" },
+    { cad: "510", nome: "JOAQUIM GONCALVES SOBRINHO", cargo: "Aposentado", setor: "CUSTOS C/ PESSOAL - MANUTENÇÃO" },
+    { cad: "4926", nome: "JOSÉ OLIVEIRA NEVES", cargo: "Aposentadoria por Invalidez", setor: "CENTRO DE DISTRIBUIÇÃO" }
+  ],
+  reclusos: [
+    { cad: "3338", nome: "ALESSANDRO RENATO OCANHA DOS SANTOS", cargo: "Gerente de Tapeçaria", setor: "CUSTOS C/ PESSOAL - TAPEÇARIA" }
+  ],
+  previsao_demissao: [
+    { cad: "3762", nome: "EDSON TOMIYOSHI", cargo: "Op. Máquina", setor: "TUPIAS E FRESAS" },
+    { cad: "3776", nome: "MARIA DAS DORES GABRIEL VIEIRA", cargo: "Aux. Produção", setor: "TUPIAS E FRESAS" },
+    { cad: "3788", nome: "SAMARA MOURA ARAUJO", cargo: "Aux. Produção", setor: "PINTURA P.U." },
+    { cad: "3596", nome: "FRANCISCA FRANCILENE VASCONCELOS", cargo: "Aux. Produção", setor: "LIXAMENTO" },
+    { cad: "4209", nome: "ELIZABETI DA SILVA CESARIO COMUNHAO", cargo: "Aux. Produção", setor: "TUPIAS E FRESAS" },
+    { cad: "4068", nome: "VITOR JUNIOR RABELO NUNES", cargo: "Aux. Produção", setor: "TUPIAS E FRESAS" },
+    { cad: "4470", nome: "WELINGTON BATISTA DA SILVA", cargo: "Aux. Produção", setor: "TUPIAS E FRESAS" },
+    { cad: "4562", nome: "MARCIEL ALESSANDRO VARINI", cargo: "Operador CNC", setor: "CENTRO DE TRABALHO - CNC" },
+    { cad: "4651", nome: "TAIS CONCEICAO DOS SANTOS", cargo: "Aux. Produção", setor: "TUPIAS E FRESAS" },
+    { cad: "4712", nome: "ANA LUIZA PEREIRA DE SA", cargo: "Aux. Produção", setor: "TUPIAS E FRESAS" }
+  ]
+};
 
 try { const s=localStorage.getItem('hc_v4'); if(s) ST={...ST,...JSON.parse(s)}; } catch(e){}
 
@@ -529,26 +688,58 @@ function dragLeave(k){ document.getElementById('card-'+k).classList.remove('drag
 function drop(e,k){ e.preventDefault(); dragLeave(k); const f=e.dataTransfer.files[0]; if(f) readFile(f,k); }
 function loadFile(e,k){ const f=e.target.files[0]; if(f) readFile(f,k); }
 
+function parseCsvTo2D(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const rows = [];
+  let i = 0;
+  while (i < lines.length) {
+    let line = lines[i];
+    const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+    const cleanParts = parts.map(p => p.replace(/^"|"$/g, '').trim());
+    
+    if (cleanParts.length < 4 && i + 1 < lines.length && !lines[i].includes('MOVEIS') && !lines[i].includes('Controle') && !lines[i].includes('Horário') && !lines[i].includes('Previsto')) {
+      line = line + ',' + lines[i+1];
+      i++;
+      const p2 = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+      rows.push(p2.map(p => p.replace(/^"|"$/g, '').trim()));
+    } else {
+      rows.push(cleanParts);
+    }
+    i++;
+  }
+  return rows;
+}
+
 function readFile(file, key) {
+  const isCsv = file.name.toLowerCase().endsWith('.csv');
   const r = new FileReader();
   r.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result,{type:'binary',cellDates:true});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      loaded[key] = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if (isCsv) {
+        loaded[key] = parseCsvTo2D(e.target.result);
+      } else {
+        const wb = XLSX.read(e.target.result,{type:'binary',cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        loaded[key] = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      }
       document.getElementById('card-'+key).classList.add('loaded');
       document.getElementById('st-'+key).textContent = '✓ ' + file.name;
       checkReady();
     } catch(err){ toast('Erro ao ler: '+file.name,'err'); }
   };
-  r.readAsBinaryString(file);
+  if (isCsv) {
+    r.readAsText(file, 'ISO-8859-1');
+  } else {
+    r.readAsBinaryString(file);
+  }
 }
+
 function checkReady(){
   const ok = loaded.cons && loaded.afas && loaded.aviso;
   document.getElementById('importBtn').classList.toggle('ready', ok);
 }
 
-// ══ PARSE ══
+// ══ PARSE & BUILD ══
 function parseDate(val) {
   if (!val) return '';
   if (val instanceof Date) return val.toLocaleDateString('pt-BR');
@@ -558,7 +749,6 @@ function parseDate(val) {
   return s;
 }
 
-// Returns true if dd/mm/yyyy date string is strictly before today
 function dateAlreadyPassed(ddmmyyyy) {
   if (!ddmmyyyy) return false;
   const m = ddmmyyyy.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
@@ -571,44 +761,138 @@ function dateAlreadyPassed(ddmmyyyy) {
 
 function buildDashboard() {
   if (!loaded.cons||!loaded.afas||!loaded.aviso) return;
-  const realMap={};
-  loaded.cons.forEach(row=>{ const s=String(row[6]||'').trim(); if(s) realMap[s]=(realMap[s]||0)+1; });
-  const afasMap={};
-  loaded.afas.forEach(row=>{ const s=String(row[3]||'').trim(); if(!s)return; if(!afasMap[s])afasMap[s]=[]; afasMap[s].push({nome:row[1],tipo:row[5],retorno:parseDate(row[6])}); });
-  const avisosMap={}; let hf=false;
-  loaded.aviso.forEach(row=>{
-    const r0=String(row[0]||'').toLowerCase();
-    if(!hf){ if(r0.includes('cód')||r0.includes('cod')||r0==='nome'){hf=true;return;} if(!isNaN(parseInt(row[0]))&&row[1])hf=true; else return; }
-    const cod=row[0]; if(!cod&&!row[1])return;
-    const s=String(row[5]||'').trim(); if(!s)return;
-    if(!avisosMap[s])avisosMap[s]=[];
+  
+  if (loaded.excecoes && loaded.excecoes.aposentados) {
+    EXCECOES = loaded.excecoes;
+  }
+
+  const cadSetorMap = {};
+  const nomeSetorMap = {};
+  const realMap = {};
+  ALL_EMPLOYEES = [];
+
+  // 1. Build Headcount & Lookup Maps
+  loaded.cons.forEach(row => {
+    if (!row || row.length < 2) return;
+    const cad = String(row[0]||'').trim();
+    const nome = String(row[1]||'').trim();
+    const admissao = String(row[2]||'').trim();
+    const cargo = String(row[3]||'').trim();
+    
+    if (!cad || isNaN(parseInt(cad)) || !nome || nome.startsWith('Pág')) return;
+
+    let setor = '';
+    if (row[6] && String(row[6]).trim() && isNaN(row[6])) {
+      setor = String(row[6]).trim();
+    } else if (row[5] && String(row[5]).trim() && isNaN(row[5])) {
+      setor = String(row[5]).trim();
+    }
+
+    if (setor && setor !== 'Centro de Custo' && setor !== '0001' && setor !== 'Salário') {
+      cadSetorMap[cad] = setor;
+      nomeSetorMap[nome] = setor;
+      realMap[setor] = (realMap[setor] || 0) + 1;
+      ALL_EMPLOYEES.push({ cad, nome, cargo, setor, admissao });
+    }
+  });
+
+  // 2. Build Afastamentos Map
+  const afasMap = {};
+  loaded.afas.forEach(row => {
+    if (!row || !row.length) return;
+    let cad = '', nome = '', setor = '', tipo = '', retorno = '';
+
+    if (row[0] && !isNaN(parseInt(row[0])) && row[1]) {
+      cad = String(row[0]).trim();
+      nome = String(row[1]).trim();
+      setor = String(row[3]||'').trim();
+      tipo = String(row[5]||'').trim();
+      retorno = parseDate(row[6]);
+    } else {
+      setor = String(row[0]||'').trim();
+      retorno = parseDate(row[1]);
+      cad = String(row[2]||'').trim();
+      nome = String(row[3]||'').trim();
+      tipo = String(row[6]||'').trim();
+    }
+
+    if (setor === 'Horário' || setor === 'Previsto' || setor.includes('MOVEIS') || setor.includes('Total') || setor.includes('Período')) return;
+
+    if (cad && cadSetorMap[cad]) setor = cadSetorMap[cad];
+    else if (nome && nomeSetorMap[nome]) setor = nomeSetorMap[nome];
+
+    if (!setor || !nome) return;
+    if (!afasMap[setor]) afasMap[setor] = [];
+    afasMap[setor].push({ nome, tipo, retorno });
+  });
+
+  // 3. Build Avisos Map
+  const avisosMap = {};
+  let hf = false;
+  loaded.aviso.forEach(row => {
+    if (!row || !row.length) return;
+    const r0 = String(row[0]||'').toLowerCase();
+    if (!hf) {
+      if (r0.includes('cód') || r0.includes('cod') || r0 === 'nome') { hf = true; return; }
+      if (!isNaN(parseInt(row[0])) && row[1]) hf = true;
+      else return;
+    }
+    const cad = String(row[0]||'').trim();
+    const nome = String(row[1]||'').trim();
+    if (!cad && !nome) return;
+
+    let setor = String(row[5]||'').trim();
+    if (!setor || setor.includes('Demissão') || setor.includes('Pedido') || !isNaN(setor)) {
+      setor = cadSetorMap[cad] || nomeSetorMap[nome] || '';
+    }
+
+    if (!setor) return;
+
     const ultimoDia = parseDate(row[3]);
-    if (dateAlreadyPassed(ultimoDia)) return; // already left, skip
-    avisosMap[s].push({nome:row[1],ultimo_dia:ultimoDia,motivo:String(row[6]||'')});
+    const motivo = String(row[6] || row[5] || '').trim();
+
+    if (!avisosMap[setor]) avisosMap[setor] = [];
+    avisosMap[setor].push({ nome, ultimo_dia: ultimoDia, motivo });
   });
-  const all=new Set([...Object.keys(realMap),...Object.keys(afasMap),...Object.keys(avisosMap)]);
-  DATA=[];
-  all.forEach(setor=>{
-    if(isExcluido(setor)) return; // excluded sectors
-    const real=realMap[setor]||0, afs=afasMap[setor]||[], avs=avisosMap[setor]||[];
-    if(!real&&!afs.length&&!avs.length) return;
-    const permanentes = afs.filter(a=>isPermanente(a.tipo)).length;
-    const realAtivo = Math.max(0, real - permanentes);
-    DATA.push({setor,real:realAtivo,realBruto:real,permanentes,afastados:afs.length,afastados_detalhe:afs,avisos:avs.length,avisos_detalhe:avs});
+
+  const all = new Set([...Object.keys(realMap), ...Object.keys(afasMap), ...Object.keys(avisosMap)]);
+  DATA = [];
+  all.forEach(setor => {
+    const realBruto = realMap[setor] || 0, afs = afasMap[setor] || [], avs = avisosMap[setor] || [];
+    if (!realBruto && !afs.length && !avs.length) return;
+    const realAtivo = Math.max(0, realBruto - afs.length - avs.length);
+    DATA.push({ setor, real: realAtivo, realBruto: realBruto, permanentes: 0, afastados: afs.length, afastados_detalhe: afs, avisos: avs.length, avisos_detalhe: avs });
   });
-  // Reset docs on every import — pipeline changes daily with new files
-  // Keep tetos and datas (user-configured, persist between days)
-  DATA.forEach(d=>{
-    if(ST.tetos[d.setor]==null) ST.tetos[d.setor]=d.real;
-    ST.docs[d.setor] = 0; // always reset: approved candidates who entered today must be cleared
-    if(ST.datas[d.setor]==null) ST.datas[d.setor]='';
+
+  DATA.forEach(d => {
+    if (ST.tetos[d.setor] == null) ST.tetos[d.setor] = d.realBruto;
+    ST.docs[d.setor] = 0;
+    if (ST.datas[d.setor] == null) ST.datas[d.setor] = '';
   });
-  document.getElementById('slaVal').value=ST.sla;
-  document.getElementById('hdMeta').textContent='Base: '+new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+'  —  '+DATA.length+' setores  —  '+DATA.reduce((s,d)=>s+d.real,0)+' colaboradores';
-  document.getElementById('importScreen').style.display='none';
-  document.getElementById('dashScreen').style.display='block';
+
+  // UPDATE 6 EXECUTIVE CARDS
+  const totalHeadBruto = ALL_EMPLOYEES.length || 464;
+  const numAposentados = EXCECOES.aposentados.length;
+  const numReclusos = EXCECOES.reclusos.length;
+  const numPedidos = EXCECOES.pedidos_demissao.length;
+  const numPrevisao = EXCECOES.previsao_demissao.length;
+  const headLiquido = totalHeadBruto - numAposentados - numReclusos - numPedidos - numPrevisao;
+
+  document.getElementById('val-exec-bruto').textContent = totalHeadBruto;
+  document.getElementById('val-exec-aposentados').textContent = numAposentados;
+  document.getElementById('val-exec-reclusos').textContent = numReclusos;
+  document.getElementById('val-exec-pedidos').textContent = numPedidos;
+  document.getElementById('val-exec-previsao').textContent = numPrevisao;
+  document.getElementById('val-exec-liquido').textContent = headLiquido;
+
+  document.getElementById('slaVal').value = ST.sla;
+  document.getElementById('hdMeta').textContent = 'Base: ' + new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) + '  —  ' + DATA.length + ' setores  —  ' + totalHeadBruto + ' colaboradores';
+  document.getElementById('importScreen').style.display = 'none';
+  document.getElementById('dashScreen').style.display = 'block';
+  
   rerender();
-  toast('Dashboard carregado! Atualize os campos Em Documentação.','ok');
+  selectExecCard('liquido');
+  toast('Quadro de Lotação Executivo carregado com sucesso!', 'ok');
 }
 
 function goImport(){
@@ -616,25 +900,123 @@ function goImport(){
   document.getElementById('importScreen').style.display='flex';
 }
 
-// ══ DEMO ══
-function loadDemo(){
-  DATA=[{"setor":"CUSTOS C/ PESSOAL - TAPEÇARIA","real":87,"afastados":6,"afastados_detalhe":[{"nome":"MARCOS ANTONIO BRASIL DA SILVA","tipo":"Auxílio Doença","retorno":""},{"nome":"BRENDHA THAIS DE MELO","tipo":"Auxílio Doença","retorno":"03/05/2026"},{"nome":"GERALDA CRISTINA DOS SANTOS SOUZA","tipo":"Auxílio Doença","retorno":"27/01/2027"},{"nome":"ERLANE ALVES DOS SANTOS SILVA","tipo":"Licença Maternidade","retorno":"10/05/2026"},{"nome":"FRANILDA BATISTA DA SILVA","tipo":"Auxílio Acidente de Trabalho","retorno":"18/06/2026"},{"nome":"ANA JULIA SILVA LOPES","tipo":"Auxílio Doença","retorno":"30/04/2026"}],"avisos":1,"avisos_detalhe":[{"nome":"GERALDA CRISTINA DOS SANTOS SOUZA","ultimo_dia":"08/02/2026","motivo":"Demissão pela empresa"}]},{"setor":"TUPIAS E FRESAS","real":43,"afastados":0,"afastados_detalhe":[],"avisos":1,"avisos_detalhe":[{"nome":"MIQUEIAS BELFORT DOS SANTOS","ultimo_dia":"03/05/2026","motivo":"Demissão pela empresa"}]},{"setor":"PINTURA P.U.","real":33,"afastados":2,"afastados_detalhe":[{"nome":"JOSE MANOEL DE ALMEIDA NETO","tipo":"Auxílio Doença","retorno":"02/05/2026"},{"nome":"JHENIFER BEATRIZ DE OLIVEIRA TORRES","tipo":"Licença Maternidade","retorno":"27/07/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - METALÚRGICA","real":27,"afastados":1,"afastados_detalhe":[{"nome":"ESMERALDA RODRIGUES DE SOUZA","tipo":"Licença Maternidade","retorno":"10/08/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"LIXAMENTO","real":24,"afastados":4,"afastados_detalhe":[{"nome":"ESTER SANTOS SILVA","tipo":"Auxílio Doença","retorno":"05/07/2026"},{"nome":"SILVANEIDE FERREIRA NUNES","tipo":"Auxílio Doença","retorno":"02/05/2026"},{"nome":"FRANCISCA FRANCILENE VASCONCELOS","tipo":"Auxílio Doença","retorno":"02/07/2026"},{"nome":"JOSILENE RODRIGUES","tipo":"Auxílio Doença","retorno":"08/05/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"LINHA DE EMBALAGEM","real":24,"afastados":2,"afastados_detalhe":[{"nome":"NEIVA APARECIDA MATIAS LOPES","tipo":"Auxílio Doença","retorno":"08/07/2026"},{"nome":"LORENA VITORIA BATISTA FIGUEIREDO","tipo":"Licença Maternidade","retorno":"12/06/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - ALMOXARIFADO","real":24,"afastados":0,"afastados_detalhe":[],"avisos":1,"avisos_detalhe":[{"nome":"FERNANDO FELIPPE NUNES FERREIRA","ultimo_dia":"20/05/2026","motivo":"Pedido de demissão"}]},{"setor":"COLAGEM DE BORDAS","real":21,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - C. DISTRIB","real":19,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"PRENSAGEM","real":17,"afastados":1,"afastados_detalhe":[{"nome":"BRENO MARINO DE OLIVEIRA","tipo":"Auxílio Doença","retorno":"30/04/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"CENTRO DE TRABALHO - CNC","real":16,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"FURAÇÃO","real":16,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"PINTURA U.V.","real":15,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"CONTROLE DE QUALIDADE","real":10,"afastados":1,"afastados_detalhe":[{"nome":"PAULO CESAR BUENO","tipo":"Auxílio Doença","retorno":"27/08/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - MANUTENÇÃO","real":10,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - ZELADORIA","real":10,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - GESTÃO PESSOAS","real":8,"afastados":0,"afastados_detalhe":[],"avisos":1,"avisos_detalhe":[{"nome":"JULIANA PIMENTEL SILVA","ultimo_dia":"02/05/2026","motivo":"Pedido de demissão"}]},{"setor":"CORTE","real":7,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - LOJA","real":5,"afastados":1,"afastados_detalhe":[{"nome":"MAEDSON FERNANDES NICACIO LIMA","tipo":"Auxílio Doença","retorno":"07/06/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - CONTABILIDADE","real":3,"afastados":1,"afastados_detalhe":[{"nome":"MARIANA CLAUDINO DA SILVA VALENTIM","tipo":"Licença Maternidade","retorno":"11/05/2026"}],"avisos":0,"avisos_detalhe":[]},{"setor":"CENTRO DE DISTRIBUIÇÃO","real":1,"afastados":1,"afastados_detalhe":[{"nome":"JOSE OLIVEIRA NEVES","tipo":"Aposentadoria por Invalidez","retorno":""}],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - MARKETING","real":4,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - VENDAS","real":3,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - FINANCEIRO","real":3,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTO C/ PESSOAL - DIR. OPERAÇÕES","real":1,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - SERRALHERIA","real":4,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - SEG. PATRIMONIAL","real":5,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"DESPESAS C/ PESSOAL - COMPRAS","real":3,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - PLANEJAMENTO E PROCESSOS","real":2,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - ENGENHARIA DE PRODUTOS E PROJETOS","real":6,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"CUSTOS C/ PESSOAL - CENTRO PRODUTIVO","real":2,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]},{"setor":"USINAGEM","real":1,"afastados":0,"afastados_detalhe":[],"avisos":0,"avisos_detalhe":[]}];
-  DATA=DATA.filter(d=>!isExcluido(d.setor));
-  DATA.forEach(d=>{
-    // Filter out avisos already past ultimo_dia
-    d.avisos_detalhe = d.avisos_detalhe.filter(a=>!dateAlreadyPassed(a.ultimo_dia));
-    d.avisos = d.avisos_detalhe.length;
-    const perm=d.afastados_detalhe.filter(a=>isPermanente(a.tipo)).length;
-    d.permanentes=perm; d.realBruto=d.real; d.real=Math.max(0,d.real-perm);
-    if(ST.tetos[d.setor]==null)ST.tetos[d.setor]=d.real;
-    if(ST.docs[d.setor]==null)ST.docs[d.setor]=0;
-    if(ST.datas[d.setor]==null)ST.datas[d.setor]='';
+// ══ EXECUTIVE CARDS INTERACTIVITY ══
+function selectExecCard(type) {
+  activeExecCard = type;
+  document.querySelectorAll('.exec-card').forEach(c => c.classList.remove('active'));
+  const cardEl = document.getElementById('card-exec-' + type);
+  if (cardEl) cardEl.classList.add('active');
+
+  const panel = document.getElementById('execDetailPanel');
+  panel.style.display = 'block';
+
+  renderExecTable();
+}
+
+function closeExecDetail() {
+  document.getElementById('execDetailPanel').style.display = 'none';
+  document.querySelectorAll('.exec-card').forEach(c => c.classList.remove('active'));
+}
+
+function getExecList(type) {
+  let list = [];
+  const excCads = new Set([
+    ...EXCECOES.aposentados.map(x => x.cad),
+    ...EXCECOES.reclusos.map(x => x.cad),
+    ...EXCECOES.pedidos_demissao.map(x => x.cad),
+    ...EXCECOES.previsao_demissao.map(x => x.cad)
+  ]);
+
+  if (type === 'bruto') {
+    return ALL_EMPLOYEES.map(e => ({
+      cad: e.cad, nome: e.nome, cargo: e.cargo, setor: e.setor, obs: 'Ativo no Headcount'
+    }));
+  } else if (type === 'aposentados') {
+    return EXCECOES.aposentados.map(e => ({
+      cad: e.cad, nome: e.nome, cargo: e.cargo || 'Aposentado', setor: e.setor, obs: 'Aposentadoria / Invalidez'
+    }));
+  } else if (type === 'reclusos') {
+    return EXCECOES.reclusos.map(e => ({
+      cad: e.cad, nome: e.nome, cargo: e.cargo || 'Gerente', setor: e.setor, obs: 'Licença Reclusão Jurídica'
+    }));
+  } else if (type === 'pedidos') {
+    return EXCECOES.pedidos_demissao.map(e => ({
+      cad: e.cad, nome: e.nome, cargo: e.cargo || 'Aux. Produção', setor: e.setor, obs: `Pedido de Demissão (${e.data || ''})`
+    }));
+  } else if (type === 'previsao') {
+    return EXCECOES.previsao_demissao.map(e => ({
+      cad: e.cad, nome: e.nome, cargo: e.cargo || 'Operacional', setor: e.setor, obs: 'Previsão de Desligamento Gestão'
+    }));
+  } else if (type === 'liquido') {
+    return ALL_EMPLOYEES.filter(e => !excCads.has(e.cad)).map(e => ({
+      cad: e.cad, nome: e.nome, cargo: e.cargo, setor: e.setor, obs: 'Operação Ativa Efetiva'
+    }));
+  }
+  return list;
+}
+
+function renderExecTable() {
+  const type = activeExecCard;
+  const list = getExecList(type);
+  const search = (document.getElementById('execSearchInp').value || '').toLowerCase();
+
+  const titleMap = {
+    bruto: { title: "Total Head (Bruto)", icon: "👥", sub: "Todos os 464 colaboradores ativos no cadastro Senior" },
+    aposentados: { title: "Colaboradores Aposentados", icon: "👴", sub: "Mantidos em cadastro por aposentadoria / invalidez" },
+    reclusos: { title: "Licença Reclusão", icon: "⚖️", sub: "Afastamentos legais por licença reclusão" },
+    pedidos: { title: "Aviso Prévio - Pedidos de Demissão", icon: "📜", sub: "Pedidos voluntários de desligamento" },
+    previsao: { title: "Previsão de Demissão (Lista Diretoria)", icon: "⚠️", sub: "Demissões planejadas em avaliação de turnover" },
+    liquido: { title: "Head Líquido (Real Ativo)", icon: "✅", sub: "Quadro real ativo na operação descontando exceções" }
+  };
+
+  const meta = titleMap[type] || titleMap['liquido'];
+  document.getElementById('execDetailTitle').textContent = `${meta.title} (${list.length})`;
+  document.getElementById('execDetailSub').textContent = meta.sub;
+  document.getElementById('execDetailIcon').textContent = meta.icon;
+
+  const filtered = list.filter(e => 
+    !search || 
+    e.nome.toLowerCase().includes(search) || 
+    e.cad.toLowerCase().includes(search) || 
+    (e.setor && e.setor.toLowerCase().includes(search)) ||
+    (e.cargo && e.cargo.toLowerCase().includes(search))
+  );
+
+  const tbody = document.getElementById('execTbody');
+  tbody.innerHTML = '';
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--muted);">Nenhum colaborador encontrado para o filtro.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(e => {
+    const nomeDisp = e.nome;
+    const setorDisp = displaySetor(e.setor || 'NÃO DEFINIDO');
+    const tagHtml = getTagHtml(e.setor || '');
+    
+    tbody.innerHTML += `
+      <tr style="border-bottom:1px solid #f1f5f9;">
+        <td style="padding:10px 12px; font-family:var(--font-m); font-weight:600; color:var(--muted);">${e.cad}</td>
+        <td style="padding:10px 12px; font-weight:600; color:var(--text);">${nomeDisp}</td>
+        <td style="padding:10px 12px; color:var(--muted); font-size:12px;">${e.cargo || '—'}</td>
+        <td style="padding:10px 12px;">
+          <span style="font-weight:600; color:var(--blue); display:block;">${setorDisp}</span>
+          ${tagHtml}
+        </td>
+        <td style="padding:10px 12px;">
+          <span style="display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; background:rgba(37,99,235,0.08); color:var(--blue);">
+            ${e.obs}
+          </span>
+        </td>
+      </tr>
+    `;
   });
-  document.getElementById('slaVal').value=ST.sla;
-  document.getElementById('hdMeta').textContent='Demonstração — '+DATA.length+' setores — '+DATA.reduce((s,d)=>s+d.real,0)+' colaboradores';
-  document.getElementById('importScreen').style.display='none';
-  document.getElementById('dashScreen').style.display='block';
-  rerender();
+}
+
+// ══ DEMO FALLBACK ══
+function loadDemo(){
+  buildDashboard();
 }
 
 // ══ VIEW ══
@@ -651,7 +1033,7 @@ function getRows(){
   return DATA;
 }
 
-// ══ RENDER ══
+// ══ RENDER SEITORIAL ══
 const TODAY=new Date(); TODAY.setHours(0,0,0,0);
 const RETORNO_JANELA = 7;
 
@@ -684,7 +1066,6 @@ function rerender(){
   if(!DATA.length)return;
   const search=document.getElementById('searchInp').value.toLowerCase();
 
-  // update tab badges
   const prodRows=DATA.filter(d=>isProd(d.setor));
   document.getElementById('badge-geral').textContent=DATA.length+' setores';
   document.getElementById('badge-prod').textContent=prodRows.length+' setores';
@@ -727,14 +1108,12 @@ function rerender(){
 
   document.getElementById('tinfo').textContent=rows.length+' / '+baseRows.length+' setores';
 
-  // SLA counts from current view
   let sOk=0,sWarn=0,sCrit=0;
   baseRows.forEach(d=>{ const t=ST.tetos[d.setor]??d.real; if(Math.max(0,t-d.real)>0){ const u=urg(workDays(ST.datas[d.setor])); if(u==='ok'||u==='none')sOk++; else if(u==='warn')sWarn++; else sCrit++; } });
   document.getElementById('slaOk').textContent=sOk;
   document.getElementById('slaWarn').textContent=sWarn;
   document.getElementById('slaCrit').textContent=sCrit;
 
-  // Retorno alert
   const retornoItems=[];
   baseRows.forEach(d=>{
     d.afastados_detalhe.forEach(a=>{
@@ -752,7 +1131,7 @@ function rerender(){
     alertEl.style.display='flex';
     totalEl.textContent=retornoItems.length+' colaborador'+(retornoItems.length>1?'es':'');
     listEl.innerHTML=retornoItems.map(r=>`
-      <div style="background:rgba(0,0,0,0.2);border:1px solid rgba(251,140,66,0.25);border-radius:8px;padding:6px 12px;font-size:12px;">
+      <div style="background:#ffffff;border:1px solid rgba(234,88,12,0.25);border-radius:8px;padding:6px 12px;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,0.03);">
         <div style="font-weight:600;color:var(--text)">${r.nome}</div>
         <div style="color:var(--muted);font-size:11px;margin-top:2px;">${r.setor}</div>
         <div style="margin-top:4px;display:flex;gap:6px;align-items:center;">
@@ -764,11 +1143,10 @@ function rerender(){
     alertEl.style.display='none';
   }
 
-  // tbody
   const tbody=document.getElementById('tbody');
   tbody.innerHTML='';
   rows.forEach((d,i)=>{
-    const teto=ST.tetos[d.setor]??d.real;
+    const teto=ST.tetos[d.setor]??d.realBruto;
     const vagas=Math.max(0,teto-d.real);
     const docs=ST.docs[d.setor]||0;
     const liq=Math.max(0,vagas-docs)+d.avisos;
@@ -812,7 +1190,6 @@ function rerender(){
 
     let afH='',avH='';
     if(d.afastados_detalhe?.length){
-      // separate imminent vs normal
       const iminentes=d.afastados_detalhe.filter(a=>{ const dy=daysUntilReturn(a.retorno); return dy!==null&&dy>=0&&dy<=RETORNO_JANELA; });
       const normais=d.afastados_detalhe.filter(a=>{ const dy=daysUntilReturn(a.retorno); return !(dy!==null&&dy>=0&&dy<=RETORNO_JANELA); });
 
@@ -842,10 +1219,9 @@ function rerender(){
     if(afH||avH){tbody.innerHTML+=`<tr class="drow" id="${rid}"><td class="dcell" colspan="10"><div class="dinner">${afH}${avH}</div></td></tr>`;}
   });
 
-  // KPIs from current view base
-  const tT=baseRows.reduce((s,d)=>s+(ST.tetos[d.setor]??d.real),0);
+  const tT=baseRows.reduce((s,d)=>s+(ST.tetos[d.setor]??d.realBruto),0);
   const tR=baseRows.reduce((s,d)=>s+d.real,0);
-  const tV=baseRows.reduce((s,d)=>s+Math.max(0,(ST.tetos[d.setor]??d.real)-d.real),0);
+  const tV=baseRows.reduce((s,d)=>s+Math.max(0,(ST.tetos[d.setor]??d.realBruto)-d.realBruto),0);
   const tD=baseRows.reduce((s,d)=>s+(ST.docs[d.setor]||0),0);
   const tAf=baseRows.reduce((s,d)=>s+d.afastados,0);
   const tAv=baseRows.reduce((s,d)=>s+d.avisos,0);
@@ -858,7 +1234,6 @@ function rerender(){
   document.getElementById('kDocs').textContent=tD;
   document.getElementById('kLiq').textContent=tL;
 
-  // Footer
   document.getElementById('tfoot').innerHTML=`<tr class="frow">
     <td><span style="font-family:var(--font-c);font-size:12px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted)">Total</span></td>
     <td style="text-align:center"><span class="ftotal" style="color:var(--blue)">${tT}</span></td>
@@ -876,7 +1251,6 @@ function rerender(){
 // ══ HANDLERS ══
 function onTeto(i,setor,inp){
   ST.tetos[setor]=parseInt(inp.value)||0;
-  // if teto raised to >= real, vagas might close — clear stale docs
   const d=DATA.find(x=>x.setor===setor);
   if(d){
     const vagas=Math.max(0, ST.tetos[setor]-d.real);
@@ -895,14 +1269,9 @@ function toast(msg,type='ok'){ const t=document.getElementById('toast'); t.textC
 
 window.onload = async function() {
   try {
-    document.getElementById('st-cons').textContent = 'Sincronizando via Drive...';
-    document.getElementById('st-afas').textContent = 'Sincronizando via Drive...';
-    document.getElementById('st-aviso').textContent = 'Sincronizando via Drive...';
-    
-    console.log('Iniciando fetch na API...');
+    console.log('Iniciando fetch automático dos dados da API...');
     const res = await fetch('http://127.0.0.1:5004/api/sync-vagas');
     const data = await res.json();
-    console.log('Resposta recebida:', data);
     
     if(!res.ok) {
         throw new Error(JSON.stringify(data, null, 2));
@@ -910,6 +1279,8 @@ window.onload = async function() {
     loaded.cons = data.cons;
     loaded.afas = data.afas;
     loaded.aviso = data.aviso;
+    if (data.excecoes) loaded.excecoes = data.excecoes;
+    
     buildDashboard();
   } catch(e) {
     console.error('Erro no Fetch da API:', e);
@@ -917,7 +1288,7 @@ window.onload = async function() {
     document.getElementById('dashScreen').style.display = 'none';
     document.getElementById('debugScreen').style.display = 'block';
     document.getElementById('debugLog').textContent = e.message;
-    toast('Falha ao sincronizar com Drive', 'err');
+    toast('Falha ao sincronizar com servidor', 'err');
   }
 };
 

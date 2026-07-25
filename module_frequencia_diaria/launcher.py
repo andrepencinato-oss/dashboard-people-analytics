@@ -34,7 +34,7 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 PORT = 5008
-URL = f"http://127.0.0.1:{PORT}/dashboard"
+URL = f"http://127.0.0.1:{PORT}/login"
 
 
 def run_server():
@@ -129,12 +129,32 @@ def check_ota():
                 exe_command = 'start "" "python" "module_frequencia_diaria\\launcher.py"'
                 kill_exe_cmd = 'echo.'
 
+            import glob
+            version_files = glob.glob(os.path.join(update_stage, "core", "version*.json"))
+            version_renames = ""
+            for v_file in version_files:
+                v_name = os.path.basename(v_file)
+                os.rename(v_file, v_file + ".new")
+                version_renames += f'    move /y "{app_root}\\core\\{v_name}.new" "{app_root}\\core\\{v_name}" > nul 2>&1\n'
+
             bat_content = f"""@echo off
 ping 127.0.0.1 -n 3 > nul
 {kill_exe_cmd}
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5008') do taskkill /f /pid %%a > nul 2>&1
 ping 127.0.0.1 -n 2 > nul
+
+del /q /f "{app_root}\\*.old" > nul 2>&1
+ren "{app_root}\\{exe_name}" "{exe_name}.old" > nul 2>&1
+ren "{app_root}\\*.dll" "*.dll.old" > nul 2>&1
+ren "{app_root}\\*.pyd" "*.pyd.old" > nul 2>&1
+
 xcopy /s /y /q "{update_stage}\\*" "{app_root}\\"
+
+if exist "{app_root}\\{exe_name}" (
+{version_renames}) else (
+    ren "{app_root}\\{exe_name}.old" "{exe_name}" > nul 2>&1
+)
+
 rmdir /s /q "{update_stage}"
 cd /d "{app_root}"
 {exe_command}
@@ -147,7 +167,8 @@ del "%~f0"
                 [bat_path],
                 cwd=app_root,
                 shell=True,
-                creationflags=subprocess.CREATE_NEW_CONSOLE
+                creationflags=0x00000008,
+                close_fds=True
             )
             sys.exit(0)
     except Exception:

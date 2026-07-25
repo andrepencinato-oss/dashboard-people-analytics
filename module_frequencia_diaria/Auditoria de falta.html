@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auditoria de Marcação de Ponto</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="papaparse.min.js"></script>
+<script src="xlsx.full.min.js"></script>
+<script src="chart.umd.min.js"></script>
+<script src="lucide.js"></script>
 <script src="data_frequencia.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -76,6 +76,11 @@
   .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border-color: var(--ink-soft); }
   .kpi-inactive { opacity: 0.4; filter: grayscale(100%); }
   .kpi-active { border: 2px solid var(--ink) !important; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); opacity: 1 !important; filter: none !important; }
+
+  /* Estilos nativos Vanilla CSS de suporte offline para os gráficos */
+  .h-72 { height: 288px !important; min-height: 288px !important; width: 100%; }
+  .h-\[400px\] { height: 400px !important; min-height: 400px !important; width: 100%; }
+  canvas { max-width: 100%; width: 100% !important; height: 100% !important; display: block; }
 </style>
 </head>
 <body class="h-screen w-full flex overflow-hidden bg-[var(--bg)]">
@@ -87,7 +92,7 @@
         <div class="flex justify-between items-center mb-1">
           <p class="text-[10px] font-semibold tracking-[0.18em] text-[var(--coral)] uppercase">Análise de Absentismo</p>
           <div class="flex items-center gap-1.5">
-            <span class="badge badge-navy" style="font-size: 0.65rem;">v2.1.7</span>
+            <span class="badge badge-navy" style="font-size: 0.65rem;">v2.3.9</span>
             <button id="btnAdmin" title="Painel Administrativo"
               class="p-1.5 rounded-lg hover:bg-[var(--violet-soft)] text-[var(--ink-soft)] hover:text-[#6D28D9] transition-colors hidden"
               onclick="openAdmin()">
@@ -106,6 +111,23 @@
             <i data-lucide="refresh-cw" id="syncIcon" class="w-4 h-4 text-[var(--emerald)] group-hover:rotate-180 transition-transform duration-500"></i>
             <span id="syncText" class="text-xs font-semibold text-[var(--emerald)]">Sincronizar Dados do Drive</span>
           </button>
+          <div class="card px-3 py-2.5 flex items-center gap-3">
+            <i data-lucide="calendar" class="w-4 h-4 text-[var(--coral)]"></i>
+            <select id="f-mes" class="bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none cursor-pointer border-none p-0 outline-none w-28">
+              <option value="">Todos os Meses</option>
+            </select>
+          </div>
+          <div class="card px-3 py-2.5 flex items-center gap-3">
+            <i data-lucide="calendar-range" class="w-4 h-4 text-[var(--coral)]"></i>
+            <select id="f-semana" class="bg-transparent text-xs font-semibold text-[var(--ink)] focus:outline-none cursor-pointer border-none p-0 outline-none w-28">
+              <option value="">Semanas</option>
+              <option value="Semana 1">Semana 1</option>
+              <option value="Semana 2">Semana 2</option>
+              <option value="Semana 3">Semana 3</option>
+              <option value="Semana 4">Semana 4</option>
+              <option value="Semana 5">Semana 5</option>
+            </select>
+          </div>
           <div class="card px-3 py-2.5 flex items-center gap-3">
             <i data-lucide="calendar-days" class="w-4 h-4 text-[var(--coral)]"></i>
             <select id="f-data" class="bg-transparent text-xs font-semibold tabular text-[var(--ink)] focus:outline-none cursor-pointer border-none p-0 outline-none w-28">
@@ -129,75 +151,214 @@
   <!-- ======================= ÁREA PRINCIPAL (DIREITA) ======================= -->
   <main class="flex-1 h-full overflow-y-auto relative flex flex-col">
     
-    <!-- Topbar para o Botão Toggle -->
-    <div class="px-6 lg:px-8 py-4 border-b border-[var(--line)] bg-white/70 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between gap-3">
+    <!-- Topbar para Navegação de Abas e Filtros -->
+    <div class="px-6 lg:px-8 py-3 border-b border-[var(--line)] bg-white/80 backdrop-blur-md sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 shadow-xs">
       <div class="flex items-center gap-3">
         <button id="toggleSidebar" class="p-2 -ml-2 rounded-lg hover:bg-black/5 text-[var(--ink)] transition-colors" title="Ocultar/Mostrar Menu Lateral">
           <i data-lucide="panel-left-close" id="sidebarIcon" class="w-5 h-5"></i>
         </button>
-        <span class="text-sm font-semibold text-[var(--ink)]">Filtros e KPIs</span>
+        
+        <div class="flex items-center gap-1 bg-[var(--gray-soft)] p-1 rounded-xl border border-[var(--line)]">
+          <button id="tab-btn-indicadores" onclick="switchTab('indicadores')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-white text-[var(--navy)] shadow-xs">
+            <i data-lucide="bar-chart-3" class="w-4 h-4 text-[var(--navy)]"></i>
+            Indicadores & Gráficos
+          </button>
+          <button id="tab-btn-auditoria" onclick="switchTab('auditoria')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-[var(--ink-soft)] hover:text-[var(--ink)]">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            Auditoria de Marcação
+          </button>
+        </div>
       </div>
-      <button id="btnLimparFiltros" class="hidden text-[11px] font-bold px-3 py-1.5 bg-[var(--coral-soft)] text-[var(--coral)] hover:bg-[var(--coral)] hover:text-white rounded-lg transition-colors items-center gap-2 shadow-sm" onclick="limparFiltrosGerais()" title="Limpar todos os filtros">
-        <i data-lucide="filter-x" class="w-3.5 h-3.5"></i>
-        Limpar Filtros
-      </button>
+
+      <div class="flex items-center gap-2">
+        <span id="active-filter-badge" class="hidden text-xs font-semibold px-3 py-1.5 bg-[var(--navy-soft)] text-[var(--navy)] rounded-lg flex items-center gap-2">
+          <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+          <span id="active-filter-text">Filtro Ativo</span>
+        </span>
+        <button id="btnLimparFiltros" class="hidden text-[11px] font-bold px-3 py-1.5 bg-[var(--coral-soft)] text-[var(--coral)] hover:bg-[var(--coral)] hover:text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm" onclick="limparFiltrosGerais()" title="Limpar todos os filtros">
+          <i data-lucide="filter-x" class="w-3.5 h-3.5"></i>
+          Limpar Filtros
+        </button>
+      </div>
     </div>
 
     <div class="p-6 lg:p-8 space-y-6">
 
-  <!-- ======================= SETORES ======================= -->
-  <section class="card p-5">
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="font-display font-700 text-[15px]">Ranking de Setores</h2>
-        <p class="text-xs text-[var(--ink-soft)]">Todos os centros de custo detalhados com % de representatividade</p>
+  <!-- ======================= ABAS: VISÃO 1 - INDICADORES & GRÁFICOS ======================= -->
+  <div id="view-indicadores" class="space-y-6">
+    <!-- Cards de KPIs do Topo -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="card p-5 flex items-center justify-between border-l-4 border-[var(--emerald)]">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-soft)]">Assiduidade Média</p>
+          <h3 id="stat-assiduidade" class="text-2xl font-800 text-[var(--emerald)] mt-1">—</h3>
+          <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">% Colaboradores Presentes</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-[var(--emerald-soft)] flex items-center justify-center">
+          <i data-lucide="user-check" class="w-6 h-6 text-[var(--emerald)]"></i>
+        </div>
       </div>
-      <i data-lucide="alert-octagon" class="w-4 h-4 text-[var(--coral)]"></i>
-    </div>
-    <div id="sector-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-h-[750px] overflow-y-auto scrollbar-thin pr-2"></div>
-  </section>
 
-  <!-- ======================= TABELA DETALHADA ======================= -->
-  <section class="card p-5">
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
-      <div>
-        <h2 class="font-display font-700 text-[15px]">Detalhamento de Colaboradores</h2>
-        <p class="text-xs text-[var(--ink-soft)]">Lista detalhada com visualização rápida das ocorrências</p>
+      <div class="card p-5 flex items-center justify-between border-l-4 border-[var(--coral)]">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-soft)]">Taxa de Falta Geral</p>
+          <h3 id="stat-absenteismo" class="text-2xl font-800 text-[var(--coral)] mt-1">—</h3>
+          <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">% Absenteísmo da Empresa</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-[var(--coral-soft)] flex items-center justify-center">
+          <i data-lucide="user-x" class="w-6 h-6 text-[var(--coral)]"></i>
+        </div>
       </div>
-      <button onclick="exportToExcel()" class="px-4 py-2.5 bg-[var(--emerald)] hover:bg-[#0b6c4a] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shadow-sm shrink-0">
-        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-        Exportar Excel
-      </button>
-    </div>
-    
-    <div class="flex flex-col sm:flex-row gap-2 mb-4 w-full">
-      <div class="relative grow max-w-sm">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"></i>
-        <input id="f-search" type="text" placeholder="Buscar matrícula ou nome..."
-          class="pl-9 pr-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full"/>
+
+      <div class="card p-5 flex items-center justify-between border-l-4 border-[var(--amber)]">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-soft)]">Ocorrências / Faltas</p>
+          <h3 id="stat-faltas" class="text-2xl font-800 text-[var(--amber)] mt-1">—</h3>
+          <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Total no Período Selecionado</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-[var(--amber-soft)] flex items-center justify-center">
+          <i data-lucide="alert-circle" class="w-6 h-6 text-[var(--amber)]"></i>
+        </div>
       </div>
-      <select id="f-setor" class="px-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full sm:w-56"></select>
-      <select id="f-situacao" class="px-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full sm:w-48"></select>
+
+      <div class="card p-5 flex items-center justify-between border-l-4 border-[var(--navy)]">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-soft)]">Headcount Mapeado</p>
+          <h3 id="stat-headcount" class="text-2xl font-800 text-[var(--navy)] mt-1">—</h3>
+          <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Total de Colaboradores</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-[var(--navy-soft)] flex items-center justify-center">
+          <i data-lucide="users" class="w-6 h-6 text-[var(--navy)]"></i>
+        </div>
+      </div>
     </div>
 
-    <div class="max-h-[380px] overflow-y-auto overflow-x-auto scrollbar-thin rounded-lg border border-[var(--line)]">
-      <table class="w-full text-sm">
-        <thead class="sticky top-0 z-10 bg-[#FAFBF9] shadow-sm">
-          <tr class="text-left text-[11px] uppercase tracking-wide text-[var(--ink-soft)] font-semibold border-b border-[var(--line)]">
-            <th class="px-4 py-3 bg-[#FAFBF9]">Matrícula</th>
-            <th class="px-4 py-3 bg-[#FAFBF9]">Colaborador</th>
-            <th class="px-4 py-3 bg-[#FAFBF9]">Centro de Custo / Setor</th>
-            <th class="px-4 py-3 bg-[#FAFBF9]">Situação</th>
-            <th class="px-4 py-3 tabular bg-[#FAFBF9]">Prev. Término</th>
-            <th class="px-4 py-3 tabular bg-[#FAFBF9]">Previsto</th>
-            <th class="px-4 py-3 tabular bg-[#FAFBF9]">Marcação</th>
-          </tr>
-        </thead>
-        <tbody id="table-body" class="divide-y divide-[var(--line)]"></tbody>
-      </table>
+    <!-- Linha de Gráficos 1 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Gráfico 1: Acompanhamento Semanal -->
+      <div class="card p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Acompanhamento Semanal de Assiduidade vs. Faltas (%)</h3>
+            <p class="text-xs text-[var(--ink-soft)]">Evolução por semana do mês (Clique em uma semana para filtrar)</p>
+          </div>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--navy-soft)] text-[var(--navy)]">Por Semana</span>
+        </div>
+        <div class="relative h-72">
+          <canvas id="chartSemanal"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico 3: Representatividade por Setor -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Faltas Totais por Setor (%)</h3>
+            <p class="text-xs text-[var(--ink-soft)]">Distribuição das faltas (Clique na fatia para filtrar)</p>
+          </div>
+        </div>
+        <div class="relative h-72 flex items-center justify-center">
+          <canvas id="chartRepresentatividade"></canvas>
+        </div>
+      </div>
     </div>
-    <p id="table-count" class="text-xs text-[var(--ink-soft)] mt-3"></p>
-  </section>
+
+    <!-- Gráfico 4: Assiduidade Diária -->
+    <div class="card p-5 mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Assiduidade Diária vs. Acumulado Semanal</h3>
+          <p class="text-xs text-[var(--ink-soft)]">Acompanhamento granular do percentual de presenças dia a dia</p>
+        </div>
+        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--emerald-soft)] text-[var(--emerald)]">Por Dia</span>
+      </div>
+      <div class="relative h-72">
+        <canvas id="chartDiario"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráfico 2: Ranking Comparativo por Centro de Custo -->
+    <div class="card p-5 mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Análise por Centro de Custo (Assiduidade % vs. Falta no Setor %)</h3>
+          <p class="text-xs text-[var(--ink-soft)]">Clique na barra do setor para filtrar a auditoria e os dados</p>
+        </div>
+        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--emerald-soft)] text-[var(--emerald)]">Por Centro de Custo</span>
+      </div>
+      <div class="relative h-[400px] overflow-x-auto overflow-y-hidden scrollbar-thin pb-2">
+        <div id="chartSetoresContainer" class="relative min-w-full h-full">
+          <canvas id="chartSetores"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= ABAS: VISÃO 2 - AUDITORIA DE MARCAÇÃO ======================= -->
+  <div id="view-auditoria" class="hidden space-y-6">
+
+    <!-- SETORES -->
+    <section class="card p-5">
+      <div class="flex items-center justify-between mb-4 cursor-pointer select-none group" onclick="document.getElementById('sector-grid-container').classList.toggle('hidden'); const icon = document.getElementById('sector-toggle-icon'); if(icon.getAttribute('data-lucide')==='chevron-up'){icon.setAttribute('data-lucide','chevron-down');}else{icon.setAttribute('data-lucide','chevron-up');} lucide.createIcons();">
+        <div>
+          <h2 class="font-display font-700 text-[15px] group-hover:text-[var(--primary)] transition-colors">Ranking de Setores</h2>
+          <p class="text-xs text-[var(--ink-soft)]">Todos os centros de custo detalhados com % de representatividade (clique para ocultar/exibir)</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <i data-lucide="alert-octagon" class="w-4 h-4 text-[var(--coral)]"></i>
+          <button class="p-1 rounded bg-[var(--surface-sunken)] hover:bg-[var(--surface-hover)] transition-colors">
+            <i id="sector-toggle-icon" data-lucide="chevron-up" class="w-4 h-4 text-[var(--ink)]"></i>
+          </button>
+        </div>
+      </div>
+      <div id="sector-grid-container">
+        <div id="sector-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-h-[750px] overflow-y-auto scrollbar-thin pr-2"></div>
+      </div>
+    </section>
+
+    <!-- TABELA DETALHADA -->
+    <section class="card p-5">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="font-display font-700 text-[15px]">Detalhamento de Colaboradores</h2>
+          <p class="text-xs text-[var(--ink-soft)]">Lista detalhada com visualização rápida das ocorrências</p>
+        </div>
+        <button onclick="exportToExcel()" class="px-4 py-2.5 bg-[var(--emerald)] hover:bg-[#0b6c4a] text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2 shadow-sm shrink-0">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          Exportar Excel
+        </button>
+      </div>
+      
+      <div class="flex flex-col sm:flex-row gap-2 mb-4 w-full">
+        <div class="relative grow max-w-sm">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-soft)]"></i>
+          <input id="f-search" type="text" placeholder="Buscar matrícula ou nome..."
+            class="pl-9 pr-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full"/>
+        </div>
+        <select id="f-setor" class="px-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full sm:w-56"></select>
+        <select id="f-situacao" class="px-3 py-2 text-sm rounded-lg border border-[var(--line)] bg-white w-full sm:w-48"></select>
+      </div>
+
+      <div class="max-h-[380px] overflow-y-auto overflow-x-auto scrollbar-thin rounded-lg border border-[var(--line)]">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 z-10 bg-[#FAFBF9] shadow-sm">
+            <tr class="text-left text-[11px] uppercase tracking-wide text-[var(--ink-soft)] font-semibold border-b border-[var(--line)]">
+              <th class="px-4 py-3 bg-[#FAFBF9]">Matrícula</th>
+              <th class="px-4 py-3 bg-[#FAFBF9]">Colaborador</th>
+              <th class="px-4 py-3 bg-[#FAFBF9]">Centro de Custo / Setor</th>
+              <th class="px-4 py-3 bg-[#FAFBF9]">Situação</th>
+              <th class="px-4 py-3 tabular bg-[#FAFBF9]">Prev. Término</th>
+              <th class="px-4 py-3 tabular bg-[#FAFBF9]">Previsto</th>
+              <th class="px-4 py-3 tabular bg-[#FAFBF9]">Marcação</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-[var(--line)]"></tbody>
+        </table>
+      </div>
+      <p id="table-count" class="text-xs text-[var(--ink-soft)] mt-3"></p>
+    </section>
+
+  </div>
 
   <footer class="text-center text-xs text-[var(--ink-soft)] pt-2 pb-6">
     Auditoria de Marcação de Ponto · Controle de Frequência de 15/07/2026 · Móveis Província · People Analytics
@@ -253,6 +414,7 @@ lucide.createIcons();
    ============================================================ */
 const SAMPLE_DATA = [{"setor": "USINAGEM", "matricula": "1344", "nome": "Jose Marcos Alves Da Silva", "hora_prevista": "07:00", "hora_marcacao": "", "situacao": "Faltas", "codigo": "001", "data_relatorio": "2026-07-15"}, {"setor": "COLAGEM DE BORDAS", "matricula": "2022", "nome": "Cicero Cordeiro De Araujo", "hora_prevista": "07:00", "hora_marcacao": "08:39", "situacao": "", "codigo": "001", "data_relatorio": "2026-07-15"}];
 let DATA = typeof DATA_INJECT !== 'undefined' && DATA_INJECT.length > 0 ? [...DATA_INJECT] : [...SAMPLE_DATA];
+const HEADCOUNT = typeof HEADCOUNT_INJECT !== 'undefined' && HEADCOUNT_INJECT.total > 0 ? HEADCOUNT_INJECT : { by_mat: {}, by_sector: {}, total: 465 };
 
 /* ============================================================
    2) REGRAS DE NEGÓCIO / CLASSIFICAÇÃO COM FOCO EM FALTAS
@@ -262,24 +424,140 @@ const AFASTAMENTO_SET = new Set(['Auxílio Doença','Atestado (d)','Licença Mat
 function classify(sit){
   if(sit === '') return 'Atraso';
   if(AFASTAMENTO_SET.has(sit)) return 'Afastamento';
-  return 'Falta'; // Faltas, Atraso (falta), Marcações Inválidas, Dispensado
+  return 'Falta'; 
 }
-function situacaoLabel(sit){ return sit === '' ? 'Atraso no Ponto' : sit; }
+
+// Pre-classifica os dados na inicialização
+DATA.forEach(d => { d.categoria = classify(d.situacao); });
+
+let globalSectorColors = {};
+function initGlobalColors() {
+  let tempMap = {};
+  DATA.forEach(d => {
+    if (!d.setor) return;
+    const s = d.setor;
+    if (!tempMap[s]) tempMap[s] = { name: d.setor, f: 0 };
+    if (d.situacao && d.situacao.toUpperCase() === 'FALTA') tempMap[s].f++;
+  });
+  let allSectors = Object.keys(tempMap).sort((a,b) => tempMap[b].f - tempMap[a].f);
+  const palette = ['#C4523F', '#1D4E89', '#B8790A', '#0E8A5F', '#6D28D9', '#E06D53', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#14B8A6', '#F43F5E', '#84CC16', '#06B6D4', '#F97316', '#64748B'];
+  allSectors.forEach((sec, idx) => {
+    globalSectorColors[sec] = palette[idx % palette.length];
+  });
+  globalSectorColors['OUTROS'] = '#94A3B8';
+}
+
+window.onload = function() {
+  if (typeof DATA_INJECT !== 'undefined' && DATA_INJECT.length > 0) {
+    DATA = [...DATA_INJECT];
+  }
+  if (typeof HEADCOUNT_INJECT !== 'undefined') {
+    Object.assign(HEADCOUNT, HEADCOUNT_INJECT);
+  }
+
+  // Normalizar setores divididos (ex: TAPEÇARIA GERAL, TAPEÇARIA COLAGEM -> TAPEÇARIA)
+  if (HEADCOUNT && HEADCOUNT.by_sector) {
+    const knownSectors = Object.keys(HEADCOUNT.by_sector).sort((a,b) => b.length - a.length);
+    DATA.forEach(d => {
+      if (d.setor) {
+        const rawUpper = d.setor.toUpperCase();
+        for (const known of knownSectors) {
+          if (rawUpper.includes(known.toUpperCase())) {
+            d.setor = known;
+            break;
+          }
+        }
+      }
+    });
+  }
+
+  DATA.forEach(d => { d.categoria = classify(d.situacao); });
+  initGlobalColors();
+  initDashboard();
+};
+
+function situacaoLabel(sit){
+  if(sit === '') return 'Atrasado';
+  return sit;
+}
+
+function getWeekOfMonth(dateStr) {
+  if (!dateStr) return "Semana 1";
+  try {
+    const sep = dateStr.includes('/') ? '/' : '-';
+    const parts = dateStr.split(sep);
+    if (parts.length < 2) return "Semana 1";
+    
+    let year, month, day;
+    if (parts[0].length === 4) { // YYYY-MM-DD
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      day = parseInt(parts[2], 10);
+    } else { // DD-MM-YYYY or DD-MM
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      year = parts.length === 3 ? parseInt(parts[2], 10) : new Date().getFullYear();
+    }
+    
+    const firstDayOfMonth = new Date(year, month, 1);
+    const firstDayWeekDay = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon...
+    
+    let firstSunday = 1;
+    if (firstDayWeekDay !== 0) {
+      firstSunday = 1 + (7 - firstDayWeekDay);
+    }
+    
+    if (day <= firstSunday) {
+      return "Semana 1";
+    }
+    
+    const weekNumber = Math.ceil((day - firstSunday) / 7) + 1;
+    return "Semana " + weekNumber;
+  } catch (e) {
+    return "Semana 1";
+  }
+}
 
 /* ============================================================
-   ESTADO GLOBAL DE FILTRO
+   3) ESTADO GLOBAL E FILTROS (CROSS-FILTERING)
    ============================================================ */
-let activeGlobalFilter = null; // null | 'Falta' | 'Afastamento' | 'Atraso'
+let activeGlobalFilter = null;
+let currentView = 'indicadores';
+let activeWeeks = [];
+let activeSectors = [];
 
+const inputSearch = document.getElementById('f-search');
 const selData = document.getElementById('f-data');
 const selSetor = document.getElementById('f-setor');
 const selSituacao = document.getElementById('f-situacao');
-const inputSearch = document.getElementById('f-search');
+const selMes = document.getElementById('f-mes');
+const selSemana = document.getElementById('f-semana');
 const tbody = document.getElementById('table-body');
 const tableCount = document.getElementById('table-count');
 
+function switchTab(tab) {
+  currentView = tab;
+  const viewInd = document.getElementById('view-indicadores');
+  const viewAud = document.getElementById('view-auditoria');
+  const tabInd = document.getElementById('tab-btn-indicadores');
+  const tabAud = document.getElementById('tab-btn-auditoria');
+
+  if (tab === 'indicadores') {
+    viewInd.classList.remove('hidden');
+    viewAud.classList.add('hidden');
+    tabInd.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-white text-[var(--navy)] shadow-xs';
+    tabAud.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-[var(--ink-soft)] hover:text-[var(--ink)]';
+  } else {
+    viewInd.classList.add('hidden');
+    viewAud.classList.remove('hidden');
+    tabAud.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-white text-[var(--navy)] shadow-xs';
+    tabInd.className = 'px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-[var(--ink-soft)] hover:text-[var(--ink)]';
+  }
+  renderDashboard();
+}
+
 /* ============================================================
-   3) RENDERIZAÇÃO DOS KPIS
+   MAPEAMENTO DE CORES / IDENTIDADE VISUAL
    ============================================================ */
 const accentMap = {
   navy: {bg:'var(--navy-soft)', fg:'var(--navy)'},
@@ -289,22 +567,18 @@ const accentMap = {
   gray: {bg:'var(--gray-soft)', fg:'var(--ink-soft)'}
 };
 
-function toggleFilter(id) {
-  if (id === 'null' || id === null) activeGlobalFilter = null;
-  else if (activeGlobalFilter === id) activeGlobalFilter = null;
-  else activeGlobalFilter = id;
-  renderDashboard();
-}
-
 function limparFiltrosGerais() {
   activeGlobalFilter = null;
-  document.getElementById('f-search').value = '';
-  selData.value = '';
-  selSetor.value = '';
-  selSituacao.value = '';
+  activeWeeks = [];
+  activeSectors = [];
+  if (inputSearch) inputSearch.value = '';
+  if (selData) selData.value = '';
+  if (selSetor) selSetor.value = '';
+  if (selSituacao) selSituacao.value = '';
+  if (selMes) selMes.value = '';
+  if (selSemana) selSemana.value = '';
   renderDashboard();
 }
-
 function badgeForSituacao(sit, cat){
   if(cat === 'Atraso') return `<span class="badge badge-emerald"><i data-lucide="clock" class="w-3 h-3"></i>Atrasado</span>`;
   if(cat === 'Falta') return `<span class="badge badge-coral"><i data-lucide="user-x" class="w-3 h-3"></i>${sit}</span>`;
@@ -312,35 +586,753 @@ function badgeForSituacao(sit, cat){
   return `<span class="badge badge-gray"><i data-lucide="alert-triangle" class="w-3 h-3"></i>${sit}</span>`;
 }
 
+function cleanSetorName(s) {
+  if (!s) return '';
+  return s.replace(/^(CUSTOS?|DESPESAS?)\s+C\/\s+PESSOAL\s*-\s*/i, '').trim();
+}
+
+function getSectorHeadcount(s) {
+  if (!HEADCOUNT) return 0;
+  const cleanName = cleanSetorName(s.setor);
+  if (HEADCOUNT.by_sector && (HEADCOUNT.by_sector[s.setor] || HEADCOUNT.by_sector[cleanName])) {
+    return HEADCOUNT.by_sector[s.setor] || HEADCOUNT.by_sector[cleanName];
+  }
+  if (HEADCOUNT.by_mat && s.matriculas && s.matriculas.size > 0) {
+    const counts = {};
+    s.matriculas.forEach(m => {
+      const cc = HEADCOUNT.by_mat[m];
+      if (cc) counts[cc] = (counts[cc] || 0) + 1;
+    });
+    let topCC = null, maxC = 0;
+    for (const [cc, cnt] of Object.entries(counts)) {
+      if (cnt > maxC) { maxC = cnt; topCC = cc; }
+    }
+    if (topCC && HEADCOUNT.by_sector[topCC]) return HEADCOUNT.by_sector[topCC];
+  }
+  return 0;
+}
+
+let chartSemanalInstance = null;
+let chartDiarioInstance = null;
+let chartSetoresInstance = null;
+let chartRepresentatividadeInstance = null;
+
+function toggleFilter(id) {
+  if (id === 'null' || !id) return;
+  if (activeGlobalFilter === id) {
+    activeGlobalFilter = null;
+  } else {
+    activeGlobalFilter = id;
+  }
+  renderDashboard();
+}
+
+function renderIndicadoresCharts(dados_filtrados, validDates) {
+  if (!dados_filtrados) dados_filtrados = DATA;
+  if (!validDates) {
+    validDates = Array.from(new Set(DATA.map(d => d.data_relatorio).filter(x => x))).sort();
+  }
+  
+  console.log("🔥 [TESTE ANTIGRAVITY] O ficheiro foi fisicamente atualizado e o filtro está a processar os dados!");
+
+  // Determinar o headcount adequado ao filtro atual para as matemáticas não usarem a variável global bruta
+  const selSetorElem = document.getElementById('f-setor');
+  let setorSelecionado = [];
+  if (activeSectors.length > 0) {
+    setorSelecionado = [...activeSectors];
+  } else if (selSetorElem && selSetorElem.value) {
+    setorSelecionado = [selSetorElem.value];
+  }
+  let localHC = HEADCOUNT.total || 465;
+  if (setorSelecionado.length > 0 && !setorSelecionado.includes('OUTROS')) {
+    const mats = new Set();
+    dados_filtrados.forEach(d => { if (d.matricula) mats.add(d.matricula); });
+    let sumHC = 0;
+    setorSelecionado.forEach(sec => {
+      sumHC += getSectorHeadcount({ setor: sec, matriculas: mats });
+    });
+    if (sumHC > 0) localHC = sumHC;
+  }
+
+  const diasUnicos = validDates.length;
+  const multiplicadorDias = Math.max(1, diasUnicos);
+  const hcAcumulado = localHC * multiplicadorDias;
+
+  const totalHC = localHC;
+  const totalFaltasNJ = dados_filtrados.filter(d => (d.categoria || classify(d.situacao)) === 'Falta').length;
+  const mediaFaltasGlobal = parseFloat((totalFaltasNJ / multiplicadorDias).toFixed(1));
+  const pGlobal = Math.max(0, localHC - mediaFaltasGlobal);
+  const taxaAssiduidade = localHC > 0 ? ((pGlobal / localHC) * 100).toFixed(1) : '0.0';
+  const taxaAbsenteismo = localHC > 0 ? ((mediaFaltasGlobal / localHC) * 100).toFixed(1) : '0.0';
+
+  const statAss = document.getElementById('stat-assiduidade');
+  const statAbs = document.getElementById('stat-absenteismo');
+  const statFal = document.getElementById('stat-faltas');
+  const statHc = document.getElementById('stat-headcount');
+
+  if (statAss) statAss.textContent = taxaAssiduidade + '%';
+  if (statAbs) statAbs.textContent = taxaAbsenteismo + '%';
+  if (statFal) statFal.textContent = multiplicadorDias > 1 ? mediaFaltasGlobal : totalFaltasNJ;
+  if (statHc) statHc.textContent = totalHC;
+
+  // Atualiza label do card de faltas para indicar que é média
+  const labelFalta = statFal ? statFal.parentElement.querySelector('p') : null;
+  if (labelFalta) {
+    labelFalta.textContent = multiplicadorDias > 1 ? 'MÉDIA DE FALTAS/DIA' : 'OCORRÊNCIAS / FALTAS';
+  }
+
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js ainda não carregado.');
+    return;
+  }
+
+  // 1. Chart 1: Acompanhamento Semanal
+  try {
+    const weekBuckets = {};
+    dados_filtrados.forEach(d => {
+      const w = getWeekOfMonth(d.data_relatorio);
+      if (!weekBuckets[w]) weekBuckets[w] = { faltas: 0, count: 0, dias: new Set() };
+      weekBuckets[w].count++;
+      weekBuckets[w].dias.add(d.data_relatorio);
+      if ((d.categoria || classify(d.situacao)) === 'Falta') weekBuckets[w].faltas++;
+    });
+
+    const weekLabels = Object.keys(weekBuckets).sort();
+    const weekAssiduidade = weekLabels.map(w => {
+      const f = weekBuckets[w].faltas;
+      const diasSemana = Math.max(1, weekBuckets[w].dias.size);
+      const mediaFaltasSemana = parseFloat((f / diasSemana).toFixed(1));
+      const p = Math.max(0, localHC - mediaFaltasSemana);
+      return localHC > 0 ? parseFloat((p / localHC * 100).toFixed(1)) : 0;
+    });
+    const weekFaltas = weekLabels.map(w => {
+      const f = weekBuckets[w].faltas;
+      const diasSemana = Math.max(1, weekBuckets[w].dias.size);
+      const mediaFaltasSemana = parseFloat((f / diasSemana).toFixed(1));
+      return localHC > 0 ? parseFloat((mediaFaltasSemana / localHC * 100).toFixed(1)) : 0;
+    });
+
+    const canvasSem = document.getElementById('chartSemanal');
+    if (canvasSem) {
+      const ctxSemanal = canvasSem.getContext('2d');
+      if (chartSemanalInstance) chartSemanalInstance.destroy();
+
+      chartSemanalInstance = new Chart(ctxSemanal, {
+        type: 'bar',
+        data: {
+          labels: weekLabels,
+          datasets: [
+            {
+              type: 'bar',
+              label: '% Assiduidade (Presença)',
+              data: weekAssiduidade,
+              backgroundColor: '#0E8A5F',
+              borderRadius: 8,
+              borderSkipped: false
+            },
+            {
+              type: 'bar',
+              label: '% Falta no Setor',
+              data: weekFaltas,
+              backgroundColor: '#C4523F',
+              borderRadius: 8,
+              borderSkipped: false,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, font: { family: 'Inter', size: 12, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) { return context.dataset.label + ': ' + context.raw + '%'; }
+              }
+            }
+          },
+          scales: {
+            y: { 
+              type: 'linear',
+              display: true,
+              position: 'left',
+              beginAtZero: true, 
+              max: 100, 
+              ticks: { callback: v => v + '%' } 
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              beginAtZero: true,
+              grid: { drawOnChartArea: false },
+              ticks: { callback: v => v + '%' }
+            },
+            x: { grid: { display: false } }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              const clickedWeek = weekLabels[idx];
+              if (activeWeeks.includes(clickedWeek)) {
+                activeWeeks = activeWeeks.filter(w => w !== clickedWeek);
+              } else {
+                activeWeeks.push(clickedWeek);
+              }
+              renderDashboard();
+            }
+          }
+        }
+      });
+    }
+  } catch(e1) {
+    console.warn('Erro no Gráfico 1 (Semanal):', e1);
+  }
+
+  // 1b. Chart Diario
+  try {
+    const dayBuckets = {};
+    validDates.forEach(date => {
+        dayBuckets[date] = { faltas: 0 };
+    });
+    
+    dados_filtrados.forEach(d => {
+      if (!d.data_relatorio || dayBuckets[d.data_relatorio] === undefined) return;
+      if ((d.categoria || classify(d.situacao)) === 'Falta') dayBuckets[d.data_relatorio].faltas++;
+    });
+    
+    const dayLabels = validDates;
+    const taxaAssiduidadeNum = parseFloat(taxaAssiduidade);
+    
+    const dayAssiduidade = [];
+    const cumAssiduidade = [];
+    const dayFaltas = [];
+    
+    dayLabels.forEach(date => {
+      const f = dayBuckets[date].faltas;
+      dayFaltas.push(f);
+      const pDay = Math.max(0, localHC - f);
+      dayAssiduidade.push(localHC > 0 ? parseFloat((pDay / localHC * 100).toFixed(1)) : 0);
+      
+      // Média acumulada da semana = flat line with taxaAssiduidade
+      cumAssiduidade.push(taxaAssiduidadeNum);
+    });
+
+    const canvasDiario = document.getElementById('chartDiario');
+    if (canvasDiario) {
+      const ctxDiario = canvasDiario.getContext('2d');
+      if (chartDiarioInstance) chartDiarioInstance.destroy();
+      chartDiarioInstance = new Chart(ctxDiario, {
+        type: 'bar',
+        data: {
+          labels: dayLabels.map(d => {
+            const sep = d.includes('/') ? '/' : '-';
+            const p = d.split(sep);
+            if (p.length < 2) return d;
+            return p[0].length === 4 ? p[2] + '/' + p[1] : p[0] + '/' + p[1];
+          }),
+          datasets: [
+            {
+              type: 'line',
+              label: 'Média Acumulada (%)',
+              data: cumAssiduidade,
+              borderColor: '#f59e0b',
+              backgroundColor: '#f59e0b',
+              borderWidth: 2,
+              pointBackgroundColor: 'white',
+              pointBorderColor: '#f59e0b',
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              fill: false,
+              tension: 0.3,
+              yAxisID: 'y1'
+            },
+            {
+              type: 'bar',
+              label: 'Assiduidade Dia (%)',
+              data: dayAssiduidade,
+              faltas: dayFaltas,
+              backgroundColor: '#10b981',
+              borderRadius: 4,
+              yAxisID: 'y'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: { family: "'Inter', sans-serif", size: 11 } } },
+            tooltip: { 
+              backgroundColor: 'rgba(255,255,255,0.95)', titleColor: '#1e293b', bodyColor: '#475569', borderColor: '#e2e8f0', borderWidth: 1, padding: 12, boxPadding: 6, usePointStyle: true, titleFont: { size: 13, weight: 'bold' }, 
+              callbacks: { 
+                label: function(c){ 
+                  let text = c.dataset.label + ': ' + c.raw + '%'; 
+                  if (c.dataset.faltas && c.dataset.faltas[c.dataIndex] !== undefined) {
+                    text += ' (' + c.dataset.faltas[c.dataIndex] + ' faltas)';
+                  }
+                  return text;
+                } 
+              } 
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { family: "'Inter', sans-serif", size: 11 } } },
+            y: { type: 'linear', display: true, position: 'left', min: 0, max: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%' } },
+            y1: { type: 'linear', display: true, position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } }
+          }
+        }
+      });
+    }
+  } catch (e) {
+    console.error('Erro chartDiario:', e);
+  }
+
+  // 2. Chart 2: Ranking por Setor
+  try {
+    const sectorMap = {};
+    dados_filtrados.forEach(d => {
+      const cleanSec = cleanSetorName(d.setor);
+      if (!sectorMap[cleanSec]) sectorMap[cleanSec] = { origName: d.setor, faltas: 0, total: 0, dias: new Set(), matriculas: new Set() };
+      sectorMap[cleanSec].dias.add(d.data_relatorio);
+      if (d.matricula) sectorMap[cleanSec].matriculas.add(d.matricula);
+      if ((d.categoria || classify(d.situacao)) === 'Falta') sectorMap[cleanSec].faltas++;
+      sectorMap[cleanSec].total++;
+    });
+
+    const sectorList = Object.keys(sectorMap)
+      .filter(sec => sectorMap[sec].faltas > 0)
+      .sort((a, b) => sectorMap[b].faltas - sectorMap[a].faltas);
+    const secAssiduidade = [];
+    const secFaltaQtd = [];
+
+    sectorList.forEach(cleanSec => {
+      const origSec = sectorMap[cleanSec].origName;
+      const f = sectorMap[cleanSec].faltas;
+      const fallbackTotal = sectorMap[cleanSec].matriculas.size > 0 ? sectorMap[cleanSec].matriculas.size : 1;
+      const hcSetorDiario = getSectorHeadcount({ setor: origSec, matriculas: sectorMap[cleanSec].matriculas }) || fallbackTotal;
+      
+      // Média de faltas por dia (baseada nos dias globais do filtro)
+      const mediaFaltas = parseFloat((f / multiplicadorDias).toFixed(1));
+      
+      // Assiduidade baseada na média diária de faltas vs headcount diário
+      const p = Math.max(0, hcSetorDiario - mediaFaltas);
+      secAssiduidade.push(parseFloat((p / hcSetorDiario * 100).toFixed(1)));
+      
+      // A barra mostrará a média (ou o valor exato se for apenas 1 dia)
+      secFaltaQtd.push(mediaFaltas);
+    });
+
+    const canvasSec = document.getElementById('chartSetores');
+    const containerSec = document.getElementById('chartSetoresContainer');
+    if (canvasSec && containerSec) {
+      // Ajusta a largura dinamicamente para mostrar exatamente 10 colunas visíveis sem scroll
+      const parentWidth = containerSec.parentElement.clientWidth || 800;
+      if (sectorList.length > 10) {
+        const widthPerItem = parentWidth / 10;
+        containerSec.style.width = (widthPerItem * sectorList.length) + 'px';
+      } else {
+        containerSec.style.width = '100%';
+      }
+      containerSec.style.height = '100%';
+
+      const ctxSetores = canvasSec.getContext('2d');
+      if (chartSetoresInstance) chartSetoresInstance.destroy();
+
+      chartSetoresInstance = new Chart(ctxSetores, {
+        type: 'bar',
+        data: {
+          labels: sectorList,
+          datasets: [
+            {
+              type: sectorList.length === 1 ? 'bar' : 'line',
+              label: '% Assiduidade',
+              data: secAssiduidade,
+              borderColor: '#0E8A5F',
+              backgroundColor: '#0E8A5F',
+              borderWidth: 2,
+              borderRadius: sectorList.length === 1 ? 6 : 0,
+              tension: 0.3,
+              yAxisID: 'y1'
+            },
+            {
+              type: 'bar',
+              label: multiplicadorDias > 1 ? 'Média de Faltas/Dia' : 'Quantidade de Faltas',
+              data: secFaltaQtd,
+              backgroundColor: sectorList.map(sec => globalSectorColors[sectorMap[sec].origName] || '#C4523F'),
+              borderRadius: 6,
+              yAxisID: 'y'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, font: { family: 'Inter', size: 12, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) { 
+                  if (context.dataset.yAxisID === 'y1') return context.dataset.label + ': ' + context.raw + '%'; 
+                  return context.dataset.label + ': ' + context.raw;
+                },
+                afterLabel: function(context) {
+                  if (context.dataset.yAxisID === 'y1') return ''; // Não poluir o tooltip da linha de Assiduidade
+                  const idx = context.dataIndex;
+                  const cleanSec = sectorList[idx];
+                  if (!cleanSec || !sectorMap[cleanSec]) return '';
+                  const origSec = sectorMap[cleanSec].origName;
+                  const fallbackTotal = sectorMap[cleanSec].matriculas.size > 0 ? sectorMap[cleanSec].matriculas.size : 1;
+                  const hcSetor = getSectorHeadcount({ setor: origSec, matriculas: sectorMap[cleanSec].matriculas }) || fallbackTotal;
+                  const faltas = sectorMap[cleanSec].faltas;
+                  
+                  if (multiplicadorDias > 1) {
+                    return [
+                      `Pessoas no Setor: ${hcSetor}`,
+                      `Total de Faltas (Período): ${faltas}`
+                    ];
+                  } else {
+                    return [
+                      `Pessoas no Setor: ${hcSetor}`,
+                      `Total de Faltas: ${faltas}`
+                    ];
+                  }
+                }
+              }
+            }
+          },
+          scales: {
+            y: { 
+              type: 'linear', 
+              display: true, 
+              position: 'left',
+              beginAtZero: true
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              beginAtZero: true,
+              max: 100,
+              grid: { drawOnChartArea: false },
+              ticks: { callback: v => v + '%' }
+            },
+            x: { grid: { display: false } }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              const clickedClean = sectorList[idx];
+              const origSec = sectorMap[clickedClean].origName;
+              if (activeSectors.includes(origSec)) {
+                activeSectors = activeSectors.filter(s => s !== origSec);
+              } else {
+                activeSectors.push(origSec);
+              }
+              renderDashboard();
+            }
+          }
+        }
+      });
+    }
+
+    // 3. Chart 3: Doughnut Chart
+    let topLabels = [];
+    let topCounts = [];
+    
+    if (activeSectors.includes('OUTROS')) {
+      topLabels = ['OUTROS'];
+      topCounts = [sectorList.reduce((sum, sec) => sum + sectorMap[sec].faltas, 0)];
+    } else {
+      topLabels = sectorList.slice(0, 5);
+      topCounts = sectorList.slice(0, 5).map(sec => sectorMap[sec].faltas);
+      
+      if (sectorList.length > 5) {
+        const outrosFaltas = sectorList.slice(5).reduce((sum, sec) => sum + sectorMap[sec].faltas, 0);
+        if (outrosFaltas > 0) {
+          topLabels.push('OUTROS');
+          topCounts.push(outrosFaltas);
+        }
+      }
+    }
+    
+    const totalFaltasAllSec = topCounts.reduce((a, b) => a + b, 0);
+    const topPct = topCounts.map(f => totalFaltasAllSec > 0 ? parseFloat((f / totalFaltasAllSec * 100).toFixed(1)) : 0);
+    const colors = topLabels.map(label => label === 'OUTROS' ? '#94A3B8' : (globalSectorColors[sectorMap[label] ? sectorMap[label].origName : label] || '#C4523F'));
+
+    const outLabelsPlugin = {
+      id: 'outLabelsPlugin',
+      afterDraw(chart) {
+        const { ctx } = chart;
+        let lastRightY = -9999;
+        let lastLeftY = 9999;
+        
+        chart.data.datasets.forEach((dataset, i) => {
+          chart.getDatasetMeta(i).data.forEach((datapoint, index) => {
+            if (dataset.data[index] === 0) return;
+            
+            const angle = (datapoint.startAngle + datapoint.endAngle) / 2;
+            const r = datapoint.outerRadius;
+            const cx = datapoint.x;
+            const cy = datapoint.y;
+            
+            const startX = cx + Math.cos(angle) * r;
+            const startY = cy + Math.sin(angle) * r;
+            let elbowX = cx + Math.cos(angle) * (r + 18);
+            let elbowY = cy + Math.sin(angle) * (r + 18);
+            
+            const isRight = elbowX > cx;
+            
+            // Anticolisão Vertical
+            if (isRight) {
+              if (elbowY < lastRightY + 28) elbowY = lastRightY + 28;
+              lastRightY = elbowY;
+            } else {
+              if (elbowY > lastLeftY - 28) elbowY = lastLeftY - 28;
+              lastLeftY = elbowY;
+            }
+            
+            const textX = elbowX + (isRight ? 15 : -15);
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(elbowX, elbowY);
+            ctx.lineTo(textX, elbowY);
+            ctx.strokeStyle = dataset.backgroundColor[index];
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#5B6470';
+            ctx.font = '600 10px Inter'; // Fonte menor
+            ctx.textAlign = isRight ? 'left' : 'right';
+            ctx.textBaseline = 'middle';
+            
+            let label = chart.data.labels[index];
+            if (label.length > 20) label = label.substring(0, 18) + '...';
+            
+            let pct = dataset.data[index] + '%';
+            if (sectorList.length === 1 && activeSectors.length > 0 && !activeSectors.includes('OUTROS')) {
+              pct = taxaAbsenteismo + '% absenteísmo';
+            }
+            
+            // Quebra em duas linhas (Nome e Percentual)
+            const textOffset = isRight ? 5 : -5;
+            ctx.fillText(label, textX + textOffset, elbowY - 6);
+            ctx.fillText(pct, textX + textOffset, elbowY + 6);
+          });
+        });
+      }
+    };
+
+    const centerTextPlugin = {
+      id: 'centerText',
+      beforeDraw: function(chart) {
+        if (sectorList.length === 1 && activeSectors.length > 0 && !activeSectors.includes('OUTROS')) {
+          const ctx = chart.ctx;
+          const width = chart.width;
+          const height = chart.height;
+          
+          ctx.restore();
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "center";
+          
+          const centerX = width / 2;
+          const centerY = height / 2;
+          
+          ctx.font = "600 12px Inter, sans-serif";
+          ctx.fillStyle = "#64748B";
+          ctx.fillText("Quadro", centerX, centerY - 24);
+          
+          ctx.font = "bold 22px Inter, sans-serif";
+          ctx.fillStyle = "#1E293B";
+          ctx.fillText(localHC.toString(), centerX, centerY - 6);
+          
+          ctx.font = "600 12px Inter, sans-serif";
+          ctx.fillStyle = "#64748B";
+          ctx.fillText("Média Faltas/Dia", centerX, centerY + 16);
+          
+          ctx.font = "bold 22px Inter, sans-serif";
+          ctx.fillStyle = "#EF4444";
+          ctx.fillText(mediaFaltasGlobal.toString(), centerX, centerY + 34);
+          
+          ctx.save();
+        }
+      }
+    };
+
+    const canvasRep = document.getElementById('chartRepresentatividade');
+    if (canvasRep) {
+      const ctxRep = canvasRep.getContext('2d');
+      if (chartRepresentatividadeInstance) chartRepresentatividadeInstance.destroy();
+
+      chartRepresentatividadeInstance = new Chart(ctxRep, {
+        type: 'doughnut',
+        data: {
+          labels: topLabels,
+          datasets: [
+            {
+              data: topPct,
+              backgroundColor: colors,
+              borderWidth: 2,
+              borderColor: '#FFFFFF'
+            }
+          ]
+        },
+        plugins: [outLabelsPlugin, centerTextPlugin],
+        options: {
+          layout: { padding: { left: 30, right: 30, top: 10, bottom: 10 } },
+          cutout: '65%',
+          radius: '75%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) { 
+                  let text = context.label + ': ' + context.raw + '% das faltas';
+                  if (context.label === 'OUTROS') {
+                    const numOutros = activeSectors.includes('OUTROS') ? sectorList.length : (sectorList.length - 5);
+                    if (numOutros > 0) {
+                      text += ` (Soma de ${numOutros} setores)`;
+                    }
+                  }
+                  return text;
+                }
+              }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements.length > 0) {
+              const idx = elements[0].index;
+              const clickedClean = topLabels[idx];
+              
+              if (clickedClean === 'OUTROS') {
+                if (activeSectors.includes('OUTROS')) {
+                    activeSectors = activeSectors.filter(s => s !== 'OUTROS');
+                } else {
+                    activeSectors.push('OUTROS');
+                }
+                window.excludedTop5ForOutros = topLabels.slice(0, 5).map(l => sectorMap[l] ? sectorMap[l].origName : l);
+              } else {
+                const origSec = sectorMap[clickedClean].origName;
+                if (activeSectors.includes(origSec)) {
+                    activeSectors = activeSectors.filter(s => s !== origSec);
+                } else {
+                    activeSectors.push(origSec);
+                }
+              }
+              renderDashboard();
+            }
+          }
+        }
+      });
+    }
+  } catch(e2) {
+    console.warn('Erro nos Gráficos por Setor:', e2);
+  }
+}
+
 /* ============================================================
    FUNÇÃO PRINCIPAL DE REDESENHO (UNIFICADA)
    ============================================================ */
 function renderDashboard() {
-  const q = inputSearch.value.trim().toLowerCase();
-  const dataSel = selData.value;
-  const setorSel = selSetor.value;
-  const sitSel = selSituacao.value;
+  const q = inputSearch ? inputSearch.value.trim().toLowerCase() : '';
+  const dataSel = selData ? selData.value : '';
+  const setorSel = selSetor ? selSetor.value : '';
+  const sitSel = selSituacao ? selSituacao.value : '';
+  const mesSel = selMes ? selMes.value : '';
+  const semSel = selSemana ? selSemana.value : '';
 
-  // 1. Filtro Local (Busca, Dropdowns)
+  // 1. Filtro Local (Busca, Dropdowns + Cross-Filters)
   const baseFilteredData = DATA.filter(d => {
     const matchData = !dataSel || d.data_relatorio === dataSel;
-    const matchSetor = !setorSel || d.setor === setorSel;
+    
+    // Mes
+    let matchMes = true;
+    if (mesSel && d.data_relatorio) {
+        const parts = d.data_relatorio.split('-'); // YYYY-MM-DD
+        if (parts.length === 3) {
+            const mesNum = parts[1];
+            matchMes = mesNum === mesSel;
+        }
+    }
+    
+    // Setor
+    let matchSetor = true;
+    if (setorSel) {
+      matchSetor = d.setor === setorSel;
+    } else if (activeSectors.length > 0) {
+      if (activeSectors.includes('OUTROS') && window.excludedTop5ForOutros) {
+        matchSetor = !window.excludedTop5ForOutros.includes(d.setor) || activeSectors.includes(d.setor);
+      } else {
+        matchSetor = activeSectors.includes(d.setor);
+      }
+    }
+    
+    // Semana
+    let matchWeek = true;
+    const itemWeek = getWeekOfMonth(d.data_relatorio);
+    if (semSel) {
+        matchWeek = itemWeek === semSel;
+    } else if (activeWeeks.length > 0) {
+        matchWeek = activeWeeks.includes(itemWeek);
+    }
+    
     const matchSit = !sitSel || situacaoLabel(d.situacao) === sitSel;
-    const matchSearch = !q || d.nome.toLowerCase().includes(q) || d.matricula.includes(q);
-    return matchData && matchSetor && matchSit && matchSearch;
+    const matchSearch = !q || (d.nome && d.nome.toLowerCase().includes(q)) || (d.matricula && String(d.matricula).includes(q)) || (d.setor && d.setor.toLowerCase().includes(q));
+    
+    return matchData && matchMes && matchSetor && matchWeek && matchSit && matchSearch;
   });
 
-  // Mostrar/Ocultar botão de limpar filtros
-  const isFiltered = activeGlobalFilter !== null || q !== '' || dataSel !== '' || setorSel !== '' || sitSel !== '';
+  const timeFilteredData = DATA.filter(d => {
+    const matchData = !dataSel || d.data_relatorio === dataSel;
+    let matchMes = true;
+    if (mesSel && d.data_relatorio) {
+        const sep = d.data_relatorio.includes('/') ? '/' : '-';
+        const parts = d.data_relatorio.split(sep);
+        if (parts.length >= 2) matchMes = parts[1] === mesSel;
+    }
+    let matchWeek = true;
+    const itemWeek = getWeekOfMonth(d.data_relatorio);
+    if (semSel) matchWeek = itemWeek === semSel;
+    else if (activeWeeks.length > 0) matchWeek = activeWeeks.includes(itemWeek);
+    return matchData && matchMes && matchWeek;
+  });
+  const validDates = Array.from(new Set(timeFilteredData.map(d => d.data_relatorio).filter(x => x))).sort();
+
+  // Atualizar visual de gráficos (protegido contra exceções)
+  try {
+    renderIndicadoresCharts(baseFilteredData, validDates);
+  } catch(eChart) {
+    console.error('Aviso: Erro ao executar renderIndicadoresCharts:', eChart);
+  }
+
+  // Mostrar/Ocultar botão de limpar filtros e badge ativo
+  const isFiltered = activeGlobalFilter !== null || q !== '' || dataSel !== '' || setorSel !== '' || sitSel !== '' || activeWeeks.length > 0 || activeSectors.length > 0 || mesSel !== '' || semSel !== '';
   const btnLimpar = document.getElementById('btnLimparFiltros');
-  if(btnLimpar) {
-      if(isFiltered) {
-          btnLimpar.classList.remove('hidden');
-          btnLimpar.classList.add('flex');
-      } else {
-          btnLimpar.classList.add('hidden');
-          btnLimpar.classList.remove('flex');
-      }
+  const filterBadge = document.getElementById('active-filter-badge');
+  const filterText = document.getElementById('active-filter-text');
+
+  if (isFiltered) {
+    if (btnLimpar) { btnLimpar.classList.remove('hidden'); btnLimpar.classList.add('flex'); }
+    if (filterBadge && filterText) {
+      filterBadge.classList.remove('hidden');
+      filterBadge.classList.add('flex');
+      let parts = [];
+      if (activeWeeks.length > 0) parts.push(activeWeeks.join(', '));
+      if (semSel) parts.push(semSel);
+      if (mesSel) parts.push('Mês ' + mesSel);
+      if (activeSectors.length > 0) parts.push(activeSectors.map(cleanSetorName).join(', '));
+      if (setorSel) parts.push(cleanSetorName(setorSel));
+      if (dataSel) parts.push('Data: ' + dataSel);
+      filterText.textContent = parts.length > 0 ? 'Filtro: ' + parts.join(' · ') : 'Filtro Ativo';
+    }
+  } else {
+    if (btnLimpar) { btnLimpar.classList.add('hidden'); btnLimpar.classList.remove('flex'); }
+    if (filterBadge) { filterBadge.classList.add('hidden'); filterBadge.classList.remove('flex'); }
   }
 
   // 2. Renderizar KPIs baseados nos filtros locais
@@ -348,12 +1340,35 @@ function renderDashboard() {
   const totalFaltasNJ = baseFilteredData.filter(d => d.categoria === 'Falta').length;
   const totalAfastamentos = baseFilteredData.filter(d => d.categoria === 'Afastamento').length;
   const totalAtrasos = baseFilteredData.filter(d => d.categoria === 'Atraso').length;
+  
+  let localHC = HEADCOUNT.total || 465;
+  const targetSector = (activeSectors.length > 0) ? activeSectors[0] : (typeof setorSel !== 'undefined' ? setorSel : '');
+  if (targetSector) {
+    let sumHC = 0;
+    const mats = new Set();
+    baseFilteredData.forEach(d => { if(d.matricula) mats.add(d.matricula); });
+    const sectorsToSum = activeSectors.length > 0 ? activeSectors : [targetSector];
+    sectorsToSum.forEach(sec => {
+        sumHC += getSectorHeadcount({ setor: sec, matriculas: mats });
+    });
+    if (sumHC > 0) localHC = sumHC;
+  }
+  
+  const diasGlobais = new Set(baseFilteredData.map(d => d.data_relatorio)).size;
+  const multDiasGlob = Math.max(1, diasGlobais);
+  const hcGlobalAcumulado = localHC * multDiasGlob;
+  
+  const taxaAbsGeral = hcGlobalAcumulado > 0 ? ((totalFaltasNJ / hcGlobalAcumulado) * 100).toFixed(1) + '%' : '0.0%';
+
+  const valFalta = multDiasGlob > 1 ? parseFloat((totalFaltasNJ / multDiasGlob).toFixed(1)) : totalFaltasNJ;
+  const valAfastamento = multDiasGlob > 1 ? parseFloat((totalAfastamentos / multDiasGlob).toFixed(1)) : totalAfastamentos;
+  const valAtraso = multDiasGlob > 1 ? parseFloat((totalAtrasos / multDiasGlob).toFixed(1)) : totalAtrasos;
 
   const kpis = [
-    { id: 'Falta', label: 'Ausentes (Faltas)', value: totalFaltasNJ, sub: `Faltas e outras ocorrências sem justificativa`, icon: 'user-x', accent: 'coral', highlight: true },
-    { id: 'Afastamento', label: 'Afastados', value: totalAfastamentos, sub: 'Atestados, Licenças, Férias e INSS', icon: 'shield-plus', accent: 'amber' },
-    { id: 'Atraso', label: 'Atrasados', value: totalAtrasos, sub: 'Trabalharam, mas tiveram exceção no ponto', icon: 'clock', accent: 'emerald' },
-    { id: null, label: 'Colaboradores Mapeados', value: totalMapeados, sub: 'Total de registros neste relatório', icon: 'users', accent: 'navy' }
+    { id: 'Falta', label: multDiasGlob > 1 ? 'Média Ausentes/Dia' : 'Ausentes (Faltas)', value: valFalta, sub: `Taxa de Falta: ${taxaAbsGeral} (HC Acumulado: ${hcGlobalAcumulado})`, icon: 'user-x', accent: 'coral', highlight: true },
+    { id: 'Afastamento', label: multDiasGlob > 1 ? 'Média Afastados/Dia' : 'Afastados', value: valAfastamento, sub: 'Atestados, Licenças, Férias e INSS', icon: 'shield-plus', accent: 'amber' },
+    { id: 'Atraso', label: multDiasGlob > 1 ? 'Média Atrasados/Dia' : 'Atrasados', value: valAtraso, sub: 'Trabalharam, mas tiveram exceção', icon: 'clock', accent: 'emerald' },
+    { id: null, label: 'Headcount Ativo', value: localHC, sub: `${totalMapeados} ocorrências mapeadas`, icon: 'users', accent: 'navy' }
   ];
 
   const kpiSection = document.getElementById('kpi-section');
@@ -391,9 +1406,10 @@ function renderDashboard() {
   // 4. Renderizar Setores
   const setorMap = {};
   currentData.forEach(d => {
-    if(!setorMap[d.setor]) setorMap[d.setor] = { setor: d.setor, faltas:0, afastamentos:0, atrasos:0, motivos:{}, total:0 };
+    if(!setorMap[d.setor]) setorMap[d.setor] = { setor: d.setor, faltas:0, afastamentos:0, atrasos:0, motivos:{}, total:0, matriculas: new Set() };
     const s = setorMap[d.setor];
     s.total++;
+    s.matriculas.add(d.matricula);
     if(d.categoria === 'Falta') s.faltas++;
     else if(d.categoria === 'Afastamento'){ s.afastamentos++; s.motivos[d.situacao] = (s.motivos[d.situacao]||0)+1; }
     else s.atrasos++;
@@ -441,13 +1457,17 @@ function renderDashboard() {
     else if (metricCategory === 'Atraso') targetCount = s.atrasos;
 
     const pctVal = baseTotal > 0 ? ((targetCount / baseTotal) * 100).toFixed(1) : '0.0';
+    const hcSetor = getSectorHeadcount(s);
+    const taxaFaltaSetor = hcSetor > 0 ? ((s.faltas / hcSetor) * 100).toFixed(1) : null;
+    const presentesSetor = Math.max(0, hcSetor - s.faltas);
+    const taxaAssiduidadeSetor = hcSetor > 0 ? ((presentesSetor / hcSetor) * 100).toFixed(1) : null;
     
     return `
     <div class="border border-[var(--line)] rounded-xl p-4 fade-in hover:border-[var(--coral-soft)] transition-colors cursor-pointer flex flex-col justify-between" onclick="filterBySector('${s.setor}')">
       <div>
         <div class="flex items-center justify-between gap-2">
           <p class="font-semibold text-sm truncate" title="${s.setor}">${s.setor}</p>
-          <span class="text-xs font-bold ${s.faltas > 0 ? 'text-[var(--coral)]' : 'text-[var(--ink-soft)]'} tabular shrink-0">${s.total} Reg.</span>
+          <span class="badge badge-navy" title="Headcount do Centro de Custo">${hcSetor > 0 ? hcSetor + ' Colab.' : s.total + ' Reg.'}</span>
         </div>
         
         <div class="sector-bar mt-2.5">
@@ -462,9 +1482,19 @@ function renderDashboard() {
         </div>
       </div>
 
-      <div class="flex items-center justify-between mt-3 pt-2 border-t border-[var(--line)]">
-        <span class="text-[10px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide">% sobre ${metricLabel}</span>
-        <span class="px-2 py-0.5 rounded-md text-xs font-bold tabular" style="background:${metricBadgeBg}; color:${metricBadgeFg}">${pctVal}%</span>
+      <div class="mt-3 pt-2 border-t border-[var(--line)] flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide" title="Pessoas Presentes (${presentesSetor}) / Headcount (${hcSetor})">% Assiduidade (Presença)</span>
+          <span class="px-2 py-0.5 rounded-md text-xs font-bold tabular bg-[var(--emerald-soft)] text-[var(--emerald)]">${taxaAssiduidadeSetor !== null ? taxaAssiduidadeSetor + '%' : '—'}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide" title="Faltas do setor / Headcount do setor">% Falta no Setor</span>
+          <span class="px-2 py-0.5 rounded-md text-xs font-bold tabular bg-[var(--coral-soft)] text-[var(--coral)]">${taxaFaltaSetor !== null ? taxaFaltaSetor + '%' : '—'}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[10px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide" title="Faltas do setor / Total de faltas da empresa">% sobre Faltas Totais</span>
+          <span class="px-2 py-0.5 rounded-md text-xs font-bold tabular bg-[var(--navy-soft)] text-[var(--navy)]">${pctVal}%</span>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -496,16 +1526,20 @@ function renderDashboard() {
   lucide.createIcons();
 }
 
-[inputSearch, selData, selSetor, selSituacao].forEach(el => el.addEventListener('input', renderDashboard));
+[inputSearch, selData, selSetor, selSituacao, selMes, selSemana].forEach(el => {
+  if(el) el.addEventListener('input', renderDashboard);
+});
 
 function filterBySector(setorName) {
-  if (selSetor.value === setorName) {
-    selSetor.value = ''; // 2 cliques limpa o filtro
+  if (activeSectors.includes(setorName)) {
+    activeSectors = activeSectors.filter(s => s !== setorName);
+    if (selSetor && selSetor.value === setorName) selSetor.value = '';
   } else {
-    selSetor.value = setorName;
+    activeSectors.push(setorName);
   }
   renderDashboard();
-  document.getElementById('f-setor').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const fSetor = document.getElementById('f-setor');
+  if (fSetor) fSetor.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 /* ============================================================
@@ -523,7 +1557,7 @@ function initDashboard() {
   // Populamos os dropdowns com todas as opções originais (sempre absolutas)
   const datasUnicas = [...new Set(DATA.map(d => d.data_relatorio).filter(x => x))].sort().reverse();
   selData.innerHTML = '<option value="">Todas as Datas</option>' + datasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
-  if(datasUnicas.length > 0) selData.value = datasUnicas[0]; // Preseleciona a data mais recente
+  selData.value = ''; // Todas as Datas por padrão para exibir o gráfico semanal completo
     
   const setoresUnicos = [...new Set(DATA.map(d => d.setor))].sort();
   selSetor.innerHTML = '<option value="">Todos os setores</option>' + setoresUnicos.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -581,26 +1615,33 @@ async function checkAccess() {
       return;
     }
 
-    // Se admin, exibe o botão de configurações
-    if (acesso.admin) {
+    // Se admin ou gestor (diretor), exibe o botão do painel administrativo
+    if (acesso.admin || acesso.gestor) {
       document.getElementById('btnAdmin').classList.remove('hidden');
+    } else {
+      document.getElementById('btnAdmin').classList.add('hidden');
     }
 
     // Se tem setores restritos, filtra os dados
     if (acesso.setores && acesso.setores.length > 0) {
-      DATA = DATA.filter(d => acesso.setores.includes(d.setor));
+      const allowedClean = acesso.setores.map(s => cleanSetorName(s));
+      DATA = DATA.filter(d => allowedClean.includes(cleanSetorName(d.setor)));
+      initDashboard();
     }
   } catch(e) {
     // Sem backend (modo dev offline) → não bloqueia
     console.warn('Aviso: não foi possível verificar o acesso.', e);
   }
-  initDashboard();
 }
 
 function openAdmin() {
   window.open('/admin', '_blank');
 }
 
+// Renderiza o dashboard IMEDIATAMENTE (síncrono) na abertura da página para exibir os dados sem esperar
+initDashboard();
+
+// Verifica acessos/permissões em segundo plano
 checkAccess();
 
 // Toggle Sidebar Logic

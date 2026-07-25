@@ -205,10 +205,6 @@
         <label class="text-xs font-semibold text-[var(--ink-soft)] mb-1.5 block uppercase tracking-wide">Nome / Descrição</label>
         <input id="newNome" type="text" placeholder="Ex: Diretor Industrial">
       </div>
-      <div class="flex items-center gap-2 mt-2" id="adminCheckboxContainer">
-        <input type="checkbox" id="newAdmin" class="w-4 h-4 rounded border-gray-300 text-[var(--violet)] focus:ring-[var(--violet)]">
-        <label for="newAdmin" class="text-sm font-semibold text-[var(--ink)]">É Administrador?</label>
-      </div>
       <div class="flex items-center gap-2 mt-2" id="gestorCheckboxContainer">
         <input type="checkbox" id="newGestor" class="w-4 h-4 rounded border-gray-300 text-[var(--emerald)] focus:ring-[var(--emerald)]">
         <label for="newGestor" class="text-sm font-semibold text-[var(--ink)]">É Gestor (Diretor)?</label>
@@ -293,7 +289,12 @@ async function init() {
 function renderUsers() {
   const list = document.getElementById('user-list');
   const empty = document.getElementById('empty-state');
-  const usuarios = config.usuarios || [];
+  let usuarios = config.usuarios || [];
+
+  const isSuperAdmin = currentUser && (currentUser.is_admin || (currentUser.email && currentUser.email.toLowerCase() === 'andre'));
+  if (!isSuperAdmin) {
+    usuarios = usuarios.filter(u => u.login.toLowerCase() !== 'andre' && !u.admin && !u.gestor);
+  }
 
   if (usuarios.length === 0) {
     list.innerHTML = '';
@@ -421,15 +422,13 @@ function openAddModal() {
   document.getElementById('newLogin').value = '';
   document.getElementById('newSenha').value = '';
   document.getElementById('newNome').value = '';
-  document.getElementById('newAdmin').checked = false;
-  document.getElementById('newGestor').checked = false;
+  const gestorCb = document.getElementById('newGestor');
+  if (gestorCb) gestorCb.checked = false;
   
-  if (currentUser && currentUser.is_gestor && !currentUser.is_admin) {
-    document.getElementById('adminCheckboxContainer').style.display = 'none';
-    document.getElementById('gestorCheckboxContainer').style.display = 'flex';
-  } else {
-    document.getElementById('adminCheckboxContainer').style.display = 'flex';
-    document.getElementById('gestorCheckboxContainer').style.display = 'flex';
+  const isSuperAdmin = currentUser && (currentUser.is_admin || (currentUser.email && currentUser.email.toLowerCase() === 'andre'));
+  const gestorContainer = document.getElementById('gestorCheckboxContainer');
+  if (gestorContainer) {
+    gestorContainer.style.display = isSuperAdmin ? 'flex' : 'none';
   }
   
   document.getElementById('addModal').classList.remove('hidden');
@@ -452,9 +451,10 @@ function confirmAddUser() {
   const login = document.getElementById('newLogin').value.trim();
   const senha = document.getElementById('newSenha').value.trim();
   const nome = document.getElementById('newNome').value.trim();
-  const isPureGestor = currentUser && currentUser.is_gestor && !currentUser.is_admin;
-  const admin = isPureGestor ? false : document.getElementById('newAdmin').checked;
-  const gestor = document.getElementById('newGestor').checked;
+  const isSuperAdmin = currentUser && (currentUser.is_admin || (currentUser.email && currentUser.email.toLowerCase() === 'andre'));
+  const admin = false;
+  const gestorCb = document.getElementById('newGestor');
+  const gestor = isSuperAdmin && gestorCb ? gestorCb.checked : false;
   if (!login || !senha) {
     showToast('Informe o login e a senha', 'error');
     return;

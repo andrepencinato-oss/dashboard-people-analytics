@@ -46,7 +46,7 @@ if core_dir not in sys.path:
 
 DRIVE_FOLDER_ID = '11G8qWpSj87bRo0EmK-JJCFqGQ82MLyRc'
 PORT = 5008
-APP_VERSION = "v2.1.5"
+APP_VERSION = "v2.3.9"
 
 # Gerenciamento de Sessão em Memória
 # Mapeia session_id -> dict do usuário (login, nome, setores, admin)
@@ -54,30 +54,83 @@ ACTIVE_SESSIONS = {}
 
 DATA_READY = True
 JSON_DATA = "[]"
+HEADCOUNT_DATA = {"by_mat": {}, "by_sector": {}, "total": 0}
+HEADCOUNT_JSON = '{"by_mat": {}, "by_sector": {}, "total": 0}'
 LOAD_ERROR = None
+
+
+def clean_setor_name(s):
+    if not s: return s
+    s = s.strip()
+    s = re.sub(r'^(CUSTOS?|DESPESAS?)\s+C/\s+PESSOAL\s*-\s*', '', s, flags=re.IGNORECASE)
+    return s.strip('- ').strip()
+
+
+def load_headcount_data():
+    global HEADCOUNT_DATA, HEADCOUNT_JSON
+    data_dir = os.path.join(app_root, 'data')
+    hc_files = sorted([
+        os.path.join(data_dir, f)
+        for f in os.listdir(data_dir)
+        if f.upper().endswith('.CSV') and f.upper().startswith('HEADCOUNT')
+    ]) if os.path.exists(data_dir) else []
+    
+    if not hc_files and os.path.exists(template_dir):
+        hc_files = sorted([
+            os.path.join(template_dir, f)
+            for f in os.listdir(template_dir)
+            if f.upper().endswith('.CSV') and f.upper().startswith('HEADCOUNT')
+        ])
+
+    if not hc_files:
+        return
+    latest_hc_file = hc_files[-1]
+    hc_by_mat = {}
+    hc_by_sector = {}
+    total_hc = 0
+    try:
+        import csv as csv_module
+        with open(latest_hc_file, 'r', encoding='latin1') as f:
+            reader = csv_module.reader(f)
+            for row in reader:
+                if not row or len(row) < 6: continue
+                cad = row[0].strip()
+                if re.match(r'^\d{1,6}$', cad):
+                    raw_setor = row[5].strip()
+                    setor = clean_setor_name(raw_setor)
+                    hc_by_mat[cad] = setor
+                    hc_by_sector[setor] = hc_by_sector.get(setor, 0) + 1
+                    total_hc += 1
+        HEADCOUNT_DATA = {"by_mat": hc_by_mat, "by_sector": hc_by_sector, "total": total_hc}
+        HEADCOUNT_JSON = json.dumps(HEADCOUNT_DATA, ensure_ascii=False)
+    except Exception as e:
+        print(f"[load_headcount_data] Aviso: {e}")
 
 
 def load_local_data():
     """
-    Carrega automaticamente os CSVs da pasta local 'data' na inicialização.
-    Isso garante que os dados do último sync apareçam imediatamente,
-    sem precisar clicar em Sincronizar novamente.
+    Carrega automaticamente os CSVs da pasta local 'data' ou 'template_dir' na inicialização.
+    Isso garante que os dados apareçam imediatamente sem precisar clicar em Sincronizar.
     """
     global JSON_DATA
+    load_headcount_data()
     data_dir = os.path.join(app_root, 'data')
-    if not os.path.exists(data_dir):
-        return
     csv_files = sorted([
         os.path.join(data_dir, f)
         for f in os.listdir(data_dir)
         if f.upper().endswith('.CSV')
-    ])
+    ]) if os.path.exists(data_dir) else []
+
+    if not csv_files and os.path.exists(template_dir):
+        csv_files = sorted([
+            os.path.join(template_dir, f)
+            for f in os.listdir(template_dir)
+            if f.upper().endswith('.CSV')
+        ])
+
     if not csv_files:
         return
     try:
-        import csv as csv_module
-        # Reutiliza process_data (definida mais abaixo via referência lazy)
-        # Chama depois que process_data estiver definida — veja run_server()
         data = process_data(csv_files)
         if data:
             JSON_DATA = json.dumps(data, ensure_ascii=False)
@@ -292,11 +345,28 @@ def fetch_from_drive():
         error_details = traceback.format_exc()
         raise Exception(f"Falha ao autenticar/sincronizar com Google Drive:\n{error_details}")
 
+def is_frequency_file(file_path):
+    filename = os.path.basename(file_path).upper()
+    if filename.startswith(('HEADCOUNT', 'FPRES', 'EXTRATO', 'TESTE')):
+        return False
+    try:
+        with open(file_path, 'r', encoding='latin1') as f:
+            sample = f.read(2048)
+            if 'Relação de Empregados' in sample or ('Salário' in sample and 'Hora da' not in sample):
+                return False
+            if any(kw in sample for kw in ['Controle de Frequ', 'Frequencia', 'Falta', 'Hora da', 'Previsto', 'Horário']):
+                return True
+    except Exception:
+        pass
+    return False
+
 import csv
 def process_data(file_paths):
     all_records = []
     for file_path in file_paths:
         try:
+            if not is_frequency_file(file_path):
+                continue
             filename = os.path.basename(file_path)
             date_match = re.search(r'(\d{2}[-._]\d{2})', filename)
             extracted_date = date_match.group(1) if date_match else ''
@@ -337,9 +407,14 @@ def process_data(file_paths):
                         previsao = found_date or pending_previsao
                         pending_previsao = ""
                         
+                        mat_str = row[matricula_index]
+                        official_setor = HEADCOUNT_DATA.get("by_mat", {}).get(mat_str, current_setor)
+                        official_setor = clean_setor_name(official_setor)
+                        
                         record = {
-                            "setor": current_setor,
-                            "matricula": row[matricula_index],
+                            "setor": official_setor,
+                            "local_ponto": clean_setor_name(current_setor),
+                            "matricula": mat_str,
                             "nome": row[matricula_index + 1] if len(row) > matricula_index + 1 else "",
                             "hora_prevista": row[matricula_index + 2] if len(row) > matricula_index + 2 else "",
                             "hora_marcacao": row[matricula_index + 3] if len(row) > matricula_index + 3 else "",
@@ -456,9 +531,9 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                 if setores is False:
                     result = {"acesso_negado": True, "email": login}
                 elif setores is None:
-                    result = {"acesso_negado": False, "admin": is_admin(login), "setores": [], "email": login}
+                    result = {"acesso_negado": False, "admin": is_admin(login), "gestor": is_gestor(login), "setores": [], "email": login}
                 else:
-                    result = {"acesso_negado": False, "admin": False, "setores": setores, "email": login}
+                    result = {"acesso_negado": False, "admin": is_admin(login), "gestor": is_gestor(login), "setores": setores, "email": login}
             self.send_response(200)
             self.send_cors_headers()
             self.send_header('Content-type', 'application/json')
@@ -483,13 +558,13 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                 
                 filtered_users = []
                 for u in config.get('usuarios', []):
-                    # Rule 3: Cegueira Hierárquica — Gestor nunca vê admin
-                    if u.get('admin', False):
+                    # Gestor não vê Administradores (ex: Andre) nem outros Gestores
+                    if u.get('admin', False) or u.get('gestor', False):
                         continue
-                    # Rule 4: Delegação Restrita — Gestor só vê usuários cujos setores estão contidos em seus setores
+                    # Gestor só vê gerentes cujos setores pertencem ao seu escopo
                     if gestor_set_set is not None:
                         u_setores = u.get('setores', [])
-                        if not u_setores or not set(u_setores).issubset(gestor_set_set):
+                        if u_setores and not set(u_setores).issubset(gestor_set_set):
                             continue
                     filtered_users.append(u)
                 config['usuarios'] = filtered_users
@@ -534,12 +609,20 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                 data = process_data(file_paths)
                 
                 global JSON_DATA
+                load_headcount_data()
                 JSON_DATA = json.dumps(data, ensure_ascii=False)
+                
+                js_content = f"const DATA_INJECT = {JSON_DATA};\nconst HEADCOUNT_INJECT = {HEADCOUNT_JSON};"
                 
                 # Salva data_frequencia.js na pasta gravável (ao lado do .exe)
                 js_path = os.path.join(app_root, 'data_frequencia.js')
                 with open(js_path, 'w', encoding='utf-8') as f:
-                    f.write(f"const DATA_INJECT = {JSON_DATA};")
+                    f.write(js_content)
+
+                if template_dir != app_root:
+                    js_path_tpl = os.path.join(template_dir, 'data_frequencia.js')
+                    with open(js_path_tpl, 'w', encoding='utf-8') as f:
+                        f.write(js_content)
                 
                 self.send_response(200)
                 self.send_cors_headers()
@@ -595,29 +678,32 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
             try:
                 with open(html_template_path, 'r', encoding='utf-8') as f:
                     html_content = f.read()
-                
-                # Remove o <script src="data_frequencia.js"> e injeta os dados inline
-                html_content = html_content.replace(
-                    '<script src="data_frequencia.js"></script>',
-                    f'<script>const DATA_INJECT = {JSON_DATA};</script>'
-                )
-                # Fallback
-                html_content = html_content.replace('const DATA_INJECT = [];', f'const DATA_INJECT = {JSON_DATA};')
                 self.wfile.write(html_content.encode('utf-8'))
             except Exception as e:
                 self.wfile.write(f"<h1>Erro ao carregar Auditoria de falta.html</h1><p>{e}</p>".encode('utf-8'))
 
         elif parsed_path == '/data_frequencia.js':
-            js_path = os.path.join(app_root, 'data_frequencia.js')
+            self.send_response(200)
+            self.send_cors_headers()
+            self.send_header('Content-type', 'application/javascript; charset=utf-8')
+            self.end_headers()
+            js_payload = f'const DATA_INJECT = {JSON_DATA};\nconst HEADCOUNT_INJECT = {HEADCOUNT_JSON};\nif(typeof window.onDataLoaded === "function") {{ window.onDataLoaded(); }}'
+            self.wfile.write(js_payload.encode('utf-8'))
+
+        elif parsed_path.endswith('.js'):
+            filename = os.path.basename(parsed_path)
+            js_path = os.path.join(template_dir, filename)
+            if not os.path.exists(js_path):
+                js_path = os.path.join(app_root, filename)
             self.send_response(200)
             self.send_cors_headers()
             self.send_header('Content-type', 'application/javascript; charset=utf-8')
             self.end_headers()
             if os.path.exists(js_path):
-                with open(js_path, 'r', encoding='utf-8') as f:
-                    self.wfile.write(f.read().encode('utf-8'))
+                with open(js_path, 'rb') as f:
+                    self.wfile.write(f.read())
             else:
-                self.wfile.write(f'const DATA_INJECT = {JSON_DATA};'.encode('utf-8'))
+                self.wfile.write(b'// JS file not found')
 
         else:
             self.send_response(404)
@@ -673,18 +759,18 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                     incoming_config = json.loads(body.decode('utf-8'))
                     current_config = load_acesso_config()
                     
-                    # Validação de Segurança Backend: Rejeita com HTTP 403 se o Gestor tentar enviar admin:true ou setores fora de sua alçada
+                    # Validação de Segurança Backend: Gestor só possui permissão para cadastrar e gerenciar Gerentes
                     for u in incoming_config.get('usuarios', []):
-                        if u.get('admin', False):
+                        if u.get('admin', False) or u.get('gestor', False):
                             self.send_response(403)
                             self.send_cors_headers()
                             self.send_header('Content-type', 'application/json')
                             self.end_headers()
-                            self.wfile.write(json.dumps({"erro": "403 - Acesso Negado: Gestor não possui permissão para conceder perfil de Administrador."}).encode('utf-8'))
+                            self.wfile.write(json.dumps({"erro": "403 - Acesso Negado: Gestor só possui permissão para gerenciar usuários Gerentes."}).encode('utf-8'))
                             return
                         if gestor_set_set is not None:
                             u_setores = u.get('setores', [])
-                            if not u_setores or not set(u_setores).issubset(gestor_set_set):
+                            if u_setores and not set(u_setores).issubset(gestor_set_set):
                                 self.send_response(403)
                                 self.send_cors_headers()
                                 self.send_header('Content-type', 'application/json')
@@ -696,15 +782,15 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                     preserved_logins = set()
                     for u in current_config.get('usuarios', []):
                         u_login = u.get('login', '').lower()
-                        # Rule 3: Cegueira Hierárquica — Preserva todos os admins intocados
-                        if u.get('admin', False):
+                        # Preserva todos os Admins (ex: Andre) e Gestores intocados
+                        if u.get('admin', False) or u.get('gestor', False):
                             preserved_users.append(u)
                             preserved_logins.add(u_login)
                             continue
-                        # Rule 4: Preserva usuários fora do escopo deste gestor
+                        # Preserva usuários fora do escopo deste gestor
                         if gestor_set_set is not None:
                             u_setores = u.get('setores', [])
-                            if not u_setores or not set(u_setores).issubset(gestor_set_set):
+                            if u_setores and not set(u_setores).issubset(gestor_set_set):
                                 preserved_users.append(u)
                                 preserved_logins.add(u_login)
                             
@@ -715,7 +801,7 @@ class FrequenciaHandler(BaseHTTPRequestHandler):
                             continue
                         
                         u['admin'] = False
-                        u['gestor'] = bool(u.get('gestor', False))
+                        u['gestor'] = False
                         validated_incoming.append(u)
                         
                     config = {'usuarios': preserved_users + validated_incoming}
