@@ -1,0 +1,67 @@
+{
+  "usuarios": [
+    {
+      "login": "Andre",
+      "senha": "sha256$bc5f3ba6a9c11086d6cf762167260d77d9e66084c91da1c0562854156baeedba",
+      "nome": "Administrador",
+      "setores": [],
+      "admin": true,
+      "ativo": true
+    },
+    {
+      "login": "Vagner Dutra",
+      "senha": "sha256$93082ff9b55cff94ee7f4d728013baa1863409cf3e5873d3f639aa9238bdb4de",
+      "nome": "Diretor Industrial",
+      "admin": false,
+      "gestor": true,
+      "setores": [
+        "ALMOXARIFADO",
+        "COLAGEM DE BORDAS",
+        "CENTRO DE TRABALHO CNC",
+        "CONTROLE DE QUALIDADE",
+        "DESENVOLVIMENTO DE PRODUTOS",
+        "EMPILHADEIRA",
+        "FURAÇÃO",
+        "LINHA DE EMBALAGEM",
+        "LIXAMENTO",
+        "METALURGICA GERAL",
+        "METALURGICA PINTURA",
+        "PINTURA P.U.",
+        "MOTORISTAS",
+        "PINTURA U.V.",
+        "PRENSAGEM",
+        "PRODUÇÃO DE EMBALAGEM",
+        "TAPEÇARIA COLAGEM",
+        "TAPEÇARIA GERAL",
+        "TUPIAS, FRESAS E MARCENARIA",
+        "USINAGEM",
+        "CORTE",
+        "SERRALHERIA",
+        "APOSENTADOS",
+        "CENTRO DE TRABALHO - CNC",
+        "METALÚRGICA",
+        "TAPEÇARIA",
+        "TUPIAS E FRESAS"
+      ],
+      "ativo": true
+    },
+    {
+      "login": "QA_Gestor_Test",
+      "senha": "sha256$e97af628deabddcc642d00c9b0fa3c488e54fe9bbe557975e5f45e5c9f04ea82",
+      "nome": "QA Gestor Teste",
+      "admin": false,
+      "gestor": true,
+      "setores": [],
+      "ativo": true
+    },
+    {
+      "login": "Daniela",
+      "senha": "sha256$93082ff9b55cff94ee7f4d728013baa1863409cf3e5873d3f639aa9238bdb4de",
+      "nome": "Diretora Adm",
+      "admin": false,
+      "gestor": true,
+      "setores": [],
+      "ativo": true
+    }
+  ]
+}

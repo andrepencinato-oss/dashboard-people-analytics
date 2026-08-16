@@ -39,7 +39,7 @@
   .badge-coral{ background:var(--coral-soft); color:var(--coral); }
   .badge-amber{ background:var(--amber-soft); color:var(--amber); }
   .badge-emerald{ background:var(--emerald-soft); color:var(--emerald); }
-  .badge-navy{ background:var(--navy-soft); color:var(--navy); }
+  .badge-navy, .hc-badge-card { background:var(--navy-soft); color:var(--navy); }
   .badge-gray{ background:var(--gray-soft); color:var(--ink-soft); }
   
   .scrollbar-thin::-webkit-scrollbar{ height:6px; width:6px; }
@@ -92,7 +92,7 @@
         <div class="flex justify-between items-center mb-1">
           <p class="text-[10px] font-semibold tracking-[0.18em] text-[var(--coral)] uppercase">Análise de Absentismo</p>
           <div class="flex items-center gap-1.5">
-            <span class="badge badge-navy" style="font-size: 0.65rem;">v2.3.9</span>
+            <span class="badge hc-badge-card bg-[var(--navy-soft)] text-[var(--navy)]" style="font-size: 0.65rem;">...</span>
             <button id="btnAdmin" title="Painel Administrativo"
               class="p-1.5 rounded-lg hover:bg-[var(--violet-soft)] text-[var(--ink-soft)] hover:text-[#6D28D9] transition-colors hidden"
               onclick="openAdmin()">
@@ -171,6 +171,10 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <button id="btnQuickTopAbs" onclick="scrollToTopAbsenteismo()" class="text-xs font-bold px-3 py-1.5 bg-[var(--coral-soft)] text-[var(--coral)] hover:bg-[var(--coral)] hover:text-white rounded-lg transition-all flex items-center gap-1.5 shadow-xs cursor-pointer" title="Ir direto para o Ranking de Absenteísmo">
+          <i data-lucide="award" class="w-3.5 h-3.5"></i>
+          <span>Top 20 Absenteísmo</span>
+        </button>
         <span id="active-filter-badge" class="hidden text-xs font-semibold px-3 py-1.5 bg-[var(--navy-soft)] text-[var(--navy)] rounded-lg flex items-center gap-2">
           <i data-lucide="filter" class="w-3.5 h-3.5"></i>
           <span id="active-filter-text">Filtro Ativo</span>
@@ -233,63 +237,130 @@
       </div>
     </div>
 
-    <!-- Linha de Gráficos 1 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Gráfico 1: Acompanhamento Semanal -->
-      <div class="card p-5 lg:col-span-2">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Acompanhamento Semanal de Assiduidade vs. Faltas (%)</h3>
-            <p class="text-xs text-[var(--ink-soft)]">Evolução por semana do mês (Clique em uma semana para filtrar)</p>
+    <!-- Header de Controle de Gráficos -->
+    <div class="flex items-center justify-between bg-white px-5 py-3 rounded-xl border border-[var(--line)] shadow-xs">
+      <div class="flex items-center gap-2">
+        <i data-lucide="bar-chart-2" class="w-4 h-4 text-[var(--navy)]"></i>
+        <h2 class="font-display font-700 text-xs uppercase tracking-wider text-[var(--ink)]">Painel Visual de Gráficos</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnToggleCharts" onclick="toggleIndicadoresCharts()" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[var(--gray-soft)] text-[var(--navy)] hover:bg-[var(--navy-soft)] border border-[var(--line)] transition-all flex items-center gap-2 shadow-xs cursor-pointer">
+          <i data-lucide="eye-off" id="iconToggleCharts" class="w-3.5 h-3.5 text-[var(--navy)]"></i>
+          <span id="textToggleCharts">Recolher Gráficos</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Container dos 4 Gráficos -->
+    <div id="indicadores-charts-container" class="space-y-6 transition-all duration-300">
+      <!-- Linha de Gráficos 1 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Gráfico 1: Acompanhamento Semanal -->
+        <div class="card p-5 lg:col-span-2">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Acompanhamento Semanal de Assiduidade vs. Faltas (%)</h3>
+              <p class="text-xs text-[var(--ink-soft)]">Evolução por semana do mês (Clique em uma semana para filtrar)</p>
+            </div>
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--navy-soft)] text-[var(--navy)]">Por Semana</span>
           </div>
-          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--navy-soft)] text-[var(--navy)]">Por Semana</span>
+          <div class="relative h-72">
+            <canvas id="chartSemanal"></canvas>
+          </div>
         </div>
-        <div class="relative h-72">
-          <canvas id="chartSemanal"></canvas>
+
+        <!-- Gráfico 3: Representatividade por Setor -->
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Faltas Totais por Setor (%)</h3>
+              <p class="text-xs text-[var(--ink-soft)]">Distribuição das faltas (Clique na fatia para filtrar)</p>
+            </div>
+          </div>
+          <div class="relative h-72 flex items-center justify-center">
+            <canvas id="chartRepresentatividade"></canvas>
+          </div>
         </div>
       </div>
 
-      <!-- Gráfico 3: Representatividade por Setor -->
+      <!-- Gráfico 4: Assiduidade Diária -->
       <div class="card p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Faltas Totais por Setor (%)</h3>
-            <p class="text-xs text-[var(--ink-soft)]">Distribuição das faltas (Clique na fatia para filtrar)</p>
+            <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Assiduidade Diária vs. Acumulado Semanal</h3>
+            <p class="text-xs text-[var(--ink-soft)]">Acompanhamento granular do percentual de presenças dia a dia</p>
+          </div>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--emerald-soft)] text-[var(--emerald)]">Por Dia</span>
+        </div>
+        <div class="relative h-72">
+          <canvas id="chartDiario"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico 2: Ranking Comparativo por Centro de Custo -->
+      <div class="card p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Análise por Centro de Custo (Assiduidade % vs. Falta no Setor %)</h3>
+            <p class="text-xs text-[var(--ink-soft)]">Clique na barra do setor para filtrar a auditoria e os dados</p>
+          </div>
+          <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--emerald-soft)] text-[var(--emerald)]">Por Centro de Custo</span>
+        </div>
+        <div class="relative h-[400px] overflow-x-auto overflow-y-hidden scrollbar-thin pb-2">
+          <div id="chartSetoresContainer" class="relative min-w-full h-full">
+            <canvas id="chartSetores"></canvas>
           </div>
         </div>
-        <div class="relative h-72 flex items-center justify-center">
-          <canvas id="chartRepresentatividade"></canvas>
-        </div>
       </div>
     </div>
 
-    <!-- Gráfico 4: Assiduidade Diária -->
-    <div class="card p-5 mt-6">
-      <div class="flex items-center justify-between mb-4">
+    <!-- Quadro: Top 20 Colaboradores com Maior Absenteísmo (Triplo Escopo: Semana, Mês, Global) -->
+    <div id="card-top-absenteismo" class="card p-5 mt-6 fade-in border-2 border-[var(--coral-soft)] shadow-xs">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 border-b border-[var(--line)] pb-4">
         <div>
-          <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Assiduidade Diária vs. Acumulado Semanal</h3>
-          <p class="text-xs text-[var(--ink-soft)]">Acompanhamento granular do percentual de presenças dia a dia</p>
+          <div class="flex items-center gap-2">
+            <h3 class="font-display font-700 text-[16px] text-[var(--ink)]">Ranking de Colaboradores com Maior Absenteísmo</h3>
+            <span class="badge badge-coral text-[10px] font-bold">Top 20</span>
+          </div>
+          <p class="text-xs text-[var(--ink-soft)] mt-0.5">Distribuição de faltas por dia da semana em 3 escopos de tempo (Desacoplado do filtro de data única)</p>
         </div>
-        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--emerald-soft)] text-[var(--emerald)]">Por Dia</span>
-      </div>
-      <div class="relative h-72">
-        <canvas id="chartDiario"></canvas>
-      </div>
-    </div>
 
-    <!-- Gráfico 2: Ranking Comparativo por Centro de Custo -->
-    <div class="card p-5 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h3 class="font-display font-700 text-[15px] text-[var(--ink)]">Análise por Centro de Custo (Assiduidade % vs. Falta no Setor %)</h3>
-          <p class="text-xs text-[var(--ink-soft)]">Clique na barra do setor para filtrar a auditoria e os dados</p>
+        <!-- Abas de Escopo: Semana / Mês / Global -->
+        <div class="flex items-center gap-1 bg-[var(--gray-soft)] p-1 rounded-xl border border-[var(--line)] shrink-0">
+          <button id="tab-top-semana" onclick="switchTopAbsTab('semana')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-white text-[var(--coral)] shadow-xs">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+            Semana
+          </button>
+          <button id="tab-top-mes" onclick="switchTopAbsTab('mes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)]">
+            <i data-lucide="calendar-range" class="w-3.5 h-3.5"></i>
+            Mês
+          </button>
+          <button id="tab-top-global" onclick="switchTopAbsTab('global')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)]">
+            <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+            Global
+          </button>
         </div>
-        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--emerald-soft)] text-[var(--emerald)]">Por Centro de Custo</span>
       </div>
-      <div class="relative h-[400px] overflow-x-auto overflow-y-hidden scrollbar-thin pb-2">
-        <div id="chartSetoresContainer" class="relative min-w-full h-full">
-          <canvas id="chartSetores"></canvas>
-        </div>
+
+      <!-- Badge de descrição do escopo atual -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 px-1">
+        <span id="top-abs-scope-desc" class="text-xs font-semibold text-[var(--navy)] bg-[var(--navy-soft)] px-3 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+          <i data-lucide="info" class="w-3.5 h-3.5"></i>
+          <span id="top-abs-scope-text">Escopo Semanal</span>
+        </span>
+        <span id="top-abs-count-badge" class="text-xs text-[var(--ink-soft)] font-medium">0 colaboradores no ranking Top 20</span>
+      </div>
+
+      <!-- Tabela com Rolagem Vertical -->
+      <div class="max-h-[420px] overflow-y-auto overflow-x-auto scrollbar-thin rounded-lg border border-[var(--line)]">
+        <table class="w-full text-sm">
+          <thead id="top-abs-table-head" class="sticky top-0 z-10 bg-[#FAFBF9] shadow-sm">
+            <!-- Renderizado dinamicamente via JS com ordenação interativa -->
+          </thead>
+          <tbody id="top-abs-table-body" class="divide-y divide-[var(--line)]">
+            <!-- Renderizado dinamicamente via JS -->
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -347,6 +418,7 @@
               <th class="px-4 py-3 bg-[#FAFBF9]">Colaborador</th>
               <th class="px-4 py-3 bg-[#FAFBF9]">Centro de Custo / Setor</th>
               <th class="px-4 py-3 bg-[#FAFBF9]">Situação</th>
+              <th class="px-4 py-3 tabular bg-[#FAFBF9]">Data</th>
               <th class="px-4 py-3 tabular bg-[#FAFBF9]">Prev. Término</th>
               <th class="px-4 py-3 tabular bg-[#FAFBF9]">Previsto</th>
               <th class="px-4 py-3 tabular bg-[#FAFBF9]">Marcação</th>
@@ -417,13 +489,33 @@ let DATA = typeof DATA_INJECT !== 'undefined' && DATA_INJECT.length > 0 ? [...DA
 const HEADCOUNT = typeof HEADCOUNT_INJECT !== 'undefined' && HEADCOUNT_INJECT.total > 0 ? HEADCOUNT_INJECT : { by_mat: {}, by_sector: {}, total: 465 };
 
 /* ============================================================
-   2) REGRAS DE NEGÓCIO / CLASSIFICAÇÃO COM FOCO EM FALTAS
+   2) REGRAS DE NEGÓCIO / CLASSIFICAÇÃO COM FOCO EM FALTAS E AFASTAMENTOS
    ============================================================ */
-const AFASTAMENTO_SET = new Set(['Auxílio Doença','Atestado (d)','Licença Maternidade','Férias','Aposentadoria por Invalidez']);
-
 function classify(sit){
-  if(sit === '') return 'Atraso';
-  if(AFASTAMENTO_SET.has(sit)) return 'Afastamento';
+  if (!sit || !sit.trim()) return 'Atraso';
+  
+  // Normalização de string: maiúsculas, remoção de acentos e de caracteres inválidos (resiliência a encodings)
+  const clean = sit.trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\uFFFD\u007F-\u009F]/g, "");
+
+  if (
+    clean.includes('AUX') ||
+    clean.includes('DOEN') ||
+    clean.includes('ATESTAD') ||
+    clean.includes('MATERN') ||
+    clean.includes('FERIA') ||
+    clean.includes('INVALIDEZ') ||
+    clean.includes('AVISO') ||
+    clean.includes('PREVIO') ||
+    clean.includes('AFASTAD') ||
+    clean.includes('LICENC')
+  ) {
+    return 'Afastamento';
+  }
+  
   return 'Falta'; 
 }
 
@@ -507,12 +599,15 @@ function getWeekOfMonth(dateStr) {
       firstSunday = 1 + (7 - firstDayWeekDay);
     }
     
+    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const monthName = monthNames[month] || "";
+    
     if (day <= firstSunday) {
-      return "Semana 1";
+      return "Semana 1 - " + monthName;
     }
     
     const weekNumber = Math.ceil((day - firstSunday) / 7) + 1;
-    return "Semana " + weekNumber;
+    return "Semana " + weekNumber + " - " + monthName;
   } catch (e) {
     return "Semana 1";
   }
@@ -591,23 +686,95 @@ function cleanSetorName(s) {
   return s.replace(/^(CUSTOS?|DESPESAS?)\s+C\/\s+PESSOAL\s*-\s*/i, '').trim();
 }
 
-function getSectorHeadcount(s) {
-  if (!HEADCOUNT) return 0;
-  const cleanName = cleanSetorName(s.setor);
-  if (HEADCOUNT.by_sector && (HEADCOUNT.by_sector[s.setor] || HEADCOUNT.by_sector[cleanName])) {
-    return HEADCOUNT.by_sector[s.setor] || HEADCOUNT.by_sector[cleanName];
+function resolveHeadcountData(compTarget) {
+  if (typeof HEADCOUNT_HISTORY_INJECT !== 'undefined' && HEADCOUNT_HISTORY_INJECT.history) {
+    const hist = HEADCOUNT_HISTORY_INJECT.history;
+    
+    // Se compTarget não foi passado diretamente (ex: chamada genérica), 
+    // aplicamos a hierarquia de privilégios dos filtros
+    if (!compTarget) {
+      const selData = document.getElementById('f-data');
+      const selSemana = document.getElementById('f-semana');
+      const selMes = document.getElementById('f-mes');
+      
+      const vData = selData ? selData.value : '';
+      const vSemana = selSemana ? selSemana.value : '';
+      const vMes = selMes ? selMes.value : '';
+
+      // Privilégio 1: Data Específica
+      if (vData) {
+        compTarget = vData.replace(/\//g, '-');
+      } 
+      // Privilégio 2: Semana
+      else if (vSemana) {
+        let targetMonth = vMes;
+        if (!targetMonth) {
+          if (HEADCOUNT_HISTORY_INJECT.latest_competencia) {
+            const parts = HEADCOUNT_HISTORY_INJECT.latest_competencia.split('-');
+            if (parts.length >= 2) targetMonth = parts[1];
+          }
+        }
+        
+        if (targetMonth) {
+          const matchingKeys = Object.keys(hist).filter(k => 
+            k.endsWith('-' + targetMonth) && getWeekOfMonth(k) === vSemana
+          );
+          if (matchingKeys.length > 0) {
+            matchingKeys.sort(); 
+            return hist[matchingKeys[matchingKeys.length - 1]]; 
+          }
+        }
+      } 
+      // Privilégio 3: Mês
+      else if (vMes) {
+        compTarget = vMes; 
+      }
+    }
+    
+    // Resolução baseada no compTarget formatado (seja por Data ou por Mês)
+    if (compTarget && compTarget.length === 5) {
+      if (hist[compTarget]) return hist[compTarget];
+    }
+    
+    if (compTarget && compTarget.length === 2) {
+      const matchingKeys = Object.keys(hist).filter(k => k.endsWith('-' + compTarget));
+      if (matchingKeys.length > 0) {
+        matchingKeys.sort(); 
+        return hist[matchingKeys[matchingKeys.length - 1]];
+      }
+    }
+    
+    if (compTarget) {
+      const matchKeyGen = Object.keys(hist).find(k => k.includes(compTarget));
+      if (matchKeyGen) return hist[matchKeyGen];
+    }
+    
+    // Fallback absoluto: último headcount registrado
+    if (HEADCOUNT_HISTORY_INJECT.latest_competencia && hist[HEADCOUNT_HISTORY_INJECT.latest_competencia]) {
+      return hist[HEADCOUNT_HISTORY_INJECT.latest_competencia];
+    }
   }
-  if (HEADCOUNT.by_mat && s.matriculas && s.matriculas.size > 0) {
+  return HEADCOUNT;
+}
+
+function getSectorHeadcount(s, compTarget) {
+  const hcSource = resolveHeadcountData(compTarget);
+  if (!hcSource) return 0;
+  const cleanName = cleanSetorName(s.setor);
+  if (hcSource.by_sector && (hcSource.by_sector[s.setor] || hcSource.by_sector[cleanName])) {
+    return hcSource.by_sector[s.setor] || hcSource.by_sector[cleanName];
+  }
+  if (hcSource.by_mat && s.matriculas && s.matriculas.size > 0) {
     const counts = {};
     s.matriculas.forEach(m => {
-      const cc = HEADCOUNT.by_mat[m];
+      const cc = hcSource.by_mat[m];
       if (cc) counts[cc] = (counts[cc] || 0) + 1;
     });
     let topCC = null, maxC = 0;
     for (const [cc, cnt] of Object.entries(counts)) {
       if (cnt > maxC) { maxC = cnt; topCC = cc; }
     }
-    if (topCC && HEADCOUNT.by_sector[topCC]) return HEADCOUNT.by_sector[topCC];
+    if (topCC && hcSource.by_sector && hcSource.by_sector[topCC]) return hcSource.by_sector[topCC];
   }
   return 0;
 }
@@ -635,7 +802,10 @@ function renderIndicadoresCharts(dados_filtrados, validDates) {
   
   console.log("🔥 [TESTE ANTIGRAVITY] O ficheiro foi fisicamente atualizado e o filtro está a processar os dados!");
 
-  // Determinar o headcount adequado ao filtro atual para as matemáticas não usarem a variável global bruta
+  const selMesElem = document.getElementById('f-mes');
+  const compTarget = selMesElem ? selMesElem.value : null;
+  const currentHcData = resolveHeadcountData(compTarget);
+
   const selSetorElem = document.getElementById('f-setor');
   let setorSelecionado = [];
   if (activeSectors.length > 0) {
@@ -643,13 +813,13 @@ function renderIndicadoresCharts(dados_filtrados, validDates) {
   } else if (selSetorElem && selSetorElem.value) {
     setorSelecionado = [selSetorElem.value];
   }
-  let localHC = HEADCOUNT.total || 465;
+  let localHC = currentHcData.total || 465;
   if (setorSelecionado.length > 0 && !setorSelecionado.includes('OUTROS')) {
     const mats = new Set();
     dados_filtrados.forEach(d => { if (d.matricula) mats.add(d.matricula); });
     let sumHC = 0;
     setorSelecionado.forEach(sec => {
-      sumHC += getSectorHeadcount({ setor: sec, matriculas: mats });
+      sumHC += getSectorHeadcount({ setor: sec, matriculas: mats }, compTarget);
     });
     if (sumHC > 0) localHC = sumHC;
   }
@@ -912,7 +1082,7 @@ function renderIndicadoresCharts(dados_filtrados, validDates) {
       const origSec = sectorMap[cleanSec].origName;
       const f = sectorMap[cleanSec].faltas;
       const fallbackTotal = sectorMap[cleanSec].matriculas.size > 0 ? sectorMap[cleanSec].matriculas.size : 1;
-      const hcSetorDiario = getSectorHeadcount({ setor: origSec, matriculas: sectorMap[cleanSec].matriculas }) || fallbackTotal;
+      const hcSetorDiario = getSectorHeadcount({ setor: origSec, matriculas: sectorMap[cleanSec].matriculas }, compTarget) || fallbackTotal;
       
       // Média de faltas por dia (baseada nos dias globais do filtro)
       const mediaFaltas = parseFloat((f / multiplicadorDias).toFixed(1));
@@ -985,7 +1155,7 @@ function renderIndicadoresCharts(dados_filtrados, validDates) {
                   if (!cleanSec || !sectorMap[cleanSec]) return '';
                   const origSec = sectorMap[cleanSec].origName;
                   const fallbackTotal = sectorMap[cleanSec].matriculas.size > 0 ? sectorMap[cleanSec].matriculas.size : 1;
-                  const hcSetor = getSectorHeadcount({ setor: origSec, matriculas: sectorMap[cleanSec].matriculas }) || fallbackTotal;
+                  const hcSetor = getSectorHeadcount({ setor: origSec, matriculas: sectorMap[cleanSec].matriculas }, compTarget) || fallbackTotal;
                   const faltas = sectorMap[cleanSec].faltas;
                   
                   if (multiplicadorDias > 1) {
@@ -1253,8 +1423,9 @@ function renderDashboard() {
     // Mes
     let matchMes = true;
     if (mesSel && d.data_relatorio) {
-        const parts = d.data_relatorio.split('-'); // YYYY-MM-DD
-        if (parts.length === 3) {
+        const sep = d.data_relatorio.includes('/') ? '/' : '-';
+        const parts = d.data_relatorio.split(sep);
+        if (parts.length >= 2) {
             const mesNum = parts[1];
             matchMes = mesNum === mesSel;
         }
@@ -1310,6 +1481,13 @@ function renderDashboard() {
     console.error('Aviso: Erro ao executar renderIndicadoresCharts:', eChart);
   }
 
+  // Atualizar Triplo Quadro Top 20 Absenteísmo (Semana / Mês / Global)
+  try {
+    renderTopAbsenteismoTable();
+  } catch(eTop) {
+    console.error('Aviso: Erro ao executar renderTopAbsenteismoTable:', eTop);
+  }
+
   // Mostrar/Ocultar botão de limpar filtros e badge ativo
   const isFiltered = activeGlobalFilter !== null || q !== '' || dataSel !== '' || setorSel !== '' || sitSel !== '' || activeWeeks.length > 0 || activeSectors.length > 0 || mesSel !== '' || semSel !== '';
   const btnLimpar = document.getElementById('btnLimparFiltros');
@@ -1341,7 +1519,8 @@ function renderDashboard() {
   const totalAfastamentos = baseFilteredData.filter(d => d.categoria === 'Afastamento').length;
   const totalAtrasos = baseFilteredData.filter(d => d.categoria === 'Atraso').length;
   
-  let localHC = HEADCOUNT.total || 465;
+  const currentHcData = resolveHeadcountData(mesSel);
+  let localHC = currentHcData.total || HEADCOUNT.total || 465;
   const targetSector = (activeSectors.length > 0) ? activeSectors[0] : (typeof setorSel !== 'undefined' ? setorSel : '');
   if (targetSector) {
     let sumHC = 0;
@@ -1349,7 +1528,7 @@ function renderDashboard() {
     baseFilteredData.forEach(d => { if(d.matricula) mats.add(d.matricula); });
     const sectorsToSum = activeSectors.length > 0 ? activeSectors : [targetSector];
     sectorsToSum.forEach(sec => {
-        sumHC += getSectorHeadcount({ setor: sec, matriculas: mats });
+        sumHC += getSectorHeadcount({ setor: sec, matriculas: mats }, mesSel);
     });
     if (sumHC > 0) localHC = sumHC;
   }
@@ -1457,7 +1636,7 @@ function renderDashboard() {
     else if (metricCategory === 'Atraso') targetCount = s.atrasos;
 
     const pctVal = baseTotal > 0 ? ((targetCount / baseTotal) * 100).toFixed(1) : '0.0';
-    const hcSetor = getSectorHeadcount(s);
+    const hcSetor = getSectorHeadcount(s, mesSel);
     const taxaFaltaSetor = hcSetor > 0 ? ((s.faltas / hcSetor) * 100).toFixed(1) : null;
     const presentesSetor = Math.max(0, hcSetor - s.faltas);
     const taxaAssiduidadeSetor = hcSetor > 0 ? ((presentesSetor / hcSetor) * 100).toFixed(1) : null;
@@ -1467,7 +1646,7 @@ function renderDashboard() {
       <div>
         <div class="flex items-center justify-between gap-2">
           <p class="font-semibold text-sm truncate" title="${s.setor}">${s.setor}</p>
-          <span class="badge badge-navy" title="Headcount do Centro de Custo">${hcSetor > 0 ? hcSetor + ' Colab.' : s.total + ' Reg.'}</span>
+          <span class="badge hc-badge-card" title="Headcount do Centro de Custo">${hcSetor > 0 ? hcSetor + ' pessoas' : s.total + ' Reg.'}</span>
         </div>
         
         <div class="sector-bar mt-2.5">
@@ -1516,7 +1695,8 @@ function renderDashboard() {
       <td class="px-4 py-2.5 font-medium ${isFalta ? 'text-[var(--coral)]' : ''}">${d.nome}</td>
       <td class="px-4 py-2.5 text-[var(--ink-soft)]">${d.setor}</td>
       <td class="px-4 py-2.5">${badgeForSituacao(d.situacao, d.categoria)}</td>
-      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)] font-medium">${d.previsao_termino || '—'}</td>
+      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)] font-medium">${(d.data_relatorio ? d.data_relatorio.replace('-', '/') : null) || d.data_ponto || d.previsao_termino || '—'}</td>
+      <td class="px-4 py-2.5 tabular text-[var(--ink-soft)] font-medium">${d.categoria === 'Afastamento' ? d.previsao_termino : '—'}</td>
       <td class="px-4 py-2.5 tabular text-[var(--ink-soft)]">${d.hora_prevista || '—'}</td>
       <td class="px-4 py-2.5 tabular text-[var(--ink-soft)]">${d.hora_marcacao || '—'}</td>
     </tr>
@@ -1526,9 +1706,80 @@ function renderDashboard() {
   lucide.createIcons();
 }
 
-[inputSearch, selData, selSetor, selSituacao, selMes, selSemana].forEach(el => {
-  if(el) el.addEventListener('input', renderDashboard);
+[inputSearch, selSetor, selSituacao].forEach(el => {
+  if(el) el.addEventListener('input', () => {
+    window._isManualFilterSet = true;
+    renderDashboard();
+  });
 });
+
+if (selData) {
+  selData.addEventListener('input', () => {
+    window._isManualFilterSet = true;
+    if (selData.value) {
+      const sep = selData.value.includes('/') ? '/' : '-';
+      const parts = selData.value.split(sep);
+      if (parts.length >= 2) {
+        const mes = parts[1];
+        if (selMes) selMes.value = mes;
+      }
+      if (selSemana) selSemana.value = getWeekOfMonth(selData.value);
+    }
+    renderDashboard();
+  });
+}
+
+if (selSemana) {
+  selSemana.addEventListener('input', () => {
+    window._isManualFilterSet = true;
+    if (selData) selData.value = '';
+    renderDashboard();
+  });
+}
+
+if (selMes) {
+  selMes.addEventListener('input', () => {
+    window._isManualFilterSet = true;
+    if (selData) selData.value = '';
+    if (selSemana) selSemana.value = '';
+    atualizarDropdownsTempo();
+    renderDashboard();
+  });
+}
+
+const btnLimpar = document.getElementById('btnLimparFiltros');
+if(btnLimpar) {
+  btnLimpar.addEventListener('click', () => {
+    window._isManualFilterSet = false;
+  });
+}
+
+function atualizarDropdownsTempo() {
+  const mesAtivo = selMes ? selMes.value : '';
+  const datasFiltradas = DATA.filter(d => {
+    if (!mesAtivo) return true;
+    if (!d.data_relatorio) return false;
+    const sep = d.data_relatorio.includes('/') ? '/' : '-';
+    const parts = d.data_relatorio.split(sep);
+    return parts.length >= 2 && parts[1] === mesAtivo;
+  });
+
+  const datasUnicas = [...new Set(datasFiltradas.map(d => d.data_relatorio).filter(x => x))].sort().reverse();
+  if (selData) {
+    const valAntes = selData.value;
+    selData.innerHTML = '<option value="">Todas as Datas</option>' + datasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (datasUnicas.includes(valAntes)) selData.value = valAntes;
+    else selData.value = '';
+  }
+
+  const semanasUnicas = [...new Set(datasFiltradas.map(d => getWeekOfMonth(d.data_relatorio)))].sort();
+  if (selSemana) {
+    const valAntes = selSemana.value;
+    selSemana.innerHTML = '<option value="">Semanas</option>' + semanasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (semanasUnicas.includes(valAntes)) selSemana.value = valAntes;
+    else selSemana.value = '';
+  }
+}
 
 function filterBySector(setorName) {
   if (activeSectors.includes(setorName)) {
@@ -1543,6 +1794,421 @@ function filterBySector(setorName) {
 }
 
 /* ============================================================
+   TRIPLO QUADRO TOP 20 ABSENTEÍSMO (SEMANA / MÊS / GLOBAL)
+   ============================================================ */
+let currentTopAbsTab = 'semana';
+let topAbsSortKey = 'total'; // 'total' | 'seg' | 'ter' | 'qua' | 'qui' | 'sex' | 'sab' | 'dom' | 'nome' | 'setor'
+let topAbsSortOrder = 'desc'; // 'desc' | 'asc'
+
+function toggleIndicadoresCharts() {
+  const container = document.getElementById('indicadores-charts-container');
+  const icon = document.getElementById('iconToggleCharts');
+  const text = document.getElementById('textToggleCharts');
+  if (!container) return;
+
+  const isHidden = container.classList.contains('hidden');
+  if (isHidden) {
+    container.classList.remove('hidden');
+    if (text) text.textContent = 'Recolher Gráficos';
+    if (icon) icon.setAttribute('data-lucide', 'eye-off');
+  } else {
+    container.classList.add('hidden');
+    if (text) text.textContent = 'Exibir Gráficos';
+    if (icon) icon.setAttribute('data-lucide', 'eye');
+    scrollToTopAbsenteismo();
+  }
+  lucide.createIcons();
+}
+
+function scrollToTopAbsenteismo() {
+  switchTab('indicadores');
+  setTimeout(() => {
+    const card = document.getElementById('card-top-absenteismo');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 100);
+}
+
+function switchTopAbsTab(tab) {
+  currentTopAbsTab = tab;
+  ['semana', 'mes', 'global'].forEach(t => {
+    const btn = document.getElementById('tab-top-' + t);
+    if (btn) {
+      if (t === tab) {
+        btn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 bg-white text-[var(--coral)] shadow-xs';
+      } else {
+        btn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 text-[var(--ink-soft)] hover:text-[var(--ink)]';
+      }
+    }
+  });
+
+  const sData = document.getElementById('f-data');
+  const sSemana = document.getElementById('f-semana');
+  const sMes = document.getElementById('f-mes');
+
+  const hasFilterValues = (sData && sData.value) || (sSemana && sSemana.value) || (sMes && sMes.value);
+
+  // Sempre descobrir os valores de fallback
+  let targetMes = sMes ? sMes.value : '';
+  if (!targetMes) {
+    const todosMeses = [...new Set(DATA.map(d => {
+      if (d.data_relatorio) {
+        const sep = d.data_relatorio.includes('/') ? '/' : '-';
+        const parts = d.data_relatorio.split(sep);
+        if (parts.length >= 2) return parts[1];
+      }
+      return null;
+    }).filter(Boolean))].sort();
+    if (todosMeses.length > 0) targetMes = todosMeses[todosMeses.length - 1];
+  }
+
+  let targetSemana = sSemana ? sSemana.value : '';
+  if (!targetSemana) {
+    const datasDoMes = DATA.filter(d => {
+      if (!targetMes) return true;
+      if (!d.data_relatorio) return false;
+      const sep = d.data_relatorio.includes('/') ? '/' : '-';
+      return d.data_relatorio.split(sep)[1] === targetMes;
+    });
+    const semanasDisponiveis = [...new Set(datasDoMes.map(d => getWeekOfMonth(d.data_relatorio)))].sort();
+    if (semanasDisponiveis.length > 0) targetSemana = semanasDisponiveis[semanasDisponiveis.length - 1];
+  }
+
+  if (tab === 'semana') {
+    if (sMes && !sMes.value) sMes.value = targetMes;
+    atualizarDropdownsTempo();
+    if (sSemana && !sSemana.value) sSemana.value = targetSemana;
+    window._isManualFilterSet = false;
+  } else if (tab === 'mes') {
+    if (sMes && !sMes.value) sMes.value = targetMes;
+    if (sSemana) sSemana.value = '';
+    atualizarDropdownsTempo();
+    window._isManualFilterSet = false;
+  } else if (tab === 'global') {
+    if (sMes) sMes.value = '';
+    if (sSemana) sSemana.value = '';
+    atualizarDropdownsTempo();
+    window._isManualFilterSet = false;
+  }
+
+  renderDashboard();
+}
+
+function setTopAbsSort(key) {
+  if (topAbsSortKey === key) {
+    topAbsSortOrder = topAbsSortOrder === 'desc' ? 'asc' : 'desc';
+  } else {
+    topAbsSortKey = key;
+    topAbsSortOrder = 'desc'; // Padrão: Maior para o Menor
+  }
+  renderDashboard();
+}
+
+function getWeekdayIndex(dateStr) {
+  if (!dateStr) return -1;
+  try {
+    const sep = dateStr.includes('/') ? '/' : '-';
+    const parts = dateStr.split(sep);
+    if (parts.length < 2) return -1;
+    let year, month, day;
+    if (parts[0].length === 4) {
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      day = parseInt(parts[2], 10);
+    } else {
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      year = parts.length === 3 ? parseInt(parts[2], 10) : new Date().getFullYear();
+    }
+    const d = new Date(year, month, day);
+    if (isNaN(d.getTime())) return -1;
+    return d.getDay(); // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+  } catch (e) {
+    return -1;
+  }
+}
+
+function getMonthName(mesNum) {
+  const nomesMeses = {
+    "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
+    "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
+    "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+  };
+  return nomesMeses[mesNum] || mesNum;
+}
+
+function renderTopAbsHeader() {
+  const thead = document.getElementById('top-abs-table-head');
+  if (!thead) return;
+
+  const cols = [
+    { key: 'rank', label: '#', align: 'center', width: 'w-12' },
+    { key: 'nome', label: 'Colaborador', align: 'left' },
+    { key: 'setor', label: 'Centro de Custo / Setor', align: 'left' },
+    { key: 'seg', label: 'Seg', align: 'center' },
+    { key: 'ter', label: 'Ter', align: 'center' },
+    { key: 'qua', label: 'Qua', align: 'center' },
+    { key: 'qui', label: 'Qui', align: 'center' },
+    { key: 'sex', label: 'Sex', align: 'center' },
+    { key: 'sab', label: 'Sáb', align: 'center' },
+    { key: 'dom', label: 'Dom', align: 'center' },
+    { key: 'total', label: 'Total Faltas', align: 'center' }
+  ];
+
+  thead.innerHTML = `
+    <tr class="text-[11px] uppercase tracking-wide text-[var(--ink-soft)] font-semibold border-b border-[var(--line)]">
+      ${cols.map(c => {
+        const isSorted = topAbsSortKey === c.key;
+        const arrow = isSorted ? (topAbsSortOrder === 'desc' ? ' ↓' : ' ↑') : '';
+        const activeClass = isSorted ? 'bg-[var(--coral-soft)] text-[var(--coral)] font-extrabold border-b-2 border-[var(--coral)]' : 'bg-[#FAFBF9] hover:bg-[#F0F2EC]';
+        const alignClass = c.align === 'center' ? 'text-center' : 'text-left';
+        const widthClass = c.width || '';
+
+        return `
+          <th onclick="setTopAbsSort('${c.key}')" title="Clique para ordenar por ${c.label} (${topAbsSortOrder === 'desc' && isSorted ? 'Menor para Maior' : 'Maior para Menor'})"
+            class="px-2.5 py-3 cursor-pointer select-none transition-colors ${alignClass} ${widthClass} ${activeClass}">
+            <div class="inline-flex items-center gap-1">
+              <span>${c.label}</span>
+              <span class="text-[11px]">${arrow}</span>
+            </div>
+          </th>`;
+      }).join('')}
+    </tr>`;
+}
+
+function renderTopAbsenteismoTable() {
+  renderTopAbsHeader();
+
+  const tbody = document.getElementById('top-abs-table-body');
+  const scopeText = document.getElementById('top-abs-scope-text');
+  const countBadge = document.getElementById('top-abs-count-badge');
+  if (!tbody) return;
+
+  const setorSel = selSetor ? selSetor.value : '';
+  const mesSel = selMes ? selMes.value : '';
+  const semSel = selSemana ? selSemana.value : '';
+  const q = inputSearch ? inputSearch.value.trim().toLowerCase() : '';
+
+  // 1. Filtrar DATA respeitando RBAC + Setor + Busca (REGRA DE OURO: Ignora #f-data selData!)
+  const baseData = DATA.filter(d => {
+    if ((d.categoria || classify(d.situacao)) !== 'Falta') return false;
+
+    let matchSetor = true;
+    if (setorSel) {
+      matchSetor = d.setor === setorSel;
+    } else if (activeSectors.length > 0) {
+      if (activeSectors.includes('OUTROS') && window.excludedTop5ForOutros) {
+        matchSetor = !window.excludedTop5ForOutros.includes(d.setor) || activeSectors.includes(d.setor);
+      } else {
+        matchSetor = activeSectors.includes(d.setor);
+      }
+    }
+
+    const matchSearch = !q || (d.nome && d.nome.toLowerCase().includes(q)) || (d.matricula && String(d.matricula).includes(q)) || (d.setor && d.setor.toLowerCase().includes(q));
+
+    return matchSetor && matchSearch;
+  });
+
+  // 2. Determinação inteligente de Mês e Semana para garantir que os 3 escopos apresentem números distintos
+  let targetMes = mesSel;
+  if (!targetMes) {
+    const todosMeses = [...new Set(DATA.map(d => {
+      if (d.data_relatorio) {
+        const sep = d.data_relatorio.includes('/') ? '/' : '-';
+        const parts = d.data_relatorio.split(sep);
+        if (parts.length >= 2) return parts[1];
+      }
+      return null;
+    }).filter(Boolean))].sort();
+    if (todosMeses.length > 0) {
+      targetMes = todosMeses[todosMeses.length - 1]; // Mês mais recente
+    }
+  }
+
+  let targetSemana = semSel;
+  if (!targetSemana && activeWeeks.length > 0) {
+    targetSemana = activeWeeks[activeWeeks.length - 1];
+  }
+  if (!targetSemana) {
+    const datasDoMes = DATA.filter(d => {
+      if (!targetMes) return true;
+      if (!d.data_relatorio) return false;
+      const sep = d.data_relatorio.includes('/') ? '/' : '-';
+      const parts = d.data_relatorio.split(sep);
+      return parts.length >= 2 && parts[1] === targetMes;
+    });
+    const semanasDisponiveis = [...new Set(datasDoMes.map(d => getWeekOfMonth(d.data_relatorio)))].sort();
+    if (semanasDisponiveis.length > 0) {
+      targetSemana = semanasDisponiveis[semanasDisponiveis.length - 1]; // Semana mais recente
+    }
+  }
+
+  // 3. Filtrar por Escopo de Tempo
+  let scopeFiltered = [];
+  let scopeLabel = '';
+
+  if (currentTopAbsTab === 'semana') {
+    scopeFiltered = baseData.filter(d => {
+      let matchMes = true;
+      if (targetMes && d.data_relatorio) {
+        const sep = d.data_relatorio.includes('/') ? '/' : '-';
+        const parts = d.data_relatorio.split(sep);
+        if (parts.length >= 2) matchMes = parts[1] === targetMes;
+      }
+      let matchWeek = true;
+      if (targetSemana) {
+        matchWeek = getWeekOfMonth(d.data_relatorio) === targetSemana;
+      }
+      return matchMes && matchWeek;
+    });
+
+    const mesStr = getMonthName(targetMes);
+    const semStr = targetSemana || 'Semana Recente';
+    scopeLabel = `Escopo Semanal: ${semStr} (${mesStr})`;
+
+  } else if (currentTopAbsTab === 'mes') {
+    scopeFiltered = baseData.filter(d => {
+      let matchMes = true;
+      if (targetMes && d.data_relatorio) {
+        const sep = d.data_relatorio.includes('/') ? '/' : '-';
+        const parts = d.data_relatorio.split(sep);
+        if (parts.length >= 2) matchMes = parts[1] === targetMes;
+      }
+      return matchMes;
+    });
+
+    const mesStr = getMonthName(targetMes);
+    scopeLabel = `Escopo Mensal: ${mesStr} (Mês Completo)`;
+
+  } else { // 'global'
+    scopeFiltered = baseData;
+    scopeLabel = `Escopo Global: Acumulado Total do Banco (Sem Filtro de Tempo)`;
+  }
+
+  const sortNames = {
+    'total': 'Total Faltas',
+    'seg': 'Segunda-feira',
+    'ter': 'Terça-feira',
+    'qua': 'Quarta-feira',
+    'qui': 'Quinta-feira',
+    'sex': 'Sexta-feira',
+    'sab': 'Sábado',
+    'dom': 'Domingo',
+    'nome': 'Nome',
+    'setor': 'Setor'
+  };
+  const sortDirectionStr = topAbsSortOrder === 'desc' ? 'Maior p/ Menor' : 'Menor p/ Maior';
+  scopeLabel += ` · Ordenado por: ${sortNames[topAbsSortKey] || 'Total'} (${sortDirectionStr})`;
+
+  if (scopeText) scopeText.textContent = scopeLabel;
+
+  // 3. Agrupamento por Colaborador
+  const empMap = {};
+  scopeFiltered.forEach(d => {
+    const key = (d.matricula || d.nome || 'desconhecido').toString().trim();
+    if (!empMap[key]) {
+      empMap[key] = {
+        matricula: d.matricula || key,
+        nome: d.nome || 'NÃO IDENTIFICADO',
+        setor: cleanSetorName(d.setor) || 'OUTROS',
+        days: { seg: 0, ter: 0, qua: 0, qui: 0, sex: 0, sab: 0, dom: 0 },
+        total: 0
+      };
+    }
+    const emp = empMap[key];
+    emp.total++;
+
+    const dateStr = d.data_relatorio || d.data_ponto;
+    const wday = getWeekdayIndex(dateStr);
+    if (wday === 1) emp.days.seg++;
+    else if (wday === 2) emp.days.ter++;
+    else if (wday === 3) emp.days.qua++;
+    else if (wday === 4) emp.days.qui++;
+    else if (wday === 5) emp.days.sex++;
+    else if (wday === 6) emp.days.sab++;
+    else if (wday === 0) emp.days.dom++;
+  });
+
+  // 4. Ordenação Dinâmica (por Coluna Selecionada no Header) e Limite TOP 20
+  const topList = Object.values(empMap).sort((a, b) => {
+    let valA, valB;
+    if (topAbsSortKey === 'total') {
+      valA = a.total; valB = b.total;
+    } else if (topAbsSortKey === 'nome') {
+      valA = a.nome; valB = b.nome;
+      return topAbsSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (topAbsSortKey === 'setor') {
+      valA = a.setor; valB = b.setor;
+      return topAbsSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else { // 'seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'
+      valA = a.days[topAbsSortKey] || 0;
+      valB = b.days[topAbsSortKey] || 0;
+    }
+
+    if (valA !== valB) {
+      return topAbsSortOrder === 'desc' ? valB - valA : valA - valB;
+    }
+    // Empate -> desempata pelo Total de Faltas depois por Nome
+    if (b.total !== a.total) return b.total - a.total;
+    return a.nome.localeCompare(b.nome);
+  }).slice(0, 20);
+
+  if (countBadge) countBadge.textContent = `${topList.length} colaboradores no ranking Top 20`;
+
+  if (topList.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="11" class="px-4 py-8 text-center text-[var(--ink-soft)] font-medium">
+          Nenhuma ocorrência de falta encontrada para o escopo selecionado (${currentTopAbsTab.toUpperCase()}).
+        </td>
+      </tr>`;
+    return;
+  }
+
+  function dayBadge(cnt) {
+    if (cnt > 0) {
+      return `<span class="px-2 py-0.5 rounded-md text-xs font-bold bg-[var(--coral-soft)] text-[var(--coral)]">${cnt}</span>`;
+    }
+    return `<span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-[var(--gray-soft)] text-[var(--ink-soft)] opacity-40">0</span>`;
+  }
+
+  tbody.innerHTML = topList.map((emp, idx) => {
+    const rank = idx + 1;
+    let rankBadgeClass = 'bg-[var(--gray-soft)] text-[var(--ink-soft)]';
+    if (rank === 1) rankBadgeClass = 'bg-[var(--coral-soft)] text-[var(--coral)] font-800 border border-[var(--coral)]';
+    else if (rank === 2) rankBadgeClass = 'bg-[var(--amber-soft)] text-[var(--amber)] font-700';
+    else if (rank === 3) rankBadgeClass = 'bg-[var(--navy-soft)] text-[var(--navy)] font-700';
+
+    return `
+      <tr class="fade-in hover:bg-[#FAFBF9] transition-colors">
+        <td class="px-3 py-2.5 text-center">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${rankBadgeClass}">
+            ${rank}
+          </span>
+        </td>
+        <td class="px-4 py-2.5">
+          <p class="font-semibold text-xs text-[var(--ink)] leading-snug">${emp.nome}</p>
+          <p class="text-[10px] text-[var(--ink-soft)] tabular">Mat: ${emp.matricula}</p>
+        </td>
+        <td class="px-4 py-2.5 text-xs text-[var(--ink-soft)] font-medium">${emp.setor}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.seg)}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.ter)}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.qua)}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.qui)}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.sex)}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.sab)}</td>
+        <td class="px-2.5 py-2.5 text-center tabular">${dayBadge(emp.days.dom)}</td>
+        <td class="px-4 py-2.5 text-center tabular">
+          <span class="px-2.5 py-1 rounded-lg text-xs font-800 bg-[var(--coral)] text-white shadow-xs">
+            ${emp.total} ${emp.total === 1 ? 'falta' : 'faltas'}
+          </span>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+/* ============================================================
    INICIALIZAÇÃO E IMPORTAÇÃO DE CSV
    ============================================================ */
 function initDashboard() {
@@ -1554,12 +2220,27 @@ function initDashboard() {
       }
   });
   
-  // Populamos os dropdowns com todas as opções originais (sempre absolutas)
-  const datasUnicas = [...new Set(DATA.map(d => d.data_relatorio).filter(x => x))].sort().reverse();
-  selData.innerHTML = '<option value="">Todas as Datas</option>' + datasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
-  selData.value = ''; // Todas as Datas por padrão para exibir o gráfico semanal completo
+  const nomesMeses = {
+    "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
+    "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
+    "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+  };
+
+  const mesesUnicos = [...new Set(DATA.map(d => {
+      if(d.data_relatorio) {
+          const sep = d.data_relatorio.includes('/') ? '/' : '-';
+          const parts = d.data_relatorio.split(sep);
+          if(parts.length >= 2) return parts[1];
+      }
+      return null;
+  }).filter(Boolean))].sort();
+  if (selMes) {
+      selMes.innerHTML = '<option value="">Todos os Meses</option>' + mesesUnicos.map(s => `<option value="${s}">${nomesMeses[s] || s}</option>`).join('');
+  }
     
-  const setoresUnicos = [...new Set(DATA.map(d => d.setor))].sort();
+  atualizarDropdownsTempo(); // Preenche Semanas e Datas baseado no Mês (inicialmente vazio)
+
+  const setoresUnicos = [...new Set(DATA.map(d => d.setor).filter(Boolean))].sort();
   selSetor.innerHTML = '<option value="">Todos os setores</option>' + setoresUnicos.map(s => `<option value="${s}">${s}</option>`).join('');
 
   const situacoesUnicas = [...new Set(DATA.map(d => situacaoLabel(d.situacao)))].sort();
@@ -1581,10 +2262,18 @@ document.getElementById('btnSyncDrive').addEventListener('click', function(e) {
       .then(r => r.json())
       .then(data => {
           if(data.status === 'sucesso') {
-              alert('Dados sincronizados com sucesso! A página será recarregada.');
-              window.location.reload();
+              icon.classList.remove('animate-spin', 'text-[var(--emerald)]');
+              icon.setAttribute('data-lucide', 'check-circle-2');
+              icon.classList.add('text-green-600');
+              lucide.createIcons();
+              text.textContent = 'Sincronizado! Recarregando...';
+              text.classList.remove('text-[var(--emerald)]');
+              text.classList.add('text-green-600');
+              setTimeout(() => {
+                  window.location.reload();
+              }, 1500);
           } else {
-              alert('Erro na sincronização: ' + data.detalhe);
+              alert('Erro na sincronização: ' + (data.detalhe || data.mensagem || data.erro || 'Falha ao sincronizar'));
               icon.classList.remove('animate-spin');
               text.textContent = 'Sincronizar Dados do Drive';
               btn.style.pointerEvents = 'auto';

@@ -61,6 +61,32 @@ Se você fez alterações no código e o executável dos usuários não está re
 > 1. Abra o arquivo `core/version_FrequenciaDiaria.json` (ou `version.json` conforme configurado). A propriedade `"version"` **deve ser numericamente superior** à versão que o cliente tem (ex: mudando de `"2.3.9"` para `"2.4.0"`). O auto-updater (dentro de `core/auto_updater.py`) usa esse arquivo hospedado no Drive para saber se um novo `.zip` deve ser baixado.
 > 2. Confirme se os arquivos (o `.zip` e o `version.json`) estão sendo criados na mesma pasta do Drive cujo ID está configurado no auto-updater do cliente.
 
+### Problema D: Desalinhamento de Nomenclatura no Auto-Updater (Deploy Alfa Manual / Sudo Mode)
+> **Sintoma:** Você faz o upload manual de um executável (ex: `.exe` direto) e de um arquivo chamado `version.json` para a nuvem, mas o cliente não atualiza.
+> **Como resolver:**
+> 1. O `core/auto_updater.py` **exige** que o arquivo na nuvem se chame `version_FrequenciaDiaria.json` e que o pacote seja um arquivo ZIP chamado `update_FrequenciaDiaria.zip`.
+> 2. Se você subiu `version.json` ou o `.exe` solto (como exigido em alguns deploys forçados ou Alfa), a query da API do Drive no auto-updater (`name='version_FrequenciaDiaria.json'`) não retornará nada e a atualização ficará presa. Você deve sempre empacotar em `.zip` e usar o nome correto do versionador ou ajustar o script do auto-updater.
+
+### Problema E: Efeito Matrioska no PyInstaller (Falta de Blacklist)
+> **Sintoma:** O executável gerado na pasta `dist` começa a ficar gigante (gigabytes de tamanho) ou o build demora horas. Quando o cliente tenta baixar, a atualização trava pelo tamanho absurdo.
+> **Como resolver:**
+> 1. O PyInstaller, ao incluir a pasta do módulo local via `datas`, acaba engolindo a compilação anterior (pastas `dist/` e `build/`) num ciclo infinito se elas não forem bloqueadas.
+> 2. Certifique-se de que o arquivo `.spec` utilizado (ex: `FrequenciaDiaria.spec`) contém o script de **Lista Negra** (Blacklist) que remove `dist` e `build` do array `a.datas` antes de gerar o binário. Sem isso, a atualização fica inviável para distribuição OTA.
+
+### Problema F: Mismatch Crítico entre Nome do EXE e Arquivos OTA no Drive ⚠️ CAUSA RAIZ HISTÓRICA
+> **Sintoma:** Os uploads OTA são feitos com sucesso para o Drive, mas os clientes **jamais** detectam uma nova versão. O sistema parece estar preso eternamente na mesma versão (ex: v2.4.2), sem atualizar mesmo após múltiplas tentativas de publicação.
+> **Causa Raiz:**
+> O `core/auto_updater.py` determina o nome do aplicativo dinamicamente a partir do nome do executável (linha `app_name = os.path.basename(sys.executable).replace('.exe', '')`).
+> O EXE instalado nos clientes chama-se **`Absenteismo_plug.exe`**, portanto `app_name = "Absenteismo_plug"`.
+> O auto-updater então busca no Drive por: `version_Absenteismo_plug.json` e `update_Absenteismo_plug.zip`.
+> Se o servidor publicar apenas `version_FrequenciaDiaria.json` e `update_FrequenciaDiaria.zip`, a query da API retorna vazio e **nenhuma atualização é disparada**.
+> **Como resolver:**
+> 1. O script `ota_release_auto.py` foi corrigido para publicar **ambos os conjuntos** de arquivos a cada release:
+>    - `version_FrequenciaDiaria.json` + `update_FrequenciaDiaria.zip` (para futuras instalações com o novo exe)
+>    - `version_Absenteismo_plug.json` + `update_Absenteismo_plug.zip` (para os clientes já instalados com o exe antigo)
+> 2. Este problema ficou escondido porque os scripts anteriores usavam nomes genéricos (`version.json`, `update.zip`), mas o `auto_updater.py` **nunca usou esses nomes genéricos** — ele sempre buscou pelo nome específico do app.
+
+
 ---
 
 ## 4. Testes Assistidos
@@ -70,3 +96,38 @@ Sempre que a lógica do dashboard for modificada intensamente, recomenda-se:
 2. Compilar um executável de testes com o `FrequenciaDiaria.spec`.
 3. Executar o `FrequenciaDiaria.exe` gerado em `dist/FrequenciaDiaria/` antes de disparar o `build_release.py`.
 4. Monitorar o console ou logs gerados pela interface do sistema de atualização.
+
+---
+
+## 5. Problema G — Loop Infinito de OTA (EXE nunca sobe o servidor)
+**Data:** 07/08/2026 | **Versão corrigida:** v2.4.8
+
+### Sintoma
+O `FrequenciaDiaria.exe` iniciava, ficava ativo por ~10 segundos e morria silenciosamente sem abrir a porta 5008. Nenhum crash log era gerado. O comportamento se repetia em loop infinito.
+
+### Causa Raiz (duas)
+**Causa 1 — `auto_updater.py` lendo versão do `_MEIPASS` (somente leitura):**
+- Em modo `frozen` (PyInstaller), `sys._MEIPASS` é uma pasta temporária extraída a cada execução, **sempre** contendo a versão que estava no bundle no momento da compilação.
+- O `auto_updater.py` lia `version_{app_name}.json` de `base_dir = sys._MEIPASS`, que nunca era atualizado pelo OTA (pois `_MEIPASS` é read-only e recriado a cada execução).
+- Resultado: local sempre = versão antiga → Drive sempre > local → OTA sempre disparava → `sys.exit(0)` antes do Flask iniciar.
+
+**Causa 2 — `.update_stage` e `apply_update.bat` remanescentes:**
+- Quando um OTA anterior rodava e o bat era gerado, mas o processo era encerrado abruptamente (ex: pelo PowerShell em testes), o `.update_stage/` e o `apply_update.bat` ficavam no disco.
+- Na próxima execução do exe, o bat anterior rodava em background e matava o exe recém-iniciado.
+
+### Solução Aplicada
+1. **`core/auto_updater.py`** — Alterado `version_path` para usar `app_root` (pasta do `.exe` instalado) em vez de `base_dir` (`_MEIPASS`):
+   ```python
+   # ANTES (bug): versão embutida no bundle, nunca atualizada
+   version_path = os.path.join(base_dir, 'core', f'version_{app_name}.json')
+   # DEPOIS (fix): versão persistente ao lado do .exe, atualizada pelo OTA
+   version_path = os.path.join(app_root, 'core', f'version_{app_name}.json')
+   ```
+2. **`dist/Absenteismo_plug/core/`** — O ZIP de release agora inclui `core/version_FrequenciaDiaria.json` e `core/version_Absenteismo_plug.json` com a versão correta, para que após o `apply_update.bat` extrair o ZIP, o `app_root/core/` tenha a versão atualizada.
+3. **`module_frequencia_diaria/launcher.py`** — Melhorado crash logging com fallback para `%TEMP%` e Desktop, garantindo que erros do servidor sejam sempre capturados.
+
+### Procedimento de Diagnóstico para o Futuro
+Se o EXE morrer silenciosamente (~10s, sem porta, sem crash log):
+1. Verificar se `app_root/core/version_FrequenciaDiaria.json` existe e tem JSON válido
+2. Verificar se `.update_stage/` ou `apply_update.bat` estão na pasta do exe (artefatos órfãos — apagar!)
+3. Comparar versão local vs Drive com: `py -3 scratch/diagnose_ota_version.py`

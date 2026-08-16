@@ -11,10 +11,10 @@ import time
 import webbrowser
 import subprocess
 
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, "w")
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w")
+# if sys.stdout is None:
+#     sys.stdout = open(os.devnull, "w")
+# if sys.stderr is None:
+#     sys.stderr = open(os.devnull, "w")
 
 # ── Configuração de paths ────────────────────────────────────
 if getattr(sys, 'frozen', False):
@@ -44,46 +44,24 @@ def run_server():
         app_frequencia.run_server()
     except Exception as e:
         import traceback
-        crash_path = os.path.join(app_root, "crash_log_server.txt")
-        with open(crash_path, "w", encoding="utf-8") as f:
-            f.write(traceback.format_exc())
+        tb = traceback.format_exc()
+        # Tentar escrever crash log em múltiplos locais para garantir captura
+        for crash_path in [
+            os.path.join(app_root, "crash_log_server.txt"),
+            os.path.join(os.environ.get('TEMP', 'C:\\Temp'), "crash_log_frequencia_server.txt"),
+            os.path.join(os.path.expanduser('~'), 'Desktop', 'crash_log_frequencia_server.txt'),
+        ]:
+            try:
+                with open(crash_path, "w", encoding="utf-8") as f:
+                    f.write(tb)
+                break
+            except Exception:
+                continue
         raise
 
 def open_browser_smart(url):
     """Abre o navegador de forma otimizada para ambientes de desktop e servidor RDP/RemoteApp."""
-    import subprocess
-    
-    # 1. Tenta Microsoft Edge em modo App (padrão no Windows Server / RDP)
-    edge_paths = [
-        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-        os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
-        os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe")
-    ]
-    for ep in edge_paths:
-        if ep and os.path.exists(ep):
-            try:
-                subprocess.Popen([ep, f"--app={url}"])
-                return
-            except Exception:
-                pass
-
-    # 2. Tenta Google Chrome em modo App
-    chrome_paths = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
-        os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe")
-    ]
-    for cp in chrome_paths:
-        if cp and os.path.exists(cp):
-            try:
-                subprocess.Popen([cp, f"--app={url}"])
-                return
-            except Exception:
-                pass
-
-    # 3. Fallback via protocolo do sistema
+    # O usuário solicitou que abra sempre no navegador padrão, sem forçar modo --app
     try:
         webbrowser.open(url)
     except Exception:
@@ -130,12 +108,16 @@ def check_ota():
                 kill_exe_cmd = 'echo.'
 
             import glob
-            version_files = glob.glob(os.path.join(update_stage, "core", "version*.json"))
+            version_files = glob.glob(os.path.join(update_stage, "core", "version*.json")) + \
+                            glob.glob(os.path.join(update_stage, "_internal", "core", "version*.json"))
             version_renames = ""
             for v_file in version_files:
                 v_name = os.path.basename(v_file)
+                v_dir = os.path.basename(os.path.dirname(v_file))
+                target_dir = os.path.join(app_root, v_dir) if v_dir != "update_stage" else app_root
+                os.makedirs(target_dir, exist_ok=True)
                 os.rename(v_file, v_file + ".new")
-                version_renames += f'    move /y "{app_root}\\core\\{v_name}.new" "{app_root}\\core\\{v_name}" > nul 2>&1\n'
+                version_renames += f'    if exist "{update_stage}\\{v_dir}\\{v_name}.new" move /y "{update_stage}\\{v_dir}\\{v_name}.new" "{target_dir}\\{v_name}" > nul 2>&1\n'
 
             bat_content = f"""@echo off
 ping 127.0.0.1 -n 3 > nul

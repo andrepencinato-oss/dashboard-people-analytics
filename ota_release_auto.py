@@ -1,7 +1,3 @@
-"""
-Script OTA não-interativo para CI/CD — executa sem prompts.
-Uso: py -3 ota_release_auto.py [versao]
-"""
 import os, sys, json, zipfile, tempfile
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -14,22 +10,15 @@ def get_drive_service():
     creds = Credentials.from_authorized_user_file(creds_path)
     return build('drive', 'v3', credentials=creds)
 
-def build_zip(zip_path):
-    excludes_dirs  = ['data', '__pycache__', '.git', '.update_temp', '.update_stage', 'build', 'dist']
-    excludes_files = ['token.json', 'token_upload.json', 'token_deploy.json', 'token_old.json',
-                      'credentials.json', 'apply_update.bat', 'ota_release_auto.py']
+def build_zip(zip_path, app_name):
+    base_dir = os.path.join(PROJECT_ROOT, 'dist', app_name)
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(PROJECT_ROOT):
-            dirs[:] = [d for d in dirs if d not in excludes_dirs and not d.startswith('.')]
+        for root, dirs, files in os.walk(base_dir):
             for file in files:
-                if (file in excludes_files or file.endswith('.pyc')
-                        or file.endswith('.zip') or file.startswith('.')
-                        or file.endswith('.spec')):
-                    continue
                 file_path = os.path.join(root, file)
-                rel_path  = os.path.relpath(file_path, PROJECT_ROOT)
+                rel_path  = os.path.relpath(file_path, base_dir)
                 zipf.write(file_path, rel_path)
-    print(f"ZIP criado: {zip_path}")
+    print(f"ZIP criado: {zip_path} (from {app_name})")
 
 def upload(service, folder_id, file_path, name, mime):
     query   = f"'{folder_id}' in parents and name='{name}' and trashed=false"
@@ -61,14 +50,33 @@ def main():
     folder_id = config['ota_folder_id']
 
     tmp     = tempfile.mkdtemp()
-    zip_path = os.path.join(tmp, 'update.zip')
-    build_zip(zip_path)
-
     service = get_drive_service()
-    upload(service, folder_id, zip_path, 'update.zip',   'application/zip')
+
+    # Generic upload as fallback
+    zip_path_gen = os.path.join(tmp, 'update.zip')
+    if os.path.exists(os.path.join(PROJECT_ROOT, 'dist', 'FrequenciaDiaria')):
+        build_zip(zip_path_gen, 'FrequenciaDiaria')
+        upload(service, folder_id, zip_path_gen, 'update.zip',   'application/zip')
     upload(service, folder_id, version_path, 'version.json', 'application/json')
 
-    os.remove(zip_path)
+    # Specific uploads for all apps we support
+    for specific_name in ["FrequenciaDiaria", "Absenteismo_plug"]:
+        dist_dir = os.path.join(PROJECT_ROOT, 'dist', specific_name)
+        if not os.path.exists(dist_dir):
+            print(f"Aviso: dist/{specific_name} nao encontrado, pulando upload.")
+            continue
+            
+        # Update core version files specific to this app
+        v_file_path = os.path.join('core', f'version_{specific_name}.json')
+        with open(v_file_path, 'w') as f:
+            json.dump(v_data, f, indent=2)
+            
+        zip_path_spec = os.path.join(tmp, f'update_{specific_name}.zip')
+        build_zip(zip_path_spec, specific_name)
+        
+        upload(service, folder_id, v_file_path, f'version_{specific_name}.json', 'application/json')
+        upload(service, folder_id, zip_path_spec, f'update_{specific_name}.zip', 'application/zip')
+
     print(f"\n[OK] OTA v{version} publicada no Drive!")
 
 if __name__ == '__main__':

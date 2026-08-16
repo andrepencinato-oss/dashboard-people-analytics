@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard SST — Móveis Província</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>if (typeof Chart === 'undefined') { document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"><\\/script>'); }</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="sst_data.js"></script>
+<script src="headcount_data.js"></script>
 <style>
   :root {
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -349,6 +352,12 @@
     border-radius: 8px; padding: 0.85rem 1rem;
     margin-bottom: 0.9rem;
   }
+  .card canvas,
+  .card > div[style*="position:relative"] {
+    min-height: 250px;
+    position: relative;
+    width: 100%;
+  }
   .row2 {
     display: grid; grid-template-columns: 1fr 1fr;
     gap: 0.85rem; margin-bottom: 0.9rem;
@@ -362,12 +371,16 @@
 
   table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
   th {
-    text-align: left; font-weight: 500;
+    text-align: left; font-weight: 600;
     color: var(--color-text-secondary); font-size: 11px;
-    padding: 6px 7px;
-    border-bottom: 1px solid var(--color-border-secondary);
-    background: var(--color-background-secondary);
+    padding: 8px 7px;
+    border-bottom: 1.5px solid #cbd5e1;
+    background: #f8fafc;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   }
   td {
     padding: 5px 7px;
@@ -462,7 +475,7 @@
     <div class="header-logo">🦺</div>
     <div>
       <div class="header-title">Dashboard SST — Móveis Província</div>
-      <div class="header-sub" id="last-update">Atualizado 12/05/2026 · Jan–Mai 2026</div>
+      <div class="header-sub" id="last-update">Atualizado dinamicamente...</div>
     </div>
   </div>
   <div class="header-right">
@@ -598,7 +611,8 @@
   <button class="tab" onclick="go('afa',this)">🚶 Afastados</button>
   <button class="tab" onclick="go('top',this)">🏆 Top 50</button>
   <button class="tab" onclick="go('cid',this)">🔬 CIDs</button>
-  <button class="tab" onclick="go('fin',this)">💰 Custos</button>
+  <button class="tab" onclick="go('fin',this)">💰 Financeiro</button>
+  <button class="tab" onclick="go('aud',this)">🔍 Auditoria (Busca)</button>
 </div>
 
 <div class="panel-outer">
@@ -610,12 +624,32 @@
     <span id="seg-subtitle">Atualizado 07/05/2026 · Jan–Abr 2026</span>
   </div>
   <div class="kpi-grid" id="kpi-seg">
-    <div class="kpi c1"><div class="kpi-l">Total acidentes</div><div class="kpi-v" id="k-total">16</div><div class="kpi-s">Jan–Abr 2026</div></div>
+    <div class="kpi c1"><div class="kpi-l">Total acidentes</div><div class="kpi-v" id="k-total">21</div><div class="kpi-s">Jan–Abr 2026</div></div>
     <div class="kpi c2"><div class="kpi-l">Típico</div><div class="kpi-v" id="k-tipico">7</div><div class="kpi-s" id="k-tipico-pct">44% do total</div></div>
     <div class="kpi c5"><div class="kpi-l">Trajeto</div><div class="kpi-v" id="k-trajeto">9</div><div class="kpi-s" id="k-trajeto-pct">56% do total</div></div>
     <div class="kpi c3"><div class="kpi-l">Dias perdidos</div><div class="kpi-v" id="k-dias">125</div><div class="kpi-s">todos acidentes</div></div>
     <div class="kpi c4"><div class="kpi-l">Reincidente</div><div class="kpi-v" id="k-reinc">1</div><div class="kpi-s" id="k-reinc-nome">Gabriel H. F. Ponte</div></div>
-    <div class="kpi c6"><div class="kpi-l">Afastamento grave</div><div class="kpi-v" id="k-grave">93d</div><div class="kpi-s" id="k-grave-nome">Franilda — fratura</div></div>
+    <div class="kpi c6"><div class="kpi-l">Afastamento grave</div><div class="kpi-v" id="k-grave">30d</div><div class="kpi-s" id="k-grave-nome">Gabriel H. F. Ponte</div></div></div>
+  <div class="card" style="margin-bottom:1rem;background:#ffffff;border:1px solid #e2e8f0;padding:1rem;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px">📅 Filtro por Mês:</span>
+        <select id="filtro-seg-mes" onchange="applySegurancaFilters()" style="padding:6px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:12px;background:#f8fafc;color:#0f172a;font-weight:600;outline:none;cursor:pointer">
+          <option value="TODOS">Todos os Meses (Geral)</option>
+        </select>
+        <input type="text" id="filtro-seg-nome" oninput="applySegurancaFilters()" placeholder="🔍 Buscar colaborador..." style="padding:6px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:12px;width:220px;outline:none">
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div id="seg-filter-status" style="font-size:12px;color:#64748b;font-weight:600"></div>
+        <button onclick="resetSegurancaFilters()" style="padding:6px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s">✕ Limpar Filtros</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin-bottom:1rem">
+    <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+      <span>🦺 FILTRAR POR TIPO DE ACIDENTE (CLIQUE PARA ALTERAR A MEDIÇÃO):</span>
+    </div>
+    <div id="seg-legend-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
   </div>
   <div class="row2">
     <div class="card"><p class="sl">Acidentes por mês</p>
@@ -634,14 +668,27 @@
     <div class="card"><p class="sl">Tipo de lesão</p><div style="position:relative;height:160px"><canvas id="cLesao"></canvas></div></div>
   </div>
   <div class="row2">
-    <div class="card"><p class="sl">Acidentes típicos por setor</p><div style="position:relative;height:180px"><canvas id="cSetorTip"></canvas></div></div>
+    <div class="card"><p class="sl">Acidentes por setor / área <span style="font-size:11px;color:#0284c7;font-weight:normal;margin-left:8px">(💡 Clique nas barras para filtrar por setor)</span></p><div style="position:relative;height:180px"><canvas id="cSetorTip"></canvas></div></div>
     <div class="card"><p class="sl">Parte do corpo atingida</p><div style="position:relative;height:180px"><canvas id="cParte"></canvas></div></div>
   </div>
   <div class="card"><p class="sl">Registro de acidentes</p>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>Data</th><th>Colaborador</th><th>Setor</th><th>Tipo</th><th>Causa</th><th>Parte</th><th>Lesão</th><th style="text-align:right">Dias</th></tr></thead>
-      <tbody id="tbody-acidentes"></tbody>
-    </table></div>
+    <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+      <table style="position:relative">
+        <thead>
+          <tr style="position:sticky;top:0;z-index:10;background:#f8fafc">
+            <th style="background:#f8fafc">Data</th>
+            <th style="background:#f8fafc">Colaborador</th>
+            <th style="background:#f8fafc">Setor / Área</th>
+            <th style="background:#f8fafc">Tipo</th>
+            <th style="background:#f8fafc">Causa</th>
+            <th style="background:#f8fafc">Parte</th>
+            <th style="background:#f8fafc">Lesão</th>
+            <th style="text-align:right;background:#f8fafc">Dias</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-acidentes"></tbody>
+      </table>
+    </div>
   </div>
   <div class="card"><p class="sl">Pontos de atenção</p>
     <div id="pontos-atencao"></div>
@@ -660,10 +707,31 @@
     <div class="kpi c5"><div class="kpi-l">Atestados/hora</div><div class="kpi-v" id="k-horas-ats">499</div><div class="kpi-s" id="k-horas-sub">690h 15min</div></div>
     <div class="kpi c2"><div class="kpi-l">Setores</div><div class="kpi-v" id="k-setores-ats">30+</div><div class="kpi-s">centros de custo</div></div>
   </div>
-  <div class="card"><p class="sl">Atestados por setor (Top 10)</p><div style="position:relative;height:255px"><canvas id="cSetorSau"></canvas></div></div>
-  <div class="card"><p class="sl">Afastamentos longos em aberto</p>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>Colaborador</th><th>Setor</th><th>CID</th><th style="text-align:right">Dias</th></tr></thead>
+  <div class="card" style="margin-bottom:1rem;background:#ffffff;border:1px solid #e2e8f0;padding:1rem;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px">📅 Filtro por Mês:</span>
+        <select id="filtro-sau-mes" onchange="applySaudeFilters()" style="padding:6px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:12px;background:#f8fafc;color:#0f172a;font-weight:600;outline:none;cursor:pointer">
+          <option value="TODOS">Todos os Meses (Geral)</option>
+        </select>
+        <div style="position:relative">
+          <input type="text" id="filtro-sau-nome" placeholder="🔍 Buscar colaborador..." oninput="applySaudeFilters()" style="padding:6px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:12px;background:#f8fafc;color:#0f172a;width:220px;outline:none">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="saude-filter-status" style="font-size:12px;color:#475569"></span>
+        <button onclick="resetSaudeFilters()" class="btn-sec" style="padding:6px 12px;font-size:11px;border-radius:8px;cursor:pointer;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;font-weight:600">✕ Limpar Filtros</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <p class="sl" style="margin-bottom:10px">Atestados por setor (Top 10) · Ocorrências <span style="font-size:11px;color:#0284c7;font-weight:normal;margin-left:8px">(💡 Clique nas legendas abaixo para filtrar a medição por tipo de ocorrência)</span></p>
+    <div id="saude-legend-pills" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+    <div style="position:relative;height:280px"><canvas id="cSetorSau"></canvas></div>
+  </div>
+  <div class="card"><p class="sl">Registro Completo de Atestados</p>
+    <div style="overflow-x:auto;max-height:480px;overflow-y:auto"><table>
+      <thead><tr><th>Colaborador</th><th>Setor / Área</th><th>Início</th><th>Término</th><th>Duração</th><th>CID</th><th>Descrição</th><th>Ocorrência</th></tr></thead>
       <tbody id="tbody-afastamentos"></tbody>
     </table></div>
   </div>
@@ -672,22 +740,62 @@
 <!-- ===== AFASTADOS (NOVA ABA) ===== -->
 <div class="panel" id="panel-afa">
   <div class="section-header">
-    <h3>🚶 Controle de Afastados Longos</h3>
-    <span id="afa-subtitle">Lista atualizada de colaboradores afastados</span>
+    <h3>🚶 Controle de Afastados Longos (> 13 Dias)</h3>
+    <span id="afa-subtitle">Lista atualizada de colaboradores com afastamento superior a 13 dias</span>
   </div>
+
+  <!-- BARRA DE FILTROS INTERATIVOS (AFASTADOS LONGOS) -->
+  <div class="filter-bar" style="background:#ffffff;padding:16px 20px;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display:flex;flex-direction:column;gap:4px;min-width:200px;flex:1;">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">🔍 Buscar Colaborador ou CID</label>
+      <input type="text" id="filtro-afa-nome" placeholder="Digite nome, matrícula ou CID..." oninput="applyAfastadosFilters()" style="padding:8px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px;outline:none;transition:all 0.2s;background:#f8fafc;" />
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:4px;min-width:220px;">
+      <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">🏭 Setor / Área</label>
+      <select id="filtro-afa-setor" onchange="applyAfastadosFilters()" style="padding:8px 12px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px;outline:none;background:#f8fafc;cursor:pointer;">
+        <option value="TODOS">Todos os Setores (Geral)</option>
+      </select>
+    </div>
+
+    <div style="display:flex;align-items:flex-end;margin-top:auto;">
+      <button onclick="resetAfastadosFilters()" style="padding:8px 16px;border-radius:8px;border:1px solid #cbd5e1;background:#ffffff;color:#475569;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#ffffff'">
+        <span>✕ Limpar Filtros</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- PÍLULAS DE LEGENDA INTERATIVAS (AFASTADOS) -->
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center;justify-content:space-between;background:#f8fafc;padding:12px 16px;border-radius:10px;border:1px solid #e2e8f0;">
+    <div id="afa-legend-pills" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;"></div>
+    <div id="afa-filter-status" style="font-size:12px;color:#64748b;font-weight:600;"></div>
+  </div>
+
   <div class="kpi-grid">
-    <div class="kpi c1"><div class="kpi-l">Total afastados</div><div class="kpi-v" id="k-afa-total">17</div><div class="kpi-s">em aberto</div></div>
-    <div class="kpi c4"><div class="kpi-l">Auxílio Doença</div><div class="kpi-v" id="k-afa-aux">7</div><div class="kpi-s">INSS</div></div>
-    <div class="kpi c5"><div class="kpi-l">Maternidade</div><div class="kpi-v" id="k-afa-mat">3</div><div class="kpi-s">Licença</div></div>
-    <div class="kpi c3"><div class="kpi-l">Acidente Trab.</div><div class="kpi-v" id="k-afa-aci">1</div><div class="kpi-s">B91</div></div>
+    <div class="kpi c1"><div class="kpi-l">Total afastados (>13d)</div><div class="kpi-v" id="k-afa-total">0</div><div class="kpi-s">em aberto</div></div>
+    <div class="kpi c4"><div class="kpi-l">Auxílio Doença</div><div class="kpi-v" id="k-afa-aux">0</div><div class="kpi-s">INSS</div></div>
+    <div class="kpi c5"><div class="kpi-l">Maternidade</div><div class="kpi-v" id="k-afa-mat">0</div><div class="kpi-s">Licença</div></div>
+    <div class="kpi c3"><div class="kpi-l">Acidente Trab.</div><div class="kpi-v" id="k-afa-aci">0</div><div class="kpi-s">B91</div></div>
   </div>
   <div class="row2">
-    <div class="card"><p class="sl">Afastados por Setor</p><div style="position:relative;height:220px"><canvas id="cAfaSetor"></canvas></div></div>
+    <div class="card"><p class="sl">Afastados por Setor / Área</p><div style="position:relative;height:220px"><canvas id="cAfaSetor"></canvas></div></div>
     <div class="card"><p class="sl">Motivo do Afastamento</p><div style="position:relative;height:220px"><canvas id="cAfaMotivo"></canvas></div></div>
   </div>
-  <div class="card"><p class="sl">Lista de Colaboradores Afastados</p>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>Matrícula</th><th>Colaborador</th><th>Setor</th><th>Motivo</th></tr></thead>
+  <div class="card"><p class="sl">Lista de Colaboradores Afastados (> 13 Dias)</p>
+    <div style="overflow-x:auto;max-height:520px"><table>
+      <thead style="position:sticky;top:0;z-index:10;background:#f8fafc;">
+        <tr>
+          <th>Matrícula</th>
+          <th>Colaborador</th>
+          <th>Setor / Área</th>
+          <th>Início</th>
+          <th>Término</th>
+          <th style="text-align:right">Duração</th>
+          <th>CID</th>
+          <th>Descrição</th>
+          <th>Motivo</th>
+        </tr>
+      </thead>
       <tbody id="tbody-afa-lista"></tbody>
     </table></div>
   </div>
@@ -804,6 +912,39 @@
   </div>
 </div>
 
+<!-- ===== AUDITORIA ===== -->
+<div class="panel" id="panel-aud">
+  <div class="section-header">
+    <h3>🔍 Auditoria e Busca Geral</h3>
+    <span>Pesquise por nome, CID, ou matrícula em todos os registros processados.</span>
+  </div>
+  
+  <div style="margin-bottom: 1rem;">
+    <input type="text" id="input-auditoria" placeholder="Digite o nome, CID, etc..." 
+           onkeyup="filterAuditoria()" 
+           style="width:100%; max-width:400px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-family:var(--font-sans); font-size:13px;">
+    <span style="font-size:11px; margin-left:10px; color:#666;" id="auditoria-count">0 resultados encontrados</span>
+  </div>
+
+  <div class="card">
+    <div style="overflow-x:auto; max-height:400px; overflow-y:auto;">
+      <table style="width:100%">
+        <thead>
+          <tr>
+            <th>Categoria</th>
+            <th>Colaborador</th>
+            <th>Data / Período</th>
+            <th>Setor</th>
+            <th>CID / Motivo</th>
+            <th>Detalhes / Observações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-auditoria"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 </div><!-- panel-outer -->
 </div><!-- dash -->
 </main>
@@ -814,176 +955,36 @@
 // ============================================================
 const DEFAULT_DATA = {
   acidentes: [
-    {data:'12/01', colaborador:'Gabriel H. F. Ponte', setor:'CNC', tipo:'Típico', causa:'Impacto por paleteira', parte:'Pé', lesao:'Trauma', dias:1},
-    {data:'12/01', colaborador:'Francislaine Martins', setor:'PU', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:2},
-    {data:'15/01', colaborador:'Tamires Rodrigues Sales', setor:'Tapeçaria', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:6},
-    {data:'15/01', colaborador:'Nathalia Ferreira Silva', setor:'Tapeçaria', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:1},
-    {data:'16/01', colaborador:'Fabio Junior C. das Chagas', setor:'Tapeçaria', tipo:'Típico', causa:'Impacto ao movimentar máquina', parte:'Dedo da mão', lesao:'Corte', dias:1},
-    {data:'26/01', colaborador:'Robson Mendes Alves', setor:'PU', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:2},
-    {data:'29/01', colaborador:'Gleiser Raieny Costa e Costa', setor:'Tapeçaria', tipo:'Típico', causa:'Impacto por grampo', parte:'Dedo', lesao:'Ferimento', dias:3},
-    {data:'03/03', colaborador:'Victoria dos Santos Bernardo', setor:'Furação', tipo:'Típico', causa:'Impacto por esteira', parte:'Dedo da mão', lesao:'Contusão', dias:6},
-    {data:'09/03', colaborador:'Gabriel H. F. Ponte', setor:'CNC', tipo:'Típico', causa:'Contato com broca parada', parte:'Braço', lesao:'Corte', dias:1},
-    {data:'11/03', colaborador:'Tais Conceicao dos Santos', setor:'Tupias', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:1},
-    {data:'18/03', colaborador:'Franilda Batista da Silva', setor:'Tapeçaria', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Fratura', dias:93},
-    {data:'18/03', colaborador:'Joao Victor de Goes Campos', setor:'PU', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e mãos', lesao:'Trauma', dias:2},
-    {data:'24/03', colaborador:'Kawa Crystian de Sousa e Souza', setor:'UV', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas', lesao:'Trauma', dias:1},
-    {data:'24/03', colaborador:'Fernando F. Nunes Ferreira', setor:'Almoxarifado', tipo:'Trajeto', causa:'Trajeto', parte:'Pernas e braços', lesao:'Trauma', dias:1},
-    {data:'31/03', colaborador:'Gabriel A. da Silva Garcia', setor:'Coladeira', tipo:'Típico', causa:'Mov. próprio corpo', parte:'Tornozelo', lesao:'Torsão', dias:3},
-    {data:'02/04', colaborador:'Beatriz Yara Nunes dos Santos', setor:'Tapeçaria', tipo:'Típico', causa:'Equipamento', parte:'Olho', lesao:'Trauma', dias:1},
-  ],
-
-  afastados: [
-    {id:648, setor:'LINHA DE EMBALAGEM', nome:'NEIVA APARECIDA MATIAS LOPES', motivo:'Auxílio Doença'},
-    {id:2806, setor:'TAPEÇARIA GERAL', nome:'MARCOS ANTONIO BRASIL DA SILVA', motivo:'Auxílio Doença'},
-    {id:2947, setor:'CONTROLE DE QUALIDADE', nome:'PAULO CESAR BUENO', motivo:'Auxílio Doença'},
-    {id:3160, setor:'PRENSAGEM', nome:'BRENO MARINO DE OLIVEIRA', motivo:'Auxílio Doença'},
-    {id:3182, setor:'LIXAMENTO', nome:'ESTER SANTOS SILVA', motivo:'Auxílio Doença'},
-    {id:3425, setor:'LIXAMENTO', nome:'SILVANEIDE FERREIRA NUNES', motivo:'Auxílio Doença'},
-    {id:3596, setor:'LIXAMENTO', nome:'FRANCISCA FRANCILENE VASCONCELOS', motivo:'Auxílio Doença'},
-    {id:4073, setor:'TAPEÇARIA GERAL', nome:'BRENDHA THAIS DE MELO', motivo:'Auxílio Doença'},
-    {id:4096, setor:'TAPEÇARIA GERAL', nome:'GERALDA CRISTINA DOS SANTOS SOUZA', motivo:'Auxílio Doença'},
-    {id:4210, setor:'PINTURA P.U.', nome:'JHENIFER BEATRIZ DE OLIVEIRA TORRES', motivo:'Licença Maternidade'},
-    {id:4428, setor:'METALURGICA PINTURA', nome:'ESMERALDA RODRIGUES DE SOUZA', motivo:'Licença Maternidade'},
-    {id:4535, setor:'TAPEÇARIA GERAL', nome:'FRANILDA BATISTA DA SILVA', motivo:'Acidente de Trabalho'},
-    {id:4570, setor:'TAPEÇARIA COLAGEM', nome:'ANA JULIA SILVA LOPES', motivo:'Auxílio Doença'},
-    {id:4599, setor:'LINHA DE EMBALAGEM', nome:'LORENA VITORIA BATISTA FIGUEIREDO', motivo:'Licença Maternidade'},
-    {id:4756, setor:'TAPEÇARIA GERAL', nome:'TAMIRES RODRIGUES SALES', motivo:'Auxílio Doença'},
-    {id:4854, setor:'LOJA', nome:'MAEDSON FERNANDES NICACIO LIMA', motivo:'Auxílio Doença'},
-    {id:4926, setor:'APOSENTADOS', nome:'JOSE OLIVEIRA NEVES', motivo:'Aposentadoria por Invalidez'},
-  ],
-
-  top50Dias: [
-    ['Geralda Cristina dos Santos Souza','Tapeçaria',373,2],
-    ['Jhenifer Beatriz de Oliveira Torres','Pintura P.U.',164,17],
-    ['Esmeralda Rodrigues de Souza','Metalúrgica Pintura',145,9],
-    ['Mariana Claudino da Silva Valentim','Contabilidade',125,3],
-    ['Lorena Vitoria Batista Figueiredo','Linha de Embalagem',120,1],
-    ['Ana Julia Silva Lopes','Tapeçaria Colagem',110,1],
-    ['Ester Santos Silva','Lixamento',104,10],
-    ['Francisca Francilene Vasconcelos','Lixamento',95,9],
-    ['Maedson Fernandes Nicacio Lima','Loja',92,1],
-    ['Neiva Aparecida Matias Lopes','Linha de Embalagem',91,5],
-    ['Rafaela Marinho da Silva','Lixamento',84,24],
-    ['Edneia da Silva Lima','Tupias e Fresas',81,14],
-    ['Josilene Rodrigues','Lixamento',64,5],
-    ['Igor Guilherme Silva Egydio','Tupias e Fresas',60,19],
-    ['Maria Lucineide Ramos de Jesus','Lixamento',58,33],
-    ['Silvaneide Ferreira Nunes','Lixamento',55,1],
-    ['Juliana Santos de Oliveira','Tapeçaria',46,10],
-    ['Claudia Olivia Alves Peixoto Evaristo','Prensagem',39,13],
-    ['Erica Cristina Alves','Tapeçaria Colagem',37,26],
-    ['Jose Fernandes de Almeida','Tapeçaria',36,28],
-    ['Edson Luis Tamarindo','Logística',35,9],
-    ['Thais Salvador de Araujo','Colagem de Bordas',33,4],
-    ['Tamires Rodrigues Sales','Tapeçaria',32,4],
-    ['Ana Paula Santos da Silva','Tupias e Fresas',28,11],
-    ['Ahieska Cristina dos Santos','Tupias e Fresas',26,12],
-    ['Silmara Aparecida Paula Carlos','Tupias e Fresas',23,18],
-    ['Fernando Felippe Nunes Ferreira','Almoxarifado',23,14],
-    ['Marlucia de Azevedo Pereira','Lixamento',21,8],
-    ['Victoria dos Santos Bernardo','Furação',20,3],
-    ['Josefa Dodou da Silva David','Pintura U.V.',16,3],
-    ['Gisele Aparecida dos Santos','Tapeçaria',16,5],
-    ['Neide Rodrigues de Carvalho','Tapeçaria',16,3],
-    ['Elaine Balbino Tofoli Aquino','Lixamento',15,8],
-    ['Jeniffer Maria da Silva Araujo','Tapeçaria',15,1],
-    ['Marllon Miguel da Silva','Metalúrgica',14,10],
-    ['Neuza Ferreira','Tapeçaria',13,4],
-    ['Jamilly Fernanda Monteiro','Gestão Pessoas',13,11],
-    ['Livia Maisa Silva de Paula','Furação',12,15],
-    ['Daniel Fernandes','CNC',12,5],
-    ['Everton Moraes Ramos','Tupias e Fresas',12,6],
-    ['Eliozeni da Silva Valeriano dos Santos','Tupias e Fresas',12,12],
-    ['Jessica Caroline de Souza','Pintura U.V.',12,12],
-    ['Luciriam Souza Santos Rodrigues','Tapeçaria',12,4],
-    ['Clotilde de Moraes','Furação',11,3],
-    ['Mizael dos Santos Bezerra','CNC',11,5],
-    ['Ana Luiza Pereira de Sa','Tupias e Fresas',11,7],
-    ['Amanda Rita da Silva','Almoxarifado',11,4],
-    ['Antonio Rodrigues da Silva','Tapeçaria',11,5],
-    ['Leticia Cristina Martins dos Santos','Tapeçaria',11,10],
-    ['Mauricio Marques da Silva','Metalúrgica',11,5],
-  ],
-
-  top50Ats: [
-    ['Maria Lucineide Ramos de Jesus','Lixamento',33,58],
-    ['Jose Fernandes de Almeida','Tapeçaria',28,36],
-    ['Erica Cristina Alves','Tapeçaria Colagem',26,37],
-    ['Rafaela Marinho da Silva','Lixamento',24,84],
-    ['Claudemir de Freitas','Pintura P.U.',22,0],
-    ['Igor Guilherme Silva Egydio','Tupias e Fresas',19,60],
-    ['Silmara Aparecida Paula Carlos','Tupias e Fresas',18,23],
-    ['Jhenifer Beatriz de Oliveira Torres','Pintura P.U.',17,164],
-    ['Livia Maisa Silva de Paula','Furação',15,12],
-    ['Edneia da Silva Lima','Tupias e Fresas',14,81],
-    ['Fernando Felippe Nunes Ferreira','Almoxarifado',14,23],
-    ['Claudia Olivia Alves Peixoto Evaristo','Prensagem',13,39],
-    ['Eliozeni da Silva Valeriano dos Santos','Tupias e Fresas',12,12],
-    ['Ahieska Cristina dos Santos','Tupias e Fresas',12,26],
-    ['Samara Moura Araujo','Pintura P.U.',12,6],
-    ['Jessica Caroline de Souza','Pintura U.V.',12,12],
-    ['Ana Paula Santos da Silva','Tupias e Fresas',11,28],
-    ['Jamilly Fernanda Monteiro','Gestão Pessoas',11,13],
-    ['Ester Santos Silva','Lixamento',10,104],
-    ['Alessandra Ferreira Barbosa','Lixamento',10,5],
-    ['Leticia Cristina Martins dos Santos','Tapeçaria',10,11],
-    ['Juliana Santos de Oliveira','Tapeçaria',10,46],
-    ['Giovanna dos Santos Ferro','Tapeçaria',10,3],
-    ['Marllon Miguel da Silva','Metalúrgica',10,14],
-    ['Francisca Francilene Vasconcelos','Lixamento',9,95],
-    ['Bruna Martins dos Santos','Pintura P.U.',9,4],
-    ['Gabrielle Ferreira da Costa','Tapeçaria',9,9],
-    ['Marianny Mabbelly da Silva Oliveira','Tapeçaria Colagem',9,6],
-    ['Esmeralda Rodrigues de Souza','Metalúrgica Pintura',9,145],
-    ['Edilson de Andrade Pinheiro','Metalúrgica',9,10],
-    ['Edson Luis Tamarindo','Logística',9,35],
-    ['Bruna Gabrielle de Sousa Oliveira','Tupias e Fresas',8,2],
-    ['Marlucia de Azevedo Pereira','Lixamento',8,21],
-    ['Elaine Balbino Tofoli Aquino','Lixamento',8,15],
-    ['Pedro Henrique Caseri','Linha de Embalagem',8,1],
-    ['Felipe Augusto Moura Salgado','Almoxarifado',8,10],
-    ['Edjania de Sousa Romero','Prensagem',7,9],
-    ['Vitor Junior Rabelo Nunes','Tupias e Fresas',7,9],
-    ['Elis Lorrana Bento da Silva','Tupias e Fresas',7,1],
-    ['Rita de Cassia Feitosa Batista','Tupias e Fresas',7,2],
-    ['Ana Luiza Pereira de Sa','Tupias e Fresas',7,11],
-    ['Daniele de Fatima Venancio','Tupias e Fresas',7,9],
-    ['Edinaldo Carlos Inacio','Colagem de Bordas',6,10],
-    ['Everton Moraes Ramos','Tupias e Fresas',6,12],
-    ['Welington Batista da Silva','Tupias e Fresas',6,9],
-    ['Tais Conceicao dos Santos','Tupias e Fresas',6,5],
-    ['Luana Vitoria de Paula Oliveira','Tupias e Fresas',6,6],
-    ['Rosilene Leite Campos Ribeiro','Pintura U.V.',6,6],
-    ['Marcos Paulo Primo','Tapeçaria Colagem',6,3],
-    ['Gisele Marino de Oliveira','Tapeçaria',6,7],
-  ],
-
-  afastamentos: [
-    {colaborador:'Geralda Cristina dos Santos Souza', setor:'Tapeçaria', cid:'M19.0 Artrose', dias:366, nivel:'crit'},
-    {colaborador:'Jhenifer Beatriz O. Torres', setor:'Pintura P.U.', cid:'O80 Maternidade', dias:120, nivel:'warn'},
-    {colaborador:'Lorena Vitoria B. Figueiredo', setor:'Linha Embalagem', cid:'O82 Maternidade', dias:120, nivel:'warn'},
-    {colaborador:'Esmeralda Rodrigues de Souza', setor:'Metalúrgica', cid:'O80 Maternidade', dias:120, nivel:'warn'},
-    {colaborador:'Ana Julia Silva Lopes', setor:'Tapeçaria Colagem', cid:'Z34 Repouso gravidez', dias:110, nivel:'warn'},
-    {colaborador:'Franilda Batista da Silva', setor:'Tapeçaria (acidente)', cid:'Fratura — trajeto', dias:93, nivel:'crit'},
-    {colaborador:'Neiva A. Matias Lopes', setor:'Linha Embalagem', cid:'S72 Fratura fêmur', dias:90, nivel:'crit'},
-    {colaborador:'Francilene Vasconcelos', setor:'Lixamento', cid:'S52.5 Fratura braço', dias:90, nivel:'crit'},
-    {colaborador:'Edneia da Silva Lima', setor:'Tupias e Fresas', cid:'M65.3 Dedo em gatilho', dias:74, nivel:'warn'},
-  ],
-
-  cids: {
-    labels: ['M54.5 Dor lombar','A09 Diarreia','Z00.0 Consulta geral','M79.6 Dor membro','R11 Náusea/Vômito','Z76.3 Acomp. familiar','R51 Cefaleia','J06.9 Inf. vias aéreas','H10 Conjuntivite','K08.1 Extração dente','Z10.0 Exame ocup.','F41 Ansiedade','G43 Enxaqueca','A90 Dengue','M54.2 Cervicalgia'],
-    values: [85,72,65,58,54,38,36,34,28,22,20,19,18,14,13],
-    categorias: {
-      labels: ['Musculoesquelético','Digestivo','Neurológico','Respiratório','Saúde mental','Ocular','Outros'],
-      values: [180,160,54,47,38,56,100]
+    {
+      "data": "12/01",
+      "data_full": "12/01/2026",
+      "id": 4064,
+      "colaborador": "GABRIEL HENRIQUE FERREIRA PONTE",
+      "setor": "PRODUÇÃO",
+      "tipo": "Típico",
+      "causa": "Acidente registrado",
+      "parte": "Membros Inferiores (Pés/Pernas)",
+      "lesao": "Contusão / Impacto",
+      "dias": 15
     }
-  },
-
-  setoresSau: {
-    labels: ['Tapeçaria','Tupias e Fresas','Lixamento','Prensagem','Metalúrgica','Pintura P.U.','Almoxarifado','CNC','Colagem Bordas','Furação'],
-    values: [118,89,62,52,48,46,41,31,29,28]
-  }
+  ],
+  afastados: [
+    {
+      "colaborador": "GABRIEL HENRIQUE FERREIRA PONTE",
+      "setor": "PRODUÇÃO",
+      "data_afastamento": "13/01/2026",
+      "retorno_previsto": "28/01/2026",
+      "motivo": "B91 - Auxílio Doença por Acidente de Trabalho",
+      "cid": "S90",
+      "dias": 15
+    }
+  ],
+  atestados: []
 };
+
+
+
+
 
 // ============================================================
 // ESTADO GLOBAL
@@ -1198,71 +1199,193 @@ function importAfastados(rows, filename) {
 }
 
 // ============================================================
-// REBUILD AFASTADOS
+// REBUILD AFASTADOS (CONTROLE DE AFASTADOS LONGOS > 13 DIAS)
 // ============================================================
-function rebuildAfastados() {
-  const afa = state.afastados;
-  const total = afa.length;
-  const aux = afa.filter(a => {
-    const m = a.motivo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return m.includes('auxilio');
-  }).length;
-  const mat = afa.filter(a => a.motivo.toLowerCase().includes('maternidade')).length;
-  const aci = afa.filter(a => a.motivo.toLowerCase().includes('acidente')).length;
+let afaFilterSetor = null;
+let afaFilterMotivo = 'TODOS';
+let afaSetoresPopulated = false;
 
-  document.getElementById('k-afa-total').textContent = total;
-  document.getElementById('k-afa-aux').textContent = aux;
-  document.getElementById('k-afa-mat').textContent = mat;
-  document.getElementById('k-afa-aci').textContent = aci;
+function popularSetoresAfastados() {
+  const sel = document.getElementById('filtro-afa-setor');
+  if (!sel) return;
+  const setSet = new Set();
+  (state.afastados || []).forEach(a => {
+    setSet.add(a.setor || 'GERAL');
+  });
+  const sorted = Array.from(setSet).sort();
+  sel.innerHTML = '<option value="TODOS">Todos os Setores (Geral)</option>' + 
+    sorted.map(s => `<option value="${s}">${s}</option>`).join('');
+  afaSetoresPopulated = true;
+}
 
-  // Tabela
-  const tbody = document.getElementById('tbody-afa-lista');
-  tbody.innerHTML = afa.map(a => {
-    let badge = 'bt-info';
-    if (a.motivo.toLowerCase().includes('acidente')) badge = 'bt-crit';
-    if (a.motivo.toLowerCase().includes('maternidade')) badge = 'bt-purple';
-    if (a.motivo.toLowerCase().includes('auxilio')) badge = 'bt-warn';
-    return `<tr>
-      <td class="rank-num">${a.id}</td>
-      <td>${a.nome}</td>
-      <td>${a.setor}</td>
-      <td><span class="badge ${badge}">${a.motivo}</span></td>
-    </tr>`;
+function renderAfastadosLegendPills(todos) {
+  const container = document.getElementById('afa-legend-pills');
+  if (!container) return;
+  const countAux = todos.filter(a => a.motivo.includes('Auxílio') || a.motivo.includes('INSS') || a.motivo.toLowerCase().includes('doença')).length;
+  const countMat = todos.filter(a => a.motivo.includes('Maternidade')).length;
+  const countAci = todos.filter(a => a.motivo.includes('Acidente') || a.motivo.includes('B91')).length;
+
+  const pills = [
+    { id: 'TODOS', label: '✨ Todos (> 13 Dias)', count: todos.length, color: '#0f172a' },
+    { id: 'inss', label: '● INSS / Auxílio Doença', count: countAux, color: '#ea580c' },
+    { id: 'mat', label: '● Licença Maternidade', count: countMat, color: '#9333ea' },
+    { id: 'aci', label: '● Acidente Trab. (B91)', count: countAci, color: '#dc2626' }
+  ];
+
+  container.innerHTML = pills.map(p => {
+    const isActive = afaFilterMotivo === p.id;
+    const bg = isActive ? p.color : '#ffffff';
+    const fg = isActive ? '#ffffff' : '#334155';
+    const border = isActive ? p.color : '#cbd5e1';
+    const shadow = isActive ? 'box-shadow:0 2px 4px rgba(0,0,0,0.15);' : '';
+    return `<button onclick="setAfastadosMotivoFilter('${p.id}')" style="padding:6px 14px;border-radius:20px;border:1px solid ${border};background:${bg};color:${fg};font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;${shadow}">
+      <span>${p.label}</span>
+      <span style="background:${isActive ? 'rgba(255,255,255,0.2)' : '#f1f5f9'};color:${isActive ? '#ffffff' : '#475569'};padding:1px 7px;border-radius:10px;font-size:11px">${p.count}</span>
+    </button>`;
   }).join('');
+}
 
-  // Gráfico Setor
+function setAfastadosMotivoFilter(id) {
+  afaFilterMotivo = id;
+  applyAfastadosFilters();
+}
+
+function resetAfastadosFilters() {
+  afaFilterSetor = null;
+  afaFilterMotivo = 'TODOS';
+  const selSetor = document.getElementById('filtro-afa-setor');
+  const inpNome = document.getElementById('filtro-afa-nome');
+  if (selSetor) selSetor.value = 'TODOS';
+  if (inpNome) inpNome.value = '';
+  applyAfastadosFilters();
+}
+
+function rebuildAfastados() {
+  if (!afaSetoresPopulated) popularSetoresAfastados();
+  applyAfastadosFilters();
+}
+
+function applyAfastadosFilters() {
+  if (!afaSetoresPopulated) popularSetoresAfastados();
+  const selSetor = document.getElementById('filtro-afa-setor');
+  const inpNome = document.getElementById('filtro-afa-nome');
+  afaFilterSetor = (selSetor && selSetor.value !== 'TODOS') ? selSetor.value : null;
+  const nomeTerm = inpNome ? inpNome.value.trim().toLowerCase() : '';
+
+  const todos = state.afastados || [];
+  renderAfastadosLegendPills(todos);
+
+  const listaFiltrada = todos.filter(a => {
+    if (afaFilterSetor && (a.setor || 'GERAL') !== afaFilterSetor) return false;
+    if (afaFilterMotivo === 'inss' && !a.motivo.includes('Auxílio') && !a.motivo.includes('INSS') && !a.motivo.toLowerCase().includes('doença')) return false;
+    if (afaFilterMotivo === 'mat' && !a.motivo.includes('Maternidade')) return false;
+    if (afaFilterMotivo === 'aci' && !a.motivo.includes('Acidente') && !a.motivo.includes('B91')) return false;
+    if (nomeTerm) {
+      const matchNome = (a.nome || a.colaborador || '').toLowerCase().includes(nomeTerm);
+      const matchCid = (a.cid || '').toLowerCase().includes(nomeTerm);
+      const matchDesc = (a.desc_cid || '').toLowerCase().includes(nomeTerm);
+      if (!matchNome && !matchCid && !matchDesc) return false;
+    }
+    return true;
+  });
+
+  updateAfastadosKPIs(listaFiltrada, todos.length);
+  updateAfastadosCharts(listaFiltrada);
+  updateAfastadosTable(listaFiltrada);
+  updateAfastadosStatus(listaFiltrada, todos.length, nomeTerm);
+}
+
+function updateAfastadosStatus(afa, totalCount, nomeTerm) {
+  const el = document.getElementById('afa-filter-status');
+  if (!el) return;
+  const activeFilters = [];
+  if (afaFilterSetor) activeFilters.push(`Setor ${afaFilterSetor}`);
+  if (afaFilterMotivo !== 'TODOS') activeFilters.push(`Motivo ${afaFilterMotivo.toUpperCase()}`);
+  if (nomeTerm) activeFilters.push(`Busca: "${nomeTerm}"`);
+
+  if (activeFilters.length === 0) {
+    el.innerHTML = `<span style="color:#059669">✓ Todos os ${totalCount} afastamentos longos (> 13 dias) exibidos</span>`;
+  } else {
+    el.innerHTML = `<span style="color:#2563eb;font-weight:700">Filtro ativo: ${activeFilters.join(' · ')}</span> (${afa.length} de ${totalCount})`;
+  }
+}
+
+function updateAfastadosKPIs(afa, totalCount) {
+  const total = afa.length;
+  const aux = afa.filter(a => a.motivo.includes('Auxílio') || a.motivo.includes('INSS') || a.motivo.toLowerCase().includes('doença')).length;
+  const mat = afa.filter(a => a.motivo.includes('Maternidade')).length;
+  const aci = afa.filter(a => a.motivo.includes('Acidente') || a.motivo.includes('B91')).length;
+
+  const elTot = document.getElementById('k-afa-total');
+  const elAux = document.getElementById('k-afa-aux');
+  const elMat = document.getElementById('k-afa-mat');
+  const elAci = document.getElementById('k-afa-aci');
+
+  if (elTot) elTot.textContent = total;
+  if (elAux) elAux.textContent = aux;
+  if (elMat) elMat.textContent = mat;
+  if (elAci) elAci.textContent = aci;
+
+  const subEl = document.getElementById('afa-subtitle');
+  if (subEl) {
+    if (total === totalCount) {
+      subEl.textContent = `Lista atualizada de colaboradores com afastamento superior a 13 dias · ${totalCount} registros`;
+    } else {
+      subEl.textContent = `Filtrado · ${total} de ${totalCount} afastamentos (> 13 dias)`;
+    }
+  }
+}
+
+function updateAfastadosCharts(afa) {
   const setorMap = {};
-  afa.forEach(a => { setorMap[a.setor] = (setorMap[a.setor]||0)+1; });
+  afa.forEach(a => { const s = a.setor || 'GERAL'; setorMap[s] = (setorMap[s]||0)+1; });
   const setorSorted = Object.entries(setorMap).sort((a,b)=>b[1]-a[1]);
+  const multiColors = ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1'];
+  
   updateChart('cAfaSetor', 'bar', {
     labels: setorSorted.map(e=>e[0]),
-    datasets: [{label:'Qtd', data:setorSorted.map(e=>e[1]), backgroundColor:'#2563eb'}]
+    datasets: [{label:'Qtd', data:setorSorted.map(e=>e[1]), backgroundColor:multiColors}]
   }, {
     indexAxis:'y', responsive:true, maintainAspectRatio:false,
     plugins:{legend:{display:false}},
     scales:{x:{ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:9}}}}
   });
 
-  // Gráfico Motivo
+  const ctxSetor = document.getElementById('cAfaSetor');
+  if (ctxSetor && !ctxSetor._hasClickFilter) {
+    ctxSetor._hasClickFilter = true;
+    ctxSetor.addEventListener('click', function(evt) {
+      const chart = charts['cAfaSetor'];
+      if (!chart) return;
+      const points = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+      if (points.length) {
+        const idx = points[0].index;
+        const label = chart.data.labels[idx];
+        if (label) {
+          if (afaFilterSetor === label) {
+            afaFilterSetor = null;
+            const sel = document.getElementById('filtro-afa-setor');
+            if (sel) sel.value = 'TODOS';
+          } else {
+            afaFilterSetor = label;
+            const sel = document.getElementById('filtro-afa-setor');
+            if (sel) sel.value = label;
+          }
+          applyAfastadosFilters();
+        }
+      }
+    });
+  }
+
   const motMap = {};
-  afa.forEach(a => { motMap[a.motivo] = (motMap[a.motivo]||0)+1; });
+  afa.forEach(a => { const m = a.motivo || 'INSS / Auxílio Doença'; motMap[m] = (motMap[m]||0)+1; });
   const motSorted = Object.entries(motMap).sort((a,b)=>b[1]-a[1]);
   
-  // Mapeamento de cores por motivo para manter consistência
-  const colorMap = {
-    'auxilio': '#ea580c', // Laranja (Alerta)
-    'maternidade': '#9333ea', // Roxo
-    'acidente': '#dc2626', // Vermelho (Crítico)
-    'aposentadoria': '#16a34a', // Verde
-    'atestado': '#2563eb' // Azul (Info)
-  };
-
   const getMotivoColor = (motivo) => {
-    const m = motivo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    for (const key in colorMap) {
-      if (m.includes(key)) return colorMap[key];
-    }
-    return '#94a3b8'; // Cinza padrão
+    if (motivo.includes('Auxílio') || motivo.includes('INSS') || motivo.toLowerCase().includes('doença')) return '#ea580c';
+    if (motivo.includes('Maternidade')) return '#9333ea';
+    if (motivo.includes('Acidente') || motivo.includes('B91')) return '#dc2626';
+    return '#2563eb';
   };
 
   updateChart('cAfaMotivo', 'doughnut', {
@@ -1276,87 +1399,251 @@ function rebuildAfastados() {
     responsive:true, maintainAspectRatio:false,
     plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:5}}}
   });
+}
 
-  // Atualizar cores do gráfico de barras por setor para usar cores variadas
-  updateChart('cAfaSetor', 'bar', {
-    labels: setorSorted.map(e=>e[0]),
-    datasets: [{
-      label: 'Qtd', 
-      data: setorSorted.map(e=>e[1]), 
-      backgroundColor: ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1']
-    }]
-  }, {
-    indexAxis:'y', responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{display:false}},
-    scales:{x:{ticks:{stepSize:1,font:{size:10}}},y:{ticks:{font:{size:9}}}}
-  });
+function updateAfastadosTable(afa) {
+  const tbody = document.getElementById('tbody-afa-lista');
+  if (!tbody) return;
+  if (afa.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:28px;color:#64748b;font-weight:600">Nenhum colaborador com afastamento > 13 dias encontrado para os filtros selecionados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = afa.map(a => {
+    let badge = 'bt-warn';
+    if (a.motivo.includes('Acidente') || a.motivo.includes('B91')) badge = 'bt-crit';
+    if (a.motivo.includes('Maternidade')) badge = 'bt-purple';
+
+    const isVeryLong = Number(a.dias) >= 60;
+    const durBadge = isVeryLong
+      ? `<span class="badge" style="background:#fee2e2;color:#991b1b;font-weight:700;border:1px solid #fca5a5">${a.dias} dias</span>`
+      : `<span class="badge" style="background:#f1f5f9;color:#334155;font-weight:700;border:1px solid #cbd5e1">${a.dias} dias</span>`;
+
+    const cidStr = a.cid && a.cid !== '-' ? `<strong style="color:#1e293b">${a.cid}</strong>` : '—';
+    const descStr = a.desc_cid ? `<span style="font-size:11px;color:#475569">${a.desc_cid}</span>` : '—';
+
+    return `<tr>
+      <td class="rank-num">${a.id || '—'}</td>
+      <td><strong style="color:#1e293b">${a.nome || a.colaborador || '—'}</strong></td>
+      <td><span class="badge" style="background:#f8fafc;color:#334155;font-size:11px;font-weight:700;border:1px solid #cbd5e1">${a.setor || 'GERAL'}</span></td>
+      <td>${a.inicio || '—'}</td>
+      <td>${a.termino || '—'}</td>
+      <td style="text-align:right">${durBadge}</td>
+      <td>${cidStr}</td>
+      <td>${descStr}</td>
+      <td><span class="badge ${badge}">${a.motivo}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 // ============================================================
-// REBUILD SEGURANÇA
+// REBUILD SEGURANÇA (COM AUDITORIA, CONVERGÊNCIA E FILTROS COMPLETA)
 // ============================================================
+let segFilterMes = 'TODOS';
+let segFilterTipo = 'TODOS';
+let segFilterSetor = null;
+let segMesesPopulated = false;
+
+function getMesSeg(a) {
+  const dt = String(a.data || a.data_full || '').trim();
+  const parts = dt.split(/[\/\-\.]/);
+  if (parts.length >= 2) {
+    const val = parseInt(parts[1], 10);
+    if (!isNaN(val) && val >= 1 && val <= 12) {
+      return String(val).padStart(2, '0');
+    }
+  } else if (parts.length >= 1) {
+    const val = parseInt(parts[0], 10);
+    if (!isNaN(val) && val >= 1 && val <= 12 && parts[0].length <= 2) {
+      return String(val).padStart(2, '0');
+    }
+  }
+  return '01';
+}
+
+function popularMesesSeguranca() {
+  const sel = document.getElementById('filtro-seg-mes');
+  if (!sel) return;
+  const nomesMeses = {'01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio','06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'};
+  const mesesSet = new Set();
+  (state.acidentes || []).forEach(a => {
+    mesesSet.add(getMesSeg(a));
+  });
+  const sorted = Array.from(mesesSet).sort();
+  sel.innerHTML = '<option value="TODOS">Todos os Meses (Geral)</option>' + 
+    sorted.map(m => `<option value="${m}">${m}/2026 - ${nomesMeses[m] || 'Mês ' + m}</option>`).join('');
+  segMesesPopulated = true;
+}
+
+function renderSegurancaLegendPills(todos) {
+  const container = document.getElementById('seg-legend-pills');
+  if (!container) return;
+  const tTip = todos.filter(a => normTipo(a.tipo) === 'tipico').length;
+  const tTra = todos.filter(a => normTipo(a.tipo) === 'trajeto').length;
+
+  const pills = [
+    { id: 'TODOS', label: '✨ Todos os Tipos', count: todos.length, color: '#0f172a' },
+    { id: 'tipico', label: '● Típico', count: tTip, color: '#2563eb' },
+    { id: 'trajeto', label: '● Trajeto', count: tTra, color: '#ea580c' }
+  ];
+
+  container.innerHTML = pills.map(p => {
+    const isActive = segFilterTipo === p.id;
+    const bg = isActive ? p.color : '#ffffff';
+    const fg = isActive ? '#ffffff' : '#334155';
+    const border = isActive ? p.color : '#cbd5e1';
+    const shadow = isActive ? 'box-shadow:0 2px 4px rgba(0,0,0,0.15);' : '';
+    return `<button onclick="setSegurancaTipoFilter('${p.id}')" style="padding:6px 14px;border-radius:20px;border:1px solid ${border};background:${bg};color:${fg};font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;${shadow}">
+      <span>${p.label}</span>
+      <span style="background:${isActive ? 'rgba(255,255,255,0.2)' : '#f1f5f9'};color:${isActive ? '#ffffff' : '#475569'};padding:1px 7px;border-radius:10px;font-size:11px">${p.count}</span>
+    </button>`;
+  }).join('');
+}
+
+function setSegurancaTipoFilter(tipo) {
+  segFilterTipo = tipo;
+  applySegurancaFilters();
+}
+
+function resetSegurancaFilters() {
+  segFilterMes = 'TODOS';
+  segFilterTipo = 'TODOS';
+  segFilterSetor = null;
+  const selMes = document.getElementById('filtro-seg-mes');
+  const inpNome = document.getElementById('filtro-seg-nome');
+  if (selMes) selMes.value = 'TODOS';
+  if (inpNome) inpNome.value = '';
+  applySegurancaFilters();
+}
+
 function rebuildSeguranca() {
-  const acc = state.acidentes;
+  if (!segMesesPopulated) popularMesesSeguranca();
+  applySegurancaFilters();
+}
+
+function applySegurancaFilters() {
+  if (!segMesesPopulated) popularMesesSeguranca();
+  const selMes = document.getElementById('filtro-seg-mes');
+  const inpNome = document.getElementById('filtro-seg-nome');
+  segFilterMes = selMes ? selMes.value : 'TODOS';
+  const nomeTerm = inpNome ? inpNome.value.trim().toLowerCase() : '';
+
+  const todos = state.acidentes || [];
+  renderSegurancaLegendPills(todos);
+
+  const listaFiltrada = todos.filter(a => {
+    if (segFilterMes !== 'TODOS' && getMesSeg(a) !== segFilterMes) return false;
+    if (segFilterTipo !== 'TODOS' && normTipo(a.tipo) !== segFilterTipo) return false;
+    if (segFilterSetor && (a.setor || 'GERAL') !== segFilterSetor) return false;
+    if (nomeTerm && !(a.colaborador || '').toLowerCase().includes(nomeTerm)) return false;
+    return true;
+  });
+
+  updateSegurancaKPIs(listaFiltrada);
+  updateSegurancaCharts(listaFiltrada);
+  updateSegurancaTable(listaFiltrada);
+  updateSegurancaStatus(listaFiltrada, todos.length, nomeTerm);
+}
+
+function updateSegurancaStatus(acc, totalCount, nomeTerm) {
+  const el = document.getElementById('seg-filter-status');
+  if (!el) return;
+  const activeFilters = [];
+  if (segFilterMes !== 'TODOS') activeFilters.push(`Mês ${segFilterMes}`);
+  if (segFilterTipo !== 'TODOS') activeFilters.push(`Tipo ${segFilterTipo.toUpperCase()}`);
+  if (segFilterSetor) activeFilters.push(`Setor ${segFilterSetor}`);
+  if (nomeTerm) activeFilters.push(`Busca: "${nomeTerm}"`);
+
+  if (activeFilters.length === 0) {
+    el.innerHTML = `<span style="color:#059669">✓ Todos os ${totalCount} acidentes exibidos</span>`;
+  } else {
+    el.innerHTML = `<span style="color:#2563eb;font-weight:700">Filtro ativo: ${activeFilters.join(' · ')}</span> (${acc.length} de ${totalCount})`;
+  }
+}
+
+function updateSegurancaKPIs(acc) {
   const total = acc.length;
   const tipico = acc.filter(a => normTipo(a.tipo) === 'tipico').length;
   const trajeto = acc.filter(a => normTipo(a.tipo) === 'trajeto').length;
-  const diasTotal = acc.reduce((s,a) => s + a.dias, 0);
+  const diasTotal = acc.reduce((s,a) => s + (Number(a.dias) || 0), 0);
 
   const nameCount = {};
   acc.forEach(a => { nameCount[a.colaborador] = (nameCount[a.colaborador]||0)+1; });
   const reincs = Object.entries(nameCount).filter(e => e[1]>1);
-  const graveAcc = [...acc].sort((a,b) => b.dias-a.dias)[0];
+  const graveAcc = [...acc].sort((a,b) => (Number(b.dias)||0) - (Number(a.dias)||0))[0];
 
-  document.getElementById('k-total').textContent = total;
-  document.getElementById('k-tipico').textContent = tipico;
-  document.getElementById('k-tipico-pct').textContent = total ? Math.round(tipico/total*100)+'% do total' : '—';
-  document.getElementById('k-trajeto').textContent = trajeto;
-  document.getElementById('k-trajeto-pct').textContent = total ? Math.round(trajeto/total*100)+'% do total' : '—';
-  document.getElementById('k-dias').textContent = diasTotal;
-  document.getElementById('k-reinc').textContent = reincs.length;
-  document.getElementById('k-reinc-nome').textContent = reincs.length > 0 ? reincs[0][0].split(' ').slice(0,3).join(' ') : '—';
-  document.getElementById('k-grave').textContent = graveAcc ? graveAcc.dias+'d' : '—';
-  document.getElementById('k-grave-nome').textContent = graveAcc ? graveAcc.colaborador.split(' ')[0] + ' — ' + graveAcc.lesao.toLowerCase() : '—';
+  const totalEl = document.getElementById('k-total');
+  const tipEl = document.getElementById('k-tipico');
+  const tipPctEl = document.getElementById('k-tipico-pct');
+  const trajEl = document.getElementById('k-trajeto');
+  const trajPctEl = document.getElementById('k-trajeto-pct');
+  const diasEl = document.getElementById('k-dias');
+  const reincEl = document.getElementById('k-reinc');
+  const reincNomeEl = document.getElementById('k-reinc-nome');
+  const graveEl = document.getElementById('k-grave');
+  const graveNomeEl = document.getElementById('k-grave-nome');
 
-  const tbody = document.getElementById('tbody-acidentes');
-  tbody.innerHTML = acc.map(a => {
-    const isReinc = nameCount[a.colaborador] > 1;
-    const isGrave = a.dias >= 30;
-    const tipoBadge = normTipo(a.tipo) === 'tipico' ? '<span class="badge bt-tip">Típico</span>' : '<span class="badge bt-tra">Trajeto</span>';
-    return `<tr>
-      <td>${a.data}</td>
-      <td style="${isReinc?'color:#dc2626;font-weight:500':''}">${a.colaborador}${isReinc?' ⚠️':''}</td>
-      <td>${a.setor}</td>
-      <td>${tipoBadge}</td>
-      <td>${a.causa}</td>
-      <td>${a.parte}</td>
-      <td>${a.lesao}</td>
-      <td style="text-align:right;${isGrave?'color:#dc2626;font-weight:600':''}">${a.dias}</td>
-    </tr>`;
-  }).join('');
+  if (totalEl) totalEl.textContent = total;
+  if (tipEl) tipEl.textContent = tipico;
+  if (tipPctEl) tipPctEl.textContent = total ? Math.round(tipico/total*100)+'% do total' : '—';
+  if (trajEl) trajEl.textContent = trajeto;
+  if (trajPctEl) trajPctEl.textContent = total ? Math.round(trajeto/total*100)+'% do total' : '—';
+  if (diasEl) diasEl.textContent = diasTotal;
+  if (reincEl) reincEl.textContent = reincs.length;
+  if (reincNomeEl) reincNomeEl.textContent = reincs.length > 0 ? reincs[0][0].split(' ').slice(0,3).join(' ') : '—';
+  if (graveEl) graveEl.textContent = graveAcc ? (graveAcc.dias||0)+'d' : '—';
+  if (graveNomeEl) graveNomeEl.textContent = graveAcc ? graveAcc.colaborador.split(' ')[0] + ' — ' + (graveAcc.lesao||'').toLowerCase() : '—';
 
-  // Charts
+  const subEl = document.getElementById('seg-subtitle');
+  if (subEl) {
+    const todosCount = (state.acidentes || []).length;
+    if (total === todosCount) {
+      subEl.textContent = `Todos os registros · ${todosCount} acidentes`;
+    } else {
+      subEl.textContent = `Filtrado · ${total} de ${todosCount} acidentes`;
+    }
+  }
+}
+
+function updateSegurancaCharts(acc) {
   const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesMap = { tip: {}, tra: {}, dias: {} };
   meses.forEach(m => { mesMap.tip[m]=0; mesMap.tra[m]=0; mesMap.dias[m]=0; });
   acc.forEach(a => {
-    const parts = String(a.data).split('/');
-    if (parts.length >= 2) {
-      const mesNome = meses[parseInt(parts[1])-1];
-      if (normTipo(a.tipo) === 'tipico') mesMap.tip[mesNome]++; else mesMap.tra[mesNome]++;
-      mesMap.dias[mesNome] += a.dias;
-    }
+    let mIdx = 0;
+    const mStr = getMesSeg(a);
+    const mNum = parseInt(mStr, 10);
+    if (!isNaN(mNum) && mNum >= 1 && mNum <= 12) mIdx = mNum - 1;
+    const mesNome = meses[mIdx] || 'Jan';
+    if (normTipo(a.tipo) === 'tipico') mesMap.tip[mesNome]++; else mesMap.tra[mesNome]++;
+    mesMap.dias[mesNome] += (Number(a.dias) || 0);
   });
-  const usedMeses = meses.filter(m => mesMap.tip[m]>0 || mesMap.tra[m]>0);
-  updateChart('cMes', 'bar', { labels: usedMeses, datasets: [{label:'Típico', data:usedMeses.map(m=>mesMap.tip[m]), backgroundColor:'#2563eb'}, {label:'Trajeto', data:usedMeses.map(m=>mesMap.tra[m]), backgroundColor:'#ea580c'}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{stacked:true},y:{stacked:true}} });
-  updateChart('cTipo', 'doughnut', { labels: ['Típico','Trajeto'], datasets: [{data:[tipico,trajeto], backgroundColor:['#2563eb','#ea580c'], borderWidth:0}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} });
-  updateChart('cDias', 'bar', { labels: usedMeses, datasets: [{label:'Dias', data:usedMeses.map(m=>mesMap.dias[m]), backgroundColor:'#9333ea'}] }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+  let usedMeses = meses.filter(m => mesMap.tip[m]>0 || mesMap.tra[m]>0 || mesMap.dias[m]>0);
+  if (usedMeses.length === 0) usedMeses = ['Jan','Fev','Mar','Abr','Mai','Jun'];
 
-  // Gráficos adicionais de Segurança com cores variadas
+  updateChart('cMes', 'bar', {
+    labels: usedMeses,
+    datasets: [
+      {label:'Típico', data:usedMeses.map(m=>mesMap.tip[m]), backgroundColor:'#2563eb'},
+      {label:'Trajeto', data:usedMeses.map(m=>mesMap.tra[m]), backgroundColor:'#ea580c'}
+    ]
+  }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{stacked:true},y:{stacked:true}} });
+
+  const tTip = acc.filter(a => normTipo(a.tipo) === 'tipico').length;
+  const tTra = acc.filter(a => normTipo(a.tipo) === 'trajeto').length;
+  updateChart('cTipo', 'doughnut', {
+    labels: ['Típico','Trajeto'],
+    datasets: [{data:[tTip,tTra], backgroundColor:['#2563eb','#ea580c'], borderWidth:0}]
+  }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} });
+
+  updateChart('cDias', 'bar', {
+    labels: usedMeses,
+    datasets: [{label:'Dias', data:usedMeses.map(m=>mesMap.dias[m]), backgroundColor:'#9333ea'}]
+  }, { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+
   const multiColors = ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1'];
   
   const lesaoMap = {};
-  acc.forEach(a => { lesaoMap[a.lesao] = (lesaoMap[a.lesao]||0)+1; });
+  acc.forEach(a => { const l = (a.lesao && a.lesao !== '-' ? a.lesao : 'Contusão / Impacto'); lesaoMap[l] = (lesaoMap[l]||0)+1; });
   const lesaoSorted = Object.entries(lesaoMap).sort((a,b)=>b[1]-a[1]);
   updateChart('cLesao', 'bar', {
     labels: lesaoSorted.map(e=>e[0]),
@@ -1364,15 +1651,37 @@ function rebuildSeguranca() {
   }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
 
   const setorTipMap = {};
-  acc.filter(a => normTipo(a.tipo) === 'tipico').forEach(a => { setorTipMap[a.setor] = (setorTipMap[a.setor]||0)+1; });
+  acc.forEach(a => { const s = (a.setor && a.setor !== '-' ? a.setor : 'GERAL'); setorTipMap[s] = (setorTipMap[s]||0)+1; });
   const setorTipSorted = Object.entries(setorTipMap).sort((a,b)=>b[1]-a[1]);
   updateChart('cSetorTip', 'bar', {
     labels: setorTipSorted.map(e=>e[0]),
     datasets: [{label:'Qtd', data:setorTipSorted.map(e=>e[1]), backgroundColor:multiColors}]
   }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
 
+  const ctxSetor = document.getElementById('cSetorTip');
+  if (ctxSetor && !ctxSetor._hasClickFilter) {
+    ctxSetor._hasClickFilter = true;
+    ctxSetor.addEventListener('click', function(evt) {
+      const chart = charts['cSetorTip'];
+      if (!chart) return;
+      const points = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+      if (points.length) {
+        const idx = points[0].index;
+        const label = chart.data.labels[idx];
+        if (label) {
+          if (segFilterSetor === label) {
+            segFilterSetor = null;
+          } else {
+            segFilterSetor = label;
+          }
+          applySegurancaFilters();
+        }
+      }
+    });
+  }
+
   const parteMap = {};
-  acc.forEach(a => { parteMap[a.parte] = (parteMap[a.parte]||0)+1; });
+  acc.forEach(a => { const p = (a.parte && a.parte !== '-' ? a.parte : 'Membros Superiores (Mãos/Dedos)'); parteMap[p] = (parteMap[p]||0)+1; });
   const parteSorted = Object.entries(parteMap).sort((a,b)=>b[1]-a[1]);
   updateChart('cParte', 'bar', {
     labels: parteSorted.map(e=>e[0]),
@@ -1381,26 +1690,331 @@ function rebuildSeguranca() {
 
   // Pontos de atenção
   const topSetor = Object.entries(acc.reduce((m,a)=>{m[a.setor]=(m[a.setor]||0)+1;return m;},{})).sort((a,b)=>b[1]-a[1])[0];
+  const nameCount = {};
+  acc.forEach(a => { nameCount[a.colaborador] = (nameCount[a.colaborador]||0)+1; });
+  const reincs = Object.entries(nameCount).filter(e => e[1]>1);
   let pontos = '';
   if (topSetor) pontos += `<div class="alert-item">🏭 <strong>${topSetor[0]}</strong> lidera com ${topSetor[1]} acidentes.</div>`;
   if (reincs.length > 0) pontos += `<div class="alert-item">🔁 <strong>Reincidente</strong> — ${reincs[0][0]}.</div>`;
-  document.getElementById('pontos-atencao').innerHTML = pontos || '<div class="alert-item">✅ Nenhum ponto crítico.</div>';
+  const pontosEl = document.getElementById('pontos-atencao');
+  if (pontosEl) pontosEl.innerHTML = pontos || '<div class="alert-item">✅ Nenhum ponto crítico.</div>';
+}
+
+function updateSegurancaTable(acc) {
+  const tbody = document.getElementById('tbody-acidentes');
+  if (!tbody) return;
+  if (acc.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b;font-weight:600">Nenhum acidente encontrado para os filtros selecionados.</td></tr>';
+    return;
+  }
+  const nameCount = {};
+  acc.forEach(a => { nameCount[a.colaborador] = (nameCount[a.colaborador]||0)+1; });
+  tbody.innerHTML = acc.map(a => {
+    const isReinc = nameCount[a.colaborador] > 1;
+    const isGrave = Number(a.dias) >= 30;
+    const tipoBadge = normTipo(a.tipo) === 'tipico' ? '<span class="badge bt-tip">Típico</span>' : '<span class="badge bt-tra">Trajeto</span>';
+    return `<tr>
+      <td>${a.data || '—'}</td>
+      <td style="${isReinc?'color:#dc2626;font-weight:500':''}"><strong>${a.colaborador || '—'}</strong>${isReinc?' ⚠️':''}</td>
+      <td><span class="badge" style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:700;border:1px solid #cbd5e1">${a.setor || 'GERAL'}</span></td>
+      <td>${tipoBadge}</td>
+      <td>${a.causa || '—'}</td>
+      <td>${a.parte || '—'}</td>
+      <td>${a.lesao || '—'}</td>
+      <td style="text-align:right;${isGrave?'color:#dc2626;font-weight:600':''}">${a.dias || 0}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ============================================================
 // REBUILD SAÚDE
 // ============================================================
-function rebuildSaude() {
-  const tbody = document.getElementById('tbody-afastamentos');
-  tbody.innerHTML = state.afastamentos.map(a => `<tr><td>${a.colaborador}</td><td>${a.setor}</td><td>${a.cid}</td><td style="text-align:right"><span class="badge bt-${a.nivel}">${a.dias}</span></td></tr>`).join('');
-  updateChart('cSetorSau', 'bar', { 
-    labels: state.setoresSau.labels, 
+let saudeFilterMes = 'TODOS';
+let saudeFilterSetor = null;
+let saudeFilterOcorrencia = 'TODAS';
+let saudeMesesPopulated = false;
+
+function getMesAno(a) {
+  const dt = a.inicio || a.data || '';
+  const pts = dt.split('/');
+  if (pts.length === 3) {
+    return pts[1].padStart(2, '0') + '/' + pts[2];
+  }
+  return 'OUTROS';
+}
+
+function popularMesesSaude() {
+  const sel = document.getElementById('filtro-sau-mes');
+  if (!sel) return;
+  const mesesSet = new Set();
+  (state.atestados || []).forEach(a => {
+    const ma = getMesAno(a);
+    if (ma && ma !== 'OUTROS') mesesSet.add(ma);
+  });
+  const sorted = Array.from(mesesSet).sort((a, b) => {
+    const [m1, y1] = a.split('/').map(Number);
+    const [m2, y2] = b.split('/').map(Number);
+    return (y1 * 100 + m1) - (y2 * 100 + m2);
+  });
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="TODOS">📅 Todos os Meses (Geral)</option>' + 
+    sorted.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (sorted.includes(currentVal)) sel.value = currentVal;
+  saudeMesesPopulated = true;
+}
+
+function categorizarOcorrencia(oc) {
+  if (!oc) return 'Outras Ocorrências';
+  const s = String(oc).toLowerCase();
+  if (s.includes('atendimento medico') || s === 'atendimento' || s.includes('urgencia')) return 'Atendimento Médico';
+  if (s.includes('consulta') || s.includes('telemedicina')) return 'Consulta (Geral/Telemedicina)';
+  if (s.includes('odontolog') || s.includes('dente') || s.includes('cárie') || s.includes('dentár')) return 'Odontológico';
+  if (s.includes('exame') || s.includes('ocupacional') || s.includes('rotina')) return 'Exames / Ocupacional';
+  return 'Outras Ocorrências';
+}
+
+function setSaudeFilterOcorrencia(val) {
+  saudeFilterOcorrencia = (saudeFilterOcorrencia === val) ? 'TODAS' : val;
+  applySaudeFilters();
+}
+
+function renderSaudeLegendPills(listaAtMes) {
+  const container = document.getElementById('saude-legend-pills');
+  if (!container) return;
+
+  const categoriasOc = [
+    { label: 'TODAS', title: 'Todas (Geral)', color: '#0f172a' },
+    { label: 'Atendimento Médico', title: 'Atendimento Médico', color: '#2563eb' },
+    { label: 'Consulta (Geral/Telemedicina)', title: 'Consulta (Geral/Telemedicina)', color: '#10b981' },
+    { label: 'Odontológico', title: 'Odontológico', color: '#06b6d4' },
+    { label: 'Exames / Ocupacional', title: 'Exames / Ocupacional', color: '#f59e0b' },
+    { label: 'Outras Ocorrências', title: 'Outras Ocorrências', color: '#6366f1' }
+  ];
+
+  container.innerHTML = categoriasOc.map(cat => {
+    const count = (cat.label === 'TODAS') ? 
+      listaAtMes.length : 
+      listaAtMes.filter(a => categorizarOcorrencia(a.ocorrencia) === cat.label).length;
+
+    const isSelected = (saudeFilterOcorrencia === cat.label);
+    const style = isSelected ?
+      `background:${cat.color};color:#ffffff;border:1.5px solid ${cat.color};box-shadow:0 3px 8px ${cat.color}44;font-weight:700;padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;transition:all 0.2s` :
+      `background:#ffffff;color:#475569;border:1px solid #cbd5e1;font-weight:600;padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;transition:all 0.2s`;
+
+    const icon = cat.label === 'TODAS' ? '✨ ' : '● ';
+    return `<button onclick="setSaudeFilterOcorrencia('${cat.label}')" style="${style}">${icon}${cat.title} <strong>(${count})</strong></button>`;
+  }).join('');
+}
+
+function buildSetoresSauData(listaAt, occFilter = 'TODAS') {
+  const isAll = (!occFilter || occFilter === 'TODAS');
+  const filteredForRanking = isAll ? 
+    listaAt : 
+    listaAt.filter(a => categorizarOcorrencia(a.ocorrencia) === occFilter);
+
+  const setorCounts = {};
+  filteredForRanking.forEach(a => {
+    const s = a.setor || 'GERAL';
+    if (s !== 'EX-COLABORADORES / OUTROS') {
+      setorCounts[s] = (setorCounts[s] || 0) + 1;
+    }
+  });
+
+  const sortedSetores = Object.entries(setorCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const labelsSetores = sortedSetores.length ? sortedSetores.map(x => x[0]) : ['SEM DADOS'];
+
+  let catColor = '#2563eb';
+  let catLabel = 'Total de Atestados';
+  if (!isAll) {
+    const catObj = [
+      { label: 'Atendimento Médico', color: '#2563eb' },
+      { label: 'Consulta (Geral/Telemedicina)', color: '#10b981' },
+      { label: 'Odontológico', color: '#06b6d4' },
+      { label: 'Exames / Ocupacional', color: '#f59e0b' },
+      { label: 'Outras Ocorrências', color: '#6366f1' }
+    ].find(x => x.label === occFilter);
+    if (catObj) {
+      catColor = catObj.color;
+      catLabel = catObj.label;
+    }
+  }
+
+  const dataValues = labelsSetores.map(setorNome => {
+    return filteredForRanking.filter(a => (a.setor || 'GERAL') === setorNome).length;
+  });
+
+  return {
+    labels: labelsSetores,
     datasets: [{
-      label: 'Atestados', 
-      data: state.setoresSau.values, 
-      backgroundColor: ['#2563eb','#ea580c','#9333ea','#dc2626','#16a34a','#0891b2','#475569','#f59e0b','#10b981','#6366f1']
-    }] 
-  }, { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} });
+      label: catLabel,
+      backgroundColor: catColor,
+      data: dataValues,
+      borderRadius: 5
+    }]
+  };
+}
+
+function updateSaudeKPIs(lista) {
+  let totalDias = 0;
+  let totalHorasCount = 0;
+  let totalMinutos = 0;
+  const setoresUnicos = new Set();
+
+  lista.forEach(a => {
+    const s = a.setor || 'GERAL';
+    if (s && s !== 'EX-COLABORADORES / OUTROS' && s !== 'GERAL' && s !== '—') {
+      setoresUnicos.add(s);
+    }
+    const dur = String(a.duracao || '').trim();
+    if (dur.toLowerCase().includes('hr') || dur.includes(':')) {
+      totalHorasCount++;
+      const match = dur.match(/(\d+):(\d+)/);
+      if (match) {
+        totalMinutos += (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+      }
+    } else if (dur.toLowerCase().includes('dia')) {
+      const match = dur.match(/([\d,\.]+)/);
+      if (match) {
+        totalDias += parseFloat(match[1].replace(',', '.')) || 0;
+      }
+    } else if (a.dias) {
+      totalDias += parseFloat(a.dias) || 0;
+    } else {
+      totalDias += 1;
+    }
+  });
+
+  const totalEl = document.getElementById('k-total-ats');
+  const diasEl = document.getElementById('k-dias-ats');
+  const horasEl = document.getElementById('k-horas-ats');
+  const horasSubEl = document.getElementById('k-horas-sub');
+  const setoresEl = document.getElementById('k-setores-ats');
+
+  if (totalEl) totalEl.textContent = lista.length.toLocaleString('pt-BR');
+  if (diasEl) diasEl.textContent = Math.round(totalDias).toLocaleString('pt-BR');
+  if (horasEl) horasEl.textContent = totalHorasCount.toLocaleString('pt-BR');
+  if (horasSubEl) {
+    const h = Math.floor(totalMinutos / 60);
+    const m = totalMinutos % 60;
+    horasSubEl.textContent = `${h}h ${m}min`;
+  }
+  if (setoresEl) {
+    const numSetores = setoresUnicos.size;
+    setoresEl.textContent = numSetores > 0 ? (numSetores + '+') : '0';
+  }
+
+  const subTitleEl = document.getElementById('sau-subtitle');
+  if (subTitleEl) {
+    const totalCount = (state.atestados || []).length;
+    if (lista.length === totalCount) {
+      subTitleEl.textContent = `Todos os registros · ${totalCount.toLocaleString('pt-BR')} atestados`;
+    } else {
+      subTitleEl.textContent = `Filtrado · ${lista.length.toLocaleString('pt-BR')} de ${totalCount.toLocaleString('pt-BR')} atestados`;
+    }
+  }
+}
+
+function applySaudeFilters() {
+  if (!saudeMesesPopulated) popularMesesSaude();
+  const selMes = document.getElementById('filtro-sau-mes');
+  const inpNome = document.getElementById('filtro-sau-nome');
+  saudeFilterMes = selMes ? selMes.value : 'TODOS';
+  const nomeTerm = inpNome ? inpNome.value.trim().toLowerCase() : '';
+
+  const todos = state.atestados || [];
+  const atestadosMes = saudeFilterMes === 'TODOS' ? todos : todos.filter(a => getMesAno(a) === saudeFilterMes);
+
+  renderSaudeLegendPills(atestadosMes);
+
+  const chartData = buildSetoresSauData(atestadosMes, saudeFilterOcorrencia);
+  updateChart('cSetorSau', 'bar', { 
+    labels: chartData.labels, 
+    datasets: chartData.datasets 
+  }, { 
+    indexAxis: 'y', 
+    responsive: true, 
+    maintainAspectRatio: false, 
+    onClick: (evt, elements, chart) => {
+      if (elements && elements.length > 0) {
+        const idx = elements[0].index;
+        const setorClicado = chart.data.labels[idx];
+        saudeFilterSetor = (saudeFilterSetor === setorClicado) ? null : setorClicado;
+        applySaudeFilters();
+      }
+    },
+    onHover: (evt, elements) => {
+      evt.native.target.style.cursor = (elements && elements.length > 0) ? 'pointer' : 'default';
+    },
+    plugins: { 
+      legend: { display: false },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {
+      x: { stacked: false, grid: { color: '#f1f5f9' } },
+      y: { stacked: false, grid: { display: false } }
+    }
+  });
+
+  const listaFiltrada = todos.filter(a => {
+    if (saudeFilterMes !== 'TODOS' && getMesAno(a) !== saudeFilterMes) return false;
+    if (saudeFilterOcorrencia !== 'TODAS' && categorizarOcorrencia(a.ocorrencia) !== saudeFilterOcorrencia) return false;
+    if (saudeFilterSetor && (a.setor || 'GERAL') !== saudeFilterSetor) return false;
+    if (nomeTerm && !(a.colaborador || '').toLowerCase().includes(nomeTerm)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tbody-afastamentos');
+  if (tbody) {
+    if (listaFiltrada.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b;font-weight:600">Nenhum registro encontrado para os filtros selecionados.</td></tr>';
+    } else {
+      tbody.innerHTML = listaFiltrada.map(a => `<tr>
+        <td><strong>${a.colaborador || '—'}</strong></td>
+        <td><span class="badge" style="background:#f1f5f9;color:#475569;font-size:11px;font-weight:600">${a.setor || 'GERAL'}</span></td>
+        <td>${a.inicio || a.data || '—'}</td>
+        <td>${a.termino || a.inicio || a.data || '—'}</td>
+        <td><span class="badge bt-normal" style="background:#f1f5f9;color:#334155;font-weight:600">${a.duracao || (a.dias ? a.dias + ' Dia(s)' : '—')}</span></td>
+        <td><strong style="color:#2563eb">${a.cid || '—'}</strong></td>
+        <td style="font-size:11px;max-width:280px;white-space:normal;line-height:1.3">${a.descricao || '—'}</td>
+        <td><span class="badge bt-alerta" style="background:#e0f2fe;color:#0369a1">${a.ocorrencia || '—'}</span></td>
+      </tr>`).join('');
+    }
+  }
+
+  const statusEl = document.getElementById('saude-filter-status');
+  if (statusEl) {
+    const filtersActive = (saudeFilterMes !== 'TODOS') || (saudeFilterOcorrencia !== 'TODAS') || saudeFilterSetor || nomeTerm;
+    if (filtersActive) {
+      const msText = saudeFilterMes !== 'TODOS' ? `Mês: <strong>${saudeFilterMes}</strong>` : '';
+      const ocText = saudeFilterOcorrencia !== 'TODAS' ? `Ocorrência: <strong>${saudeFilterOcorrencia}</strong>` : '';
+      const stText = saudeFilterSetor ? `Setor: <strong>${saudeFilterSetor}</strong>` : '';
+      const nmText = nomeTerm ? `Busca: <strong>"${nomeTerm}"</strong>` : '';
+      const partes = [msText, ocText, stText, nmText].filter(Boolean).join(' · ');
+      statusEl.innerHTML = `<span style="background:#e0f2fe;color:#0369a1;padding:4px 10px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:6px">
+        🔍 Filtrado (${partes}) — <strong>${listaFiltrada.length}</strong> pessoa(s)
+      </span>`;
+    } else {
+      statusEl.innerHTML = `<span style="color:#64748b;font-size:11px">Exibindo todos os <strong>${todos.length}</strong> registros</span>`;
+    }
+  }
+
+  updateSaudeKPIs(listaFiltrada);
+}
+
+function resetSaudeFilters() {
+  saudeFilterMes = 'TODOS';
+  saudeFilterSetor = null;
+  saudeFilterOcorrencia = 'TODAS';
+  const selMes = document.getElementById('filtro-sau-mes');
+  const inpNome = document.getElementById('filtro-sau-nome');
+  if (selMes) selMes.value = 'TODOS';
+  if (inpNome) inpNome.value = '';
+  applySaudeFilters();
+}
+
+function rebuildSaude() {
+  popularMesesSaude();
+  applySaudeFilters();
 }
 
 // ============================================================
@@ -1600,16 +2214,282 @@ function downloadTemplate() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Matrícula','Setor','Colaborador','Setor','Motivo']]), 'Afastados');
   XLSX.writeFile(wb, 'modelo_sst_dashboard.xlsx');
 }
+
+function computeDerivedState() {
+  function limparSetor(s) {
+    if (!s) return 'GERAL';
+    return String(s).replace(/^(?:CUSTOS?|DESPESAS?)\s+C\/\s+PESSOAL\s+-\s+/i, '').trim() || 'GERAL';
+  }
+
+  // Mapeamento de Setores / Áreas oficiais via Headcount (window.__HEADCOUNT_DATA__)
+  const headMap = {};
+  if (typeof window.__HEADCOUNT_DATA__ !== 'undefined' && window.__HEADCOUNT_DATA__ && window.__HEADCOUNT_DATA__.colaboradores) {
+    window.__HEADCOUNT_DATA__.colaboradores.forEach(c => {
+      if (c.nome) {
+        headMap[c.nome.trim().toUpperCase()] = limparSetor(c.area || c.setor || 'GERAL');
+      }
+    });
+  }
+
+  if (state.acidentes && Array.isArray(state.acidentes)) {
+    state.acidentes = state.acidentes.map(a => {
+      const colabNome = (a.colaborador || a.nome || '').trim().toUpperCase();
+      const setorHead = headMap[colabNome];
+      const setorReal = setorHead ? limparSetor(setorHead) : limparSetor(a.setor || 'GERAL');
+      return { ...a, setor: setorReal };
+    });
+  }
+  const atestados = (state.atestados || []).map(a => {
+    const colabNome = (a.colaborador || a.nome || '').trim().toUpperCase();
+    const setorHead = headMap[colabNome];
+    const setorReal = setorHead ? limparSetor(setorHead) : (a.setor === 'ALMOXARIFADO' ? 'EX-COLABORADORES / OUTROS' : limparSetor(a.setor || 'GERAL'));
+    return { ...a, setor: setorReal };
+  });
+  state.atestados = atestados;
+
+  // População automática de state.afastados para todos os afastamentos > 13 dias (Regra INSS / Afastados Longos)
+  if (!state.afastados || state.afastados.length === 0) {
+    state.afastados = atestados
+      .filter(a => (parseInt(a.dias) || 0) > 13)
+      .map((a, idx) => {
+        let motivo = 'INSS / Auxílio Doença';
+        const c = String(a.cid || '').toUpperCase();
+        const desc = String(a.desc_cid || '').toLowerCase();
+        if (c.startsWith('O') || c.startsWith('Z34') || desc.includes('maternidade') || desc.includes('gravidez') || desc.includes('parto')) {
+          motivo = 'Licença Maternidade';
+        } else if (c.startsWith('S') || c.startsWith('T') || c.startsWith('W') || c.startsWith('X') || c.startsWith('Y') || desc.includes('acidente') || desc.includes('trauma')) {
+          motivo = 'Acidente do Trabalho (B91)';
+        }
+        return {
+          id: a.id || a.matricula || String(idx + 1000),
+          nome: a.colaborador || a.nome || '—',
+          colaborador: a.colaborador || a.nome || '—',
+          setor: a.setor || 'GERAL',
+          dias: parseInt(a.dias) || 0,
+          inicio: a.inicio || a.data || '—',
+          termino: a.termino || '—',
+          cid: a.cid || '—',
+          desc_cid: a.desc_cid || '',
+          motivo: motivo
+        };
+      })
+      .sort((a, b) => b.dias - a.dias);
+  } else {
+    state.afastados = state.afastados.map(a => {
+      const colabNome = (a.colaborador || a.nome || '').trim().toUpperCase();
+      const setorHead = headMap[colabNome];
+      const setorReal = setorHead ? limparSetor(setorHead) : limparSetor(a.setor || 'GERAL');
+      return { ...a, setor: setorReal };
+    });
+  }
+
+  // 1. state.afastamentos
+  state.afastamentos = atestados.map(a => {
+    const d = parseInt(a.dias) || 1;
+    const nivel = d >= 15 ? 'critico' : d >= 5 ? 'alerta' : 'normal';
+    return {
+      ...a,
+      colaborador: a.colaborador || a.nome || '—',
+      setor: a.setor || 'GERAL',
+      cid: a.cid || '—',
+      dias: d,
+      nivel: nivel
+    };
+  }).sort((a,b) => b.dias - a.dias);
+
+  // 2. state.setoresSau (construído dinamicamente excluindo EX-COLABORADORES)
+  state.setoresSau = buildSetoresSauData(atestados);
+
+  // 3. state.top50Dias e state.top50Ats
+  const colabMap = {};
+  atestados.forEach(a => {
+    const c = a.colaborador || a.nome || '—';
+    if (c === '—') return;
+    if (!colabMap[c]) {
+      colabMap[c] = { colaborador: c, setor: a.setor || 'GERAL', dias: 0, nAtestados: 0 };
+    }
+    colabMap[c].dias += parseInt(a.dias) || 1;
+    colabMap[c].nAtestados += 1;
+  });
+  const allColabs = Object.values(colabMap);
+  const byDias = [...allColabs].sort((a,b) => b.dias - a.dias).slice(0, 50);
+  const byAts = [...allColabs].sort((a,b) => b.nAtestados - a.nAtestados).slice(0, 50);
+
+  state.top50Dias = byDias.length ? byDias.map(r => [r.colaborador, r.setor, r.dias, r.nAtestados]) : [['Sem Dados', 'GERAL', 1, 0]];
+  state.top50Ats = byAts.length ? byAts.map(r => [r.colaborador, r.setor, r.nAtestados, r.dias]) : [['Sem Dados', 'GERAL', 1, 0]];
+
+  // 4. state.cids
+  const cidCounts = {};
+  const catCounts = {};
+  atestados.forEach(a => {
+    const cid = a.cid || 'Não informado';
+    cidCounts[cid] = (cidCounts[cid] || 0) + 1;
+    const cat = cid[0] ? cid[0].toUpperCase() : 'O';
+    catCounts[cat] = (catCounts[cat] || 0) + 1;
+  });
+  const sortedCids = Object.entries(cidCounts).sort((a,b) => b[1] - a[1]).slice(0, 15);
+  const sortedCats = Object.entries(catCounts).sort((a,b) => b[1] - a[1]);
+
+  state.cids = {
+    labels: sortedCids.length ? sortedCids.map(x => x[0]) : ['Sem CID'],
+    values: sortedCids.length ? sortedCids.map(x => x[1]) : [0],
+    categorias: {
+      labels: sortedCats.length ? sortedCats.map(x => `Grupo ${x[0]}`) : ['Geral'],
+      values: sortedCats.length ? sortedCats.map(x => x[1]) : [1]
+    }
+  };
+}
+
 function init() {
+  computeDerivedState();
   rebuildSeguranca();
   rebuildSaude();
   rebuildAfastados();
   rebuildTop();
   rebuildCid();
   rebuildFinanceiro();
+  filterAuditoria(); // Populate auditoria
 }
 
-init();
+// ============================================================
+// AUDITORIA / BUSCA
+// ============================================================
+function normalizeAuditoriaItem(category, item) {
+  const vals = Object.values(item).map(v => String(v).trim()).filter(Boolean);
+  const fullStr = vals.join(' ');
+
+  let colaborador = '-';
+  let data = '-';
+  let setor = '-';
+  let motivo = '-';
+  let detalhes = '-';
+
+  if (category === 'acidentes') {
+    colaborador = item.colaborador || item['Nome do Acidentado'] || item.Nome || item.nome || '-';
+    data = item.data || item.Data || '-';
+    setor = item.setor || item.Setor || '-';
+    const tipo = item.tipo || item.Tipo || '';
+    const lesao = item.lesao || item.Lesão || '';
+    const parte = item.parte || item['Parte do corpo'] || '';
+    motivo = [tipo, lesao, parte].filter(Boolean).join(' - ') || item.causa || '-';
+    detalhes = item.causa || item.Causa || '-';
+  } 
+  else if (category === 'afastados') {
+    colaborador = item.colaborador || item.nome || item.Nome || '-';
+    data = item.data || item.afastamento || item.Afastamento || item.Admissão || '-';
+    setor = item.setor || item.Setor || item.Função || '-';
+    motivo = item.motivo || item['Situação de Afastamento'] || item.Motivo || '-';
+    detalhes = item.id || item.Cadastro || '-';
+  }
+  else {
+    // category === 'atestados'
+    if (item.colaborador || item.Colaborador || item.Nome || item.nome) {
+      colaborador = item.colaborador || item.Colaborador || item.Nome || item.nome;
+      data = item.data || item.Data || item.Início || '-';
+      setor = item.setor || item.Setor || '-';
+      motivo = item.cid || item.CID || item.motivo || '-';
+      detalhes = item.dias || item.Dias || '-';
+    } else {
+      // Linha bruta exportada do ERP (CSV)
+      const parts = fullStr.split(',').map(s => s.trim()).filter(Boolean);
+      
+      const dateRegex = /\b\d{2}\/\d{2}\/\d{4}\b/;
+      const dateIdx = parts.findIndex(p => dateRegex.test(p));
+      if (dateIdx >= 0) {
+        data = parts[dateIdx];
+        if (dateIdx > 0) {
+          colaborador = parts.slice(0, dateIdx).join(' ');
+        }
+      } else if (parts.length > 0) {
+        colaborador = parts[0];
+      }
+
+      const cidRegex = /\b[A-Z]\d{2}(\.\d)?\b/i;
+      const cidIdx = parts.findIndex(p => cidRegex.test(p));
+      if (cidIdx >= 0) {
+        const cidCode = parts[cidIdx];
+        const cidDesc = parts[cidIdx + 1] || '';
+        motivo = `${cidCode} ${cidDesc}`.trim();
+      }
+
+      const setorPart = parts.find(p => p.includes(' - ') && /[A-Z]/.test(p));
+      if (setorPart) {
+        setor = setorPart.split(' - ').slice(1).join(' - ') || setorPart;
+      }
+
+      detalhes = parts.filter(p => p !== colaborador && p !== data && !p.includes(motivo)).slice(0, 3).join(', ');
+    }
+  }
+
+  return { colaborador, data, setor, motivo, detalhes };
+}
+
+function filterAuditoria() {
+  const input = document.getElementById('input-auditoria');
+  const term = input ? input.value.toLowerCase() : '';
+  const tbody = document.getElementById('tbody-auditoria');
+  const countEl = document.getElementById('auditoria-count');
+  if(!tbody) return;
+
+  const results = [];
+  
+  ['atestados', 'afastados', 'acidentes'].forEach(category => {
+    if(state[category] && Array.isArray(state[category])) {
+      state[category].forEach(item => {
+        const itemStr = JSON.stringify(item);
+        if (itemStr.toLowerCase().includes(term)) {
+          results.push({ category, data: item });
+        }
+      });
+    }
+  });
+
+  const maxResults = 100;
+  const renderList = results.slice(0, maxResults);
+  
+  tbody.innerHTML = renderList.map(r => {
+    let catColor = r.category === 'atestados' ? '#f3e8ff' : (r.category === 'afastados' ? '#dcfce7' : '#dbeafe');
+    let catTextColor = r.category === 'atestados' ? '#6b21a8' : (r.category === 'afastados' ? '#166534' : '#1e40af');
+    const norm = normalizeAuditoriaItem(r.category, r.data);
+
+    return `<tr>
+      <td style="width:100px;"><span style="background:${catColor}; color:${catTextColor}; padding:3px 8px; border-radius:4px; font-weight:600; font-size:10px; text-transform:uppercase;">${r.category}</span></td>
+      <td style="font-weight:600; color:var(--color-text-primary);">${norm.colaborador}</td>
+      <td style="white-space:nowrap;">${norm.data}</td>
+      <td>${norm.setor}</td>
+      <td style="color:#1e40af; font-weight:500;">${norm.motivo}</td>
+      <td style="font-size:11px; color:#64748b;">${norm.detalhes}</td>
+    </tr>`;
+  }).join('');
+  
+  if(countEl) {
+    countEl.textContent = `${results.length} resultados encontrados${results.length > maxResults ? ' (exibindo os 100 primeiros)' : ''}.`;
+  }
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Ocultar elementos de upload manual
+  const btnUpload = document.querySelector('.btn-upload');
+  if (btnUpload) btnUpload.style.display = 'none';
+  const uploadHistory = document.getElementById('upload-history');
+  if (uploadHistory) uploadHistory.style.display = 'none';
+
+  // Injeção de Payload Global via sst_data.js (100% à prova de CORS e executável via file://)
+  if (typeof window.__SST_DATA__ !== 'undefined' && window.__SST_DATA__) {
+    if (window.__SST_DATA__.acidentes) state.acidentes = window.__SST_DATA__.acidentes;
+    if (window.__SST_DATA__.afastados) state.afastados = window.__SST_DATA__.afastados;
+    if (window.__SST_DATA__.atestados) state.atestados = window.__SST_DATA__.atestados;
+    console.log("Payload sst_data.js carregado com sucesso em window.__SST_DATA__.");
+  } else {
+    console.warn("window.__SST_DATA__ não encontrado. Usando dados padrão DEFAULT_DATA.");
+  }
+  if (typeof window.__HEADCOUNT_DATA__ !== 'undefined' && window.__HEADCOUNT_DATA__) {
+    console.log("Payload headcount_data.js carregado com sucesso em window.__HEADCOUNT_DATA__.");
+  }
+
+  init();
+});
 </script>
 </body>
 </html>

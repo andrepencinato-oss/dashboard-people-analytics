@@ -13,11 +13,34 @@ from googleapiclient.http import MediaFileUpload
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def get_drive_service():
-    creds_path = os.path.join('core', 'token.json')
-    if not os.path.exists(creds_path):
-        print("Erro: token.json nao encontrado.")
-        sys.exit(1)
-    creds = Credentials.from_authorized_user_file(creds_path)
+    from google.auth.transport.requests import Request
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    creds_path = os.path.join('core', 'credentials.json')
+    token_path = os.path.join('core', 'token.json')
+    SCOPES = ['https://www.googleapis.com/auth/drive']
+    
+    creds = None
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                print(f"Erro ao atualizar o token. Sera necessario reautenticar. Detalhes: {e}")
+                creds = None
+        
+        if not creds or not creds.valid:
+            if not os.path.exists(creds_path):
+                print("Erro: credentials.json nao encontrado para gerar novo token.")
+                sys.exit(1)
+            flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
+            creds = flow.run_local_server(port=0)
+            
+        with open(token_path, 'w') as token:
+            token.write(creds.to_json())
+            
     return build('drive', 'v3', credentials=creds)
 
 def compile_app(app_name, spec_path):

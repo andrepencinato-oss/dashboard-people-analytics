@@ -1,0 +1,12 @@
+{
+  "usuarios": [
+    {
+      "login": "Andre",
+      "senha": "*Savoia10",
+      "nome": "Administrador",
+      "setores": [],
+      "admin": true,
+      "ativo": true
+    }
+  ]
+}

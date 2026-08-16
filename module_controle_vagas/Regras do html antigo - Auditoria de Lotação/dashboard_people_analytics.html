@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Executivo de People Analytics | Diretoria</title>
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Palette Color Tokens - Google Material 3 Executive Theme */
+            --md-sys-color-primary: #3F51B5;
+            --md-sys-color-primary-container: #E8EAF6;
+            --md-sys-color-on-primary-container: #1A237E;
+            --md-sys-color-secondary: #00897B;
+            --md-sys-color-secondary-container: #E0F2F1;
+            --md-sys-color-on-secondary-container: #004D40;
+            --md-sys-color-tertiary: #7E57C2;
+            --md-sys-color-error: #D32F2F;
+            --md-sys-color-error-container: #FFEBEE;
+            --md-sys-color-warning: #ED6C02;
+            --md-sys-color-warning-container: #FFF3E0;
+            --md-sys-color-success: #2E7D32;
+            --md-sys-color-success-container: #E8F5E9;
+            
+            --md-sys-color-background: #F8F9FA;
+            --md-sys-color-surface: #FFFFFF;
+            --md-sys-color-surface-variant: #F1F3F4;
+            --md-sys-color-on-surface: #1F1F1F;
+            --md-sys-color-on-surface-variant: #5F6368;
+            --md-sys-color-outline: #DADCE0;
+            --md-sys-color-outline-variant: #E8EAED;
+
+            /* Elevation Shadows */
+            --shadow-level-1: 0px 1px 3px rgba(0, 0, 0, 0.08), 0px 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-level-2: 0px 4px 12px rgba(0, 0, 0, 0.08), 0px 1px 4px rgba(0, 0, 0, 0.04);
+            --shadow-level-3: 0px 8px 24px rgba(0, 0, 0, 0.12), 0px 2px 8px rgba(0, 0, 0, 0.06);
+
+            --radius-small: 8px;
+            --radius-medium: 16px;
+            --radius-large: 24px;
+            --radius-pill: 999px;
+
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-surface);
+            padding: 24px 3cm;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 1200px) {
+            body {
+                padding: 24px 1.5cm;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+        }
+
+        .dashboard-container {
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* App Header */
+        header.app-header {
+            background: linear-gradient(135deg, #1A237E 0%, #3F51B5 60%, #5C6BC0 100%);
+            color: white;
+            padding: 24px 32px;
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-level-2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header.app-header::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 350px;
+            height: 350px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .header-title-group h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title-group p {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.92rem;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-badge {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 8px 16px;
+            border-radius: var(--radius-pill);
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-header-action {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: var(--radius-pill);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition-fast);
+        }
+
+        .btn-header-action:hover {
+            background: rgba(255, 255, 255, 0.35);
+        }
+
+        /* Unified Single File Upload Zone */
+        .unified-upload-section {
+            background: var(--md-sys-color-surface);
+            border-radius: var(--radius-large);
+            padding: 24px;
+            box-shadow: var(--shadow-level-1);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .drop-zone {
+            border: 2.5px dashed #3F51B5;
+            background: #F4F5FB;
+            border-radius: var(--radius-medium);
+            padding: 32px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #1A237E;
+            background: #E8EAF6;
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .drop-zone-icon {
+            width: 56px;
+            height: 56px;
+            background: #3F51B5;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-level-1);
+        }
+
+        .drop-zone-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1A237E;
+        }
+
+        .drop-zone-subtitle {
+            font-size: 0.88rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .uploaded-files-pills {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .file-pill {
+            background: #E8F5E9;
+            color: #1B5E20;
+            border: 1px solid #A5D6A7;
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .upload-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }
+
+        .btn-md {
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 10px 24px;
+            border-radius: var(--radius-pill);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition-fast);
+        }
+
+        .btn-primary {
+            background-color: var(--md-sys-color-primary);
+            color: white;
+            box-shadow: var(--shadow-level-1);
+        }
+
+        .btn-primary:hover {
+            background-color: #303F9F;
+            box-shadow: var(--shadow-level-2);
+        }
+
+        .btn-secondary {
+            background-color: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface);
+            border: 1px solid var(--md-sys-color-outline);
+        }
+
+        .btn-secondary:hover {
+            background-color: #E8EAED;
+        }
+
+        /* Executive KPI Cards Grid */
+        .kpi-section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .kpi-section-title h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kpi-section-subtitle {
+            font-size: 0.85rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .filter-active-indicator {
+            background: #FFF3E0;
+            color: #E65100;
+            border: 1px solid #FFE0B2;
+            padding: 2px 10px;
+            border-radius: var(--radius-pill);
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: none;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 1300px) {
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            }
+        }
+
+        .kpi-card {
+            background: var(--md-sys-color-surface);
+            border-radius: var(--radius-large);
+            padding: 16px 12px;
+            box-shadow: var(--shadow-level-1);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-level-3);
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .kpi-card.active-card {
+            border-color: var(--md-sys-color-primary) !important;
+            background: #F4F5FB;
+            box-shadow: var(--shadow-level-2);
+        }
+
+        .kpi-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .kpi-icon-wrapper {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .kpi-card-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kpi-card-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.1rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-top: 4px;
+            color: var(--md-sys-color-on-surface);
+            transition: color 0.2s ease;
+        }
+
+        .kpi-card-footer {
+            margin-top: 10px;
+            font-size: 0.7rem;
+            color: var(--md-sys-color-on-surface-variant);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Color variations for KPI Cards */
+        .kpi-blue .kpi-icon-wrapper { background: #E8EAF6; color: #1A237E; }
+        .kpi-purple .kpi-icon-wrapper { background: #F3E5F5; color: #4A148C; }
+        .kpi-amber .kpi-icon-wrapper { background: #FFF3E0; color: #E65100; }
+        .kpi-orange .kpi-icon-wrapper { background: #FBE9E7; color: #D84315; }
+        .kpi-red .kpi-icon-wrapper { background: #FFEBEE; color: #C62828; }
+
+        /* Highlight Head Efetivo Card */
+        .kpi-card.kpi-featured {
+            background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 60%, #43A047 100%);
+            color: white;
+            border: none;
+            box-shadow: var(--shadow-level-2);
+        }
+        .kpi-card.kpi-featured .kpi-card-label { color: rgba(255,255,255,0.85); }
+        .kpi-card.kpi-featured .kpi-card-value { color: #FFFFFF; font-size: 2.5rem; }
+        .kpi-card.kpi-featured .kpi-card-footer { color: rgba(255,255,255,0.9); }
+        .kpi-card.kpi-featured .kpi-icon-wrapper { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Interactive Input inside Demission Forecast Card */
+        .interactive-input-group {
+            margin-top: 6px;
+        }
+
+        .interactive-input-group input {
+            width: 100%;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: var(--radius-small);
+            border: 2px solid var(--md-sys-color-warning);
+            background: white;
+            color: var(--md-sys-color-on-surface);
+            outline: none;
+        }
+
+        .interactive-input-group input:focus {
+            border-color: #D84315;
+            box-shadow: 0 0 0 3px rgba(239, 108, 0, 0.2);
+        }
+
+        /* Drill-down Table Section (Hidden by Default) */
+        .drilldown-panel {
+            background: var(--md-sys-color-surface);
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-level-2);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            overflow: hidden;
+            display: none; /* Opens when Card is clicked */
+            animation: slideDown 0.3s cubic-bezier(0, 0, 0.2, 1);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .drilldown-header {
+            padding: 18px 24px;
+            background: #FAFAFA;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .drilldown-title h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drilldown-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-box {
+            position: relative;
+            width: 280px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 16px 8px 36px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--md-sys-color-outline);
+            font-size: 0.86rem;
+            outline: none;
+            background: white;
+        }
+
+        .search-box .material-symbols-outlined {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 18px;
+        }
+
+        /* Table Styling */
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        table.cc-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.88rem;
+        }
+
+        table.cc-table th {
+            position: sticky;
+            top: 0;
+            background: #EDF0F7;
+            color: #1A237E;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--md-sys-color-outline);
+            white-space: nowrap;
+            z-index: 2;
+            user-select: none;
+        }
+
+        table.cc-table th.sortable {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        table.cc-table th.sortable:hover {
+            background: #E0E5F3;
+        }
+
+        .sort-arrows {
+            display: inline-flex;
+            gap: 2px;
+            font-size: 0.72rem;
+            margin-left: 4px;
+            color: #7986CB;
+            vertical-align: middle;
+        }
+
+        .sort-arrows.active {
+            color: #1A237E;
+            font-weight: 900;
+        }
+
+        table.cc-table td {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            color: var(--md-sys-color-on-surface);
+            vertical-align: middle;
+        }
+
+        table.cc-table tbody tr:hover {
+            background-color: #F4F6FB;
+        }
+
+        table.cc-table td.col-cc {
+            font-weight: 700;
+            color: #2C3E50;
+        }
+
+        table.cc-table td.col-number {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        table.cc-table td.col-salario {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: #1A237E;
+        }
+
+        table.cc-table td.col-ativo {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: #2E7D32;
+            font-size: 1rem;
+        }
+
+        .table-footer-summary {
+            background: #E8EAF6;
+            font-weight: 700;
+            border-top: 2px solid #3F51B5;
+        }
+
+        .table-footer-summary td {
+            font-size: 0.92rem;
+            color: #1A237E;
+        }
+
+        /* Tooltip Styles for Hovering Imputed Details */
+        .info-tooltip-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+
+        .tooltip-icon {
+            font-size: 18px;
+            color: #ED6C02;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .info-tooltip-wrapper:hover .tooltip-icon {
+            color: #D84315;
+            transform: scale(1.25);
+        }
+
+        .tooltip-popup {
+            position: absolute;
+            bottom: 130%;
+            left: 0;
+            width: 320px;
+            background: #1E293B;
+            color: #F8FAFC;
+            padding: 14px 16px;
+            border-radius: var(--radius-medium);
+            box-shadow: var(--shadow-level-3);
+            font-size: 0.82rem;
+            font-weight: 400;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+        }
+
+        .info-tooltip-wrapper:hover .tooltip-popup {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-6px);
+        }
+
+        .tooltip-header {
+            font-weight: 700;
+            color: #FFD54F;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            padding-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tooltip-body p {
+            margin-top: 6px;
+            line-height: 1.4;
+            color: #E2E8F0;
+        }
+
+        .tooltip-body b {
+            color: #FFFFFF;
+        }
+
+        /* Badges */
+        .badge {
+            padding: 3px 8px;
+            border-radius: var(--radius-pill);
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .kpi-card-header .badge {
+            max-width: calc(100% - 44px);
+        }
+
+        .badge-info { background: #E3F2FD; color: #0D47A1; }
+        .badge-warning { background: #FFF3E0; color: #E65100; }
+        .badge-danger { background: #FFEBEE; color: #C62828; }
+
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: #323232;
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius-small);
+            font-size: 0.88rem;
+            box-shadow: var(--shadow-level-3);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Modal Glassmorphic Styling for Industry Cost Center Selection */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-card {
+            background: #FFFFFF;
+            border-radius: 16px;
+            width: 92%;
+            max-width: 680px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            overflow: hidden;
+        }
+        .modal-header {
+            padding: 18px 24px;
+            background: #FAFAFA;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-toolbar {
+            padding: 12px 24px;
+            background: #F8FAFC;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .modal-body-list {
+            padding: 18px 24px;
+            overflow-y: auto;
+            max-height: 380px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px;
+        }
+        .cc-item-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #E2E8F0;
+            background: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .cc-item-checkbox:hover {
+            border-color: #1A237E;
+            background: #F4F5FB;
+        }
+        .cc-item-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #1A237E;
+            cursor: pointer;
+        }
+        .cc-item-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .cc-item-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #1E293B;
+        }
+        .cc-item-count {
+            font-size: 0.74rem;
+            color: #64748B;
+        }
+        .modal-footer {
+            padding: 16px 24px;
+            background: #FAFAFA;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cc-filter-active-pill {
+            background: #E8EAF6;
+            color: #1A237E;
+            border: 1px solid #C7D2FE;
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    
+    <!-- Executive Header -->
+    <header class="app-header">
+        <div class="header-title-group">
+            <h1>
+                <span class="material-symbols-outlined" style="font-size: 30px;">analytics</span>
+                People Analytics & Controle de Vagas
+            </h1>
+            <p>Painel Executivo de Indicadores de Headcount, Afastamentos e Dimensionamento</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-header-action" onclick="openCCConfigModal()" style="background:#EEF2FF; color:#1A237E; border:1px solid #C7D2FE;">
+                <span class="material-symbols-outlined" style="font-size: 18px;">factory</span>
+                Setores da Indústria
+                <span id="cc-active-count-badge" class="badge" style="background:#1A237E; color:white; margin-left:4px; display:none;">Ativo</span>
+            </button>
+            <button class="btn-header-action" id="btn-toggle-upload" onclick="toggleUploadSection()" style="display: none;">
+                <span class="material-symbols-outlined" style="font-size: 18px;">upload_file</span>
+                Alterar Bases CSV
+            </button>
+            <div class="header-badge">
+                <span class="material-symbols-outlined" style="font-size: 18px; color: #4CAF50;">verified</span>
+                Visão Diretoria
+            </div>
+        </div>
+    </header>
+
+    <!-- Unified Single Upload Zone for All 3 Files at Once -->
+    <section class="unified-upload-section" id="upload-section">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('input-multi-files').click()">
+            <input type="file" id="input-multi-files" accept=".csv" multiple onchange="handleMultipleFiles(this.files)">
+            <div class="drop-zone-icon">
+                <span class="material-symbols-outlined" style="font-size: 28px;">upload_file</span>
+            </div>
+            <div class="drop-zone-title">Clique aqui ou arraste os 3 arquivos CSV de uma só vez</div>
+            <div class="drop-zone-subtitle">Selecione conjuntamente os arquivos de <b>Headcount</b>, <b>Afastamento</b> e <b>Aviso Prévio</b></div>
+        </div>
+
+        <div class="uploaded-files-pills" id="uploaded-files-pills"></div>
+
+        <div class="upload-actions">
+            <button class="btn-md btn-primary" onclick="processSelectedFiles()">
+                <span class="material-symbols-outlined">sync</span>
+                Processar e Atualizar Dashboard
+            </button>
+        </div>
+    </section>
+
+    <!-- Executive KPI Section (Cards First View) -->
+    <section class="kpi-section">
+        <div class="kpi-section-title">
+            <h2>
+                Indicadores Consolidados (Totalizadores Globais)
+                <span class="filter-active-indicator" id="filter-indicator">⚡ Filtrado</span>
+            </h2>
+            <div class="kpi-section-subtitle">Clique no Card para expandir/recolher o detalhamento</div>
+        </div>
+
+        <div class="kpi-grid">
+            
+            <!-- Card 1: Total Head -->
+            <div class="kpi-card kpi-blue" id="card-total-head" onclick="toggleCardView('total-head')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper">
+                        <span class="material-symbols-outlined">group</span>
+                    </div>
+                    <span class="badge badge-info">Base Total</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Total Head</div>
+                    <div class="kpi-card-value" id="kpi-total-head">0</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">touch_app</span>
+                    Lista detalhada de Colaboradores
+                </div>
+            </div>
+
+            <!-- Card: Afastados (Licenças / INSS / Saúde) -->
+            <div class="kpi-card kpi-pink" id="card-afastados" onclick="toggleCardView('afastados')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper" style="background:#FCE4EC; color:#C2185B;">
+                        <span class="material-symbols-outlined">medical_services</span>
+                    </div>
+                    <span class="badge" style="background:#F8BBD0; color:#880E4F;">Licença / Saúde</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Afastados</div>
+                    <div class="kpi-card-value" id="kpi-afastados">0</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">touch_app</span>
+                    Total de colaboradores afastados
+                </div>
+            </div>
+
+            <!-- Card 2: Aposentado -->
+            <div class="kpi-card kpi-purple" id="card-aposentados" onclick="toggleCardView('aposentados')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper">
+                        <span class="material-symbols-outlined">elderly</span>
+                    </div>
+                    <span class="badge" style="background:#E1BEE7; color:#4A148C;" title="Invalidez / Aposentadoria">Aposentadoria</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Aposentados</div>
+                    <div class="kpi-card-value" id="kpi-aposentados">0</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">touch_app</span>
+                    Filtrado por motivo aposentadoria
+                </div>
+            </div>
+
+            <!-- Card 3: Recluso -->
+            <div class="kpi-card kpi-amber" id="card-reclusos" onclick="toggleCardView('reclusos')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper">
+                        <span class="material-symbols-outlined">gavel</span>
+                    </div>
+                    <span class="badge badge-warning">Reclusão</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Reclusos</div>
+                    <div class="kpi-card-value" id="kpi-reclusos">0</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">touch_app</span>
+                    Filtrado por motivo reclusão
+                </div>
+            </div>
+
+            <!-- Card 4: Aviso Prévio -->
+            <div class="kpi-card kpi-orange" id="card-aviso" onclick="toggleCardView('aviso')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper">
+                        <span class="material-symbols-outlined">pending_actions</span>
+                    </div>
+                    <span class="badge badge-warning">Desligamentos</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Aviso Prévio</div>
+                    <div class="kpi-card-value" id="kpi-aviso-previo">0</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">touch_app</span>
+                    Em cumprimento de aviso prévio
+                </div>
+            </div>
+
+            <!-- Card 5: Previsão de Demissão -->
+            <div class="kpi-card kpi-red" id="card-previsao-demissao" onclick="toggleCardView('previsao-demissao')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper">
+                        <span class="material-symbols-outlined">trending_down</span>
+                    </div>
+                    <span class="badge badge-danger">Demissões Previstas</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Previsão de Demissão</div>
+                    <div class="kpi-card-value" id="kpi-previsao-demissao">10</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">touch_app</span>
+                    Lista de Colaboradores Previstos
+                </div>
+            </div>
+
+            <!-- Card 6: Total Ativo (HEAD EFETIVO - CÁLCULO FINAL AUTOMÁTICO) -->
+            <div class="kpi-card kpi-featured" id="card-ativo" onclick="toggleCardView('ativo')">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon-wrapper">
+                        <span class="material-symbols-outlined">badge</span>
+                    </div>
+                    <span class="badge" style="background:rgba(255,255,255,0.25); color:white;">Head Efetivo</span>
+                </div>
+                <div>
+                    <div class="kpi-card-label">Total Ativo (Efetivo)</div>
+                    <div class="kpi-card-value" id="kpi-total-ativo">0</div>
+                </div>
+                <div class="kpi-card-footer">
+                    <span class="material-symbols-outlined" style="font-size: 15px;">verified</span>
+                    Lista de Colaboradores Efetivos
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Drill-down Table Section (Aberta / Recolhida ao Clicar nos Cards) -->
+    <section class="drilldown-panel" id="drilldown-panel">
+        <div class="drilldown-header">
+            <div class="drilldown-title">
+                <h3 id="drilldown-title-text">
+                    <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">group</span>
+                    Lista de Colaboradores
+                </h3>
+            </div>
+
+            <div class="drilldown-actions">
+                <div class="search-box">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text" id="search-input" placeholder="Filtrar nesta lista..." oninput="handleSearchInput()">
+                </div>
+                <button class="btn-md btn-secondary" onclick="exportCurrentViewExcel()" style="background:#1D6F42; color:white; border:none;">
+                    <span class="material-symbols-outlined">table_view</span>
+                    Exportar para Excel
+                </button>
+                <button class="btn-md btn-secondary" onclick="closeDrilldown()" style="padding: 6px;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="cc-table" id="main-table">
+                <thead id="main-table-head">
+                    <!-- Dynamic Table Headers -->
+                </thead>
+                <tbody id="main-table-body">
+                    <!-- Dynamic Table Body -->
+                </tbody>
+                <tfoot id="main-table-foot">
+                    <!-- Dynamic Table Footer -->
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Modal Glassmorphic: Configuração de Centros de Custo (Indústria) -->
+<div class="modal-overlay" id="cc-modal-overlay" onclick="closeCCConfigModalOnOverlay(event)">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div class="kpi-icon-wrapper" style="background:#EEF2FF; color:#1A237E; width:42px; height:42px;">
+                    <span class="material-symbols-outlined">factory</span>
+                </div>
+                <div>
+                    <h3 style="font-family:'Outfit',sans-serif; font-size:1.15rem; font-weight:700; color:#1A237E; margin:0;">Configurar Setores da Indústria</h3>
+                    <p style="font-size:0.8rem; color:#64748B; margin:2px 0 0 0;">Selecione os Centros de Custo que deseja visualizar no Dashboard. Salvo no seu navegador.</p>
+                </div>
+            </div>
+            <button class="btn-md btn-secondary" onclick="closeCCConfigModal()" style="padding:6px; border:none;">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div class="modal-toolbar">
+            <div class="search-box" style="width:100%; max-width:320px;">
+                <span class="material-symbols-outlined">search</span>
+                <input type="text" id="cc-modal-search" placeholder="Buscar setor / centro de custo..." oninput="filterCCModalList()">
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn-md btn-secondary" onclick="selectAllCCs(true)">Marcar Todos</button>
+                <button class="btn-md btn-secondary" onclick="selectAllCCs(false)">Desmarcar Todos</button>
+            </div>
+        </div>
+
+        <div class="modal-body-list" id="cc-modal-list">
+            <!-- Dynamic checkboxes for all Cost Centers -->
+        </div>
+
+        <div class="modal-footer">
+            <span id="cc-modal-counter" style="font-size:0.82rem; font-weight:600; color:#475569;">0 setores selecionados</span>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-md btn-secondary" onclick="clearCCFilterStorage()">Restaurar Padrão</button>
+                <button class="btn-md btn-primary" onclick="saveCCConfig()" style="background:#1A237E;">
+                    <span class="material-symbols-outlined">save</span>
+                    Salvar e Aplicar Filtro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedFiles = [];
+    let currentView = null; // 'total-head', 'aposentados', 'reclusos', 'aviso', 'ativo'
+    let currentSort = { field: 'nome', direction: 'asc' };
+
+    // LISTAS FIXAS DE CADASTROS SOLICITADOS PELA DIRETORIA
+    const KNOWN_APOSENTADOS = ['1135', '510', '4926'];
+    const KNOWN_RECLUSOS = ['3338'];
+
+    // LISTA DE PREVISÃO DE DEMISSÃO SOLICITADA PELA DIRETORIA
+    const KNOWN_PREVISAO_DEMISSAO = [
+        { qtd: 8, cad: '3762', nome: 'EDSON TOMIYOSHI', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '22/07/2022' },
+        { qtd: 34, cad: '3776', nome: 'MARIA DAS DORES GABRIEL VIEIRA', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '04/08/2022' },
+        { qtd: 45, cad: '3788', nome: 'SAMARA MOURA ARAUJO', status: 'Trabalhando', cc: 'PU - MDF - LIX.', admissao: '10/08/2022' },
+        { qtd: 16, cad: '3596', nome: 'FRANCISCA FRANCILENE VASCONCELOS', status: 'Trabalhando', cc: 'PU - MDF - LIX.', admissao: '23/11/2021' },
+        { qtd: 11, cad: '4209', nome: 'ELIZABETI DA SILVA CESARIO COMUNHAO', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '25/04/2024' },
+        { qtd: 48, cad: '4068', nome: 'VITOR JUNIOR RABELO NUNES', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '20/02/2024' },
+        { qtd: 49, cad: '4470', nome: 'WELINGTON BATISTA DA SILVA', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '05/11/2024' },
+        { qtd: 31, cad: '4562', nome: 'MARCIEL ALESSANDRO VARINI', status: 'Trabalhando', cc: 'CNC', admissao: '01/04/2025' },
+        { qtd: 46, cad: '4651', nome: 'TAIS CONCEICAO DOS SANTOS', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '29/05/2025' },
+        { qtd: 2, cad: '4712', nome: 'ANA LUIZA PEREIRA DE SA', status: 'Trabalhando', cc: 'TUPIAS E FRESAS', admissao: '22/07/2025' }
+    ];
+
+    // DETALHES GRAVADOS DE PEDIDOS DE DEMISSÃO ATÉ 22/07/2026 (RESCISÕES PENDENTES DE PROCESSAMENTO NO ERP)
+    const KNOWN_AVISO_PREVIO_DETAILS = {
+        '4970': {
+            dataPedido: '21/07/2026',
+            motivo: 'Rescisão antecipada experiência por parte do empregado',
+            observacao: 'Pedido de demissão registrado até 22/07/2026 (Rescisão Pendente)'
+        },
+        '4955': {
+            dataPedido: '20/07/2026',
+            motivo: 'Rescisão antecipada experiência por parte do empregado',
+            observacao: 'Pedido de demissão registrado até 22/07/2026 (Rescisão Pendente)'
+        },
+        '4993': {
+            dataPedido: '22/07/2026',
+            motivo: 'Rescisão antecipada experiência por parte do empregado',
+            observacao: 'Pedido de demissão registrado até 22/07/2026 (Rescisão Pendente)'
+        }
+    };
+
+    let processedState = {
+        employees: [],
+        costCenters: {},
+        totals: {
+            head: 0,
+            aposentados: 0,
+            reclusos: 0,
+            outrosAfastados: 0,
+            afastadosTotal: 0,
+            avisoPrevio: 0,
+            previsaoDemissao: 0,
+            totalAtivo: 0
+        }
+    };
+
+    // GERENCIAMENTO DE SETORES DA INDÚSTRIA (PERSISTÊNCIA VIA LOCALSTORAGE / COOKIES)
+    const STORAGE_KEY_INDUSTRY_CCS = 'people_analytics_industry_ccs';
+
+    function getSavedIndustryCCs() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY_INDUSTRY_CCS);
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function saveIndustryCCs(ccList) {
+        try {
+            if (ccList === null) {
+                localStorage.removeItem(STORAGE_KEY_INDUSTRY_CCS);
+            } else {
+                localStorage.setItem(STORAGE_KEY_INDUSTRY_CCS, JSON.stringify(ccList));
+            }
+        } catch (e) {
+            console.error("Erro ao salvar no localStorage", e);
+        }
+    }
+
+    function getActiveIndustryCCSet() {
+        const saved = getSavedIndustryCCs();
+        return saved !== null ? new Set(saved) : null;
+    }
+
+    function openCCConfigModal() {
+        const overlay = document.getElementById('cc-modal-overlay');
+        const modalList = document.getElementById('cc-modal-list');
+        modalList.innerHTML = '';
+
+        let allCCs = Object.keys(processedState.costCenters);
+        if (allCCs.length === 0) {
+            const defaultSet = new Set();
+            KNOWN_PREVISAO_DEMISSAO.forEach(i => defaultSet.add(i.cc));
+            ['TUPIAS E FRESAS', 'CNC', 'PU - MDF - LIX.', 'MONTAGEM', 'EMBALAGEM', 'PINTURA', 'ALMOXARIFADO', 'MANUTENÇÃO'].forEach(c => defaultSet.add(c));
+            allCCs = Array.from(defaultSet);
+        }
+        allCCs.sort((a, b) => a.localeCompare(b));
+
+        const savedFilter = getSavedIndustryCCs();
+        const activeSet = savedFilter !== null ? new Set(savedFilter) : new Set(allCCs);
+
+        allCCs.forEach(cc => {
+            const empCount = processedState.costCenters[cc] ? processedState.costCenters[cc].headTotal : 0;
+            const isChecked = activeSet.has(cc);
+
+            const div = document.createElement('label');
+            div.className = 'cc-item-checkbox';
+            div.innerHTML = `
+                <input type="checkbox" value="${escapeHtml(cc)}" ${isChecked ? 'checked' : ''} onchange="updateCCModalCounter()">
+                <div class="cc-item-info">
+                    <span class="cc-item-name">${escapeHtml(cc)}</span>
+                    <span class="cc-item-count">${empCount > 0 ? empCount + ' colaboradores' : 'Setor Indústria'}</span>
+                </div>
+            `;
+            modalList.appendChild(div);
+        });
+
+        document.getElementById('cc-modal-search').value = '';
+        updateCCModalCounter();
+        overlay.style.display = 'flex';
+    }
+
+    function closeCCConfigModal() {
+        document.getElementById('cc-modal-overlay').style.display = 'none';
+    }
+
+    function closeCCConfigModalOnOverlay(event) {
+        if (event.target.id === 'cc-modal-overlay') {
+            closeCCConfigModal();
+        }
+    }
+
+    function filterCCModalList() {
+        const query = document.getElementById('cc-modal-search').value.toLowerCase().trim();
+        const items = document.querySelectorAll('.cc-item-checkbox');
+        items.forEach(item => {
+            const name = item.querySelector('.cc-item-name').innerText.toLowerCase();
+            item.style.display = name.includes(query) ? 'flex' : 'none';
+        });
+    }
+
+    function selectAllCCs(flag) {
+        const checkboxes = document.querySelectorAll('#cc-modal-list input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = flag);
+        updateCCModalCounter();
+    }
+
+    function updateCCModalCounter() {
+        const checked = document.querySelectorAll('#cc-modal-list input[type="checkbox"]:checked');
+        const total = document.querySelectorAll('#cc-modal-list input[type="checkbox"]');
+        document.getElementById('cc-modal-counter').innerText = `${checked.length} de ${total.length} setores selecionados`;
+    }
+
+    function saveCCConfig() {
+        const checkedBoxes = document.querySelectorAll('#cc-modal-list input[type="checkbox"]:checked');
+        const totalBoxes = document.querySelectorAll('#cc-modal-list input[type="checkbox"]');
+        
+        let selectedCCs = [];
+        checkedBoxes.forEach(cb => selectedCCs.push(cb.value));
+
+        if (selectedCCs.length === totalBoxes.length) {
+            saveIndustryCCs(null);
+            showToast("Todos os setores selecionados (visão completa).");
+        } else if (selectedCCs.length === 0) {
+            saveIndustryCCs([]);
+            showToast("Nenhum setor selecionado.", "warning");
+        } else {
+            saveIndustryCCs(selectedCCs);
+            showToast(`Filtro salvo: ${selectedCCs.length} setores da Indústria ativos!`);
+        }
+
+        closeCCConfigModal();
+        applyIndustryCCFilter();
+    }
+
+    function clearCCFilterStorage() {
+        saveIndustryCCs(null);
+        showToast("Filtro restaurado para todos os setores.");
+        closeCCConfigModal();
+        applyIndustryCCFilter();
+    }
+
+    function applyIndustryCCFilter() {
+        const activeCCSet = getActiveIndustryCCSet();
+        const badge = document.getElementById('cc-active-count-badge');
+
+        if (activeCCSet !== null) {
+            if (badge) {
+                badge.innerText = `Ativo (${activeCCSet.size} Setores)`;
+                badge.style.display = 'inline-block';
+            }
+        } else {
+            if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+
+        updateKPIUI();
+        if (currentView) {
+            renderEmployeeListTable();
+        }
+    }
+
+    // Reference Date for "Tempo de Casa" calculation
+    const REFERENCE_DATE = new Date(2026, 6, 22);
+
+    function parseDate(dateStr) {
+        if (!dateStr) return null;
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            let year = parseInt(parts[2], 10);
+            if (year < 100) year += 2000;
+            return new Date(year, month, day);
+        }
+        return null;
+    }
+
+    function calculateTenure(admDateStr) {
+        const admDate = parseDate(admDateStr);
+        if (!admDate || isNaN(admDate.getTime())) return { text: 'N/A', totalMonths: 0, totalDays: 0 };
+
+        let diffMs = REFERENCE_DATE.getTime() - admDate.getTime();
+        if (diffMs < 0) diffMs = 0;
+
+        const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const totalMonths = Math.floor(totalDays / 30.4375);
+        const years = Math.floor(totalMonths / 12);
+        const months = totalMonths % 12;
+
+        let text = '';
+        if (years > 0) {
+            text += `${years} ${years === 1 ? 'ano' : 'anos'}`;
+            if (months > 0) text += `, ${months} ${months === 1 ? 'mês' : 'meses'}`;
+        } else if (months > 0) {
+            text = `${months} ${months === 1 ? 'mês' : 'meses'}`;
+        } else {
+            text = `${totalDays} ${totalDays === 1 ? 'dia' : 'dias'}`;
+        }
+
+        return { text, totalMonths, totalDays };
+    }
+
+    function parseSalary(salarioStr) {
+        if (!salarioStr) return { num: 0, text: 'R$ 0,00' };
+        const clean = salarioStr.replace(/[^\d,-]/g, '').replace('.', '').replace(',', '.');
+        const num = parseFloat(clean) || 0;
+        const text = num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        return { num, text };
+    }
+
+    function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e);
+            reader.readAsText(file, 'ISO-8859-1');
+        });
+    }
+
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+
+    function handleMultipleFiles(fileList) {
+        if (!fileList || fileList.length === 0) return;
+        selectedFiles = Array.from(fileList);
+
+        const pillsContainer = document.getElementById('uploaded-files-pills');
+        pillsContainer.innerHTML = '';
+
+        selectedFiles.forEach(file => {
+            pillsContainer.innerHTML += `<div class="file-pill"><span class="material-symbols-outlined" style="font-size:16px;">attach_file</span> ${file.name}</div>`;
+        });
+
+        showToast(`${selectedFiles.length} arquivo(s) selecionado(s). Clique em "Processar e Atualizar Dashboard".`);
+    }
+
+    async function processSelectedFiles() {
+        if (!selectedFiles || selectedFiles.length === 0) {
+            showToast("Por favor, selecione os arquivos CSV primeiro!", "error");
+            return;
+        }
+
+        let hcFile = null;
+        let afFile = null;
+        let apFile = null;
+
+        selectedFiles.forEach(file => {
+            const nameLower = file.name.toLowerCase();
+            if (nameLower.includes('headcount')) {
+                hcFile = file;
+            } else if (nameLower.includes('afastam')) {
+                afFile = file;
+            } else if (nameLower.includes('aviso') || nameLower.includes('previa') || nameLower.includes('previo')) {
+                apFile = file;
+            }
+        });
+
+        if (!hcFile || !afFile || !apFile) {
+            for (const file of selectedFiles) {
+                const text = await readFileAsText(file);
+                if (!hcFile && (text.includes('Relação de Empregados') || text.includes('Cad.,Nome'))) {
+                    hcFile = file;
+                } else if (!afFile && (text.includes('Controle de Frequência') || text.includes('Afastados:'))) {
+                    afFile = file;
+                } else if (!apFile && (text.includes('AVISO PRÉVIO') || text.includes('Tipo Aviso'))) {
+                    apFile = file;
+                }
+            }
+        }
+
+        if (!hcFile) {
+            showToast("Não foi possível identificar a base de Headcount entre os arquivos.", "error");
+            return;
+        }
+
+        const hcText = await readFileAsText(hcFile);
+        const afText = afFile ? await readFileAsText(afFile) : "";
+        const apText = apFile ? await readFileAsText(apFile) : "";
+
+        parseAndConsolidateData(hcText, afText, apText);
+
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('btn-toggle-upload').style.display = 'inline-flex';
+
+        showToast("Dados processados com sucesso! Clique em qualquer Card para expandir a lista.", "success");
+    }
+
+    function toggleUploadSection() {
+        const uploadSec = document.getElementById('upload-section');
+        if (uploadSec.style.display === 'none' || !uploadSec.style.display) {
+            uploadSec.style.display = 'flex';
+            uploadSec.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            uploadSec.style.display = 'none';
+        }
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleMultipleFiles(e.dataTransfer.files);
+        }
+    });
+
+    function parseAndConsolidateData(hcRaw, afRaw, apRaw) {
+        const employeesMap = {};
+        const costCenters = {};
+
+        // 1. PARSE HEADCOUNT
+        const hcLines = hcRaw.split(/\r?\n/);
+        hcLines.forEach(line => {
+            if (!line.trim()) return;
+            const cols = parseCSVLine(line);
+            if (cols.length >= 4 && /^\d+$/.test(cols[0])) {
+                const cad = cols[0];
+                const nome = cols[1];
+                const admissao = cols[2] || '';
+                const cargo = cols[3] || 'N/A';
+                const salarioRaw = cols[4] || '';
+                const cc = cols[5] ? cols[5].toUpperCase() : 'NÃO ESPECIFICADO';
+
+                // EXCLUIR CABEÇALHOS / RODAPÉS DE RELATÓRIO DO SISTEMA
+                if (nome === '-' || nome.includes('MOVEIS') || cargo.includes('Pág') || cad === '0001') {
+                    return;
+                }
+
+                const tenure = calculateTenure(admissao);
+                const salary = parseSalary(salarioRaw);
+
+                employeesMap[cad] = {
+                    cad: cad,
+                    nome: nome,
+                    admissao: admissao,
+                    cargo: cargo,
+                    cc: cc,
+                    salarioNum: salary.num,
+                    salarioText: salary.text,
+                    tenureText: tenure.text,
+                    tenureDays: tenure.totalDays,
+                    afastado: false,
+                    afastadoCsv: false,
+                    motivoAfastamento: '',
+                    avisoPrevio: false,
+                    tipoAviso: '',
+                    avisoDetail: null
+                };
+            }
+        });
+
+        // 2. PARSE AFASTAMENTOS (DO ARQUIVO CSV DE AFASTAMENTOS - EXCLUINDO APOSENTADOS/RECLUSOS PARA EVITAR DUPLICIDADE)
+        if (afRaw) {
+            const afRegex = /(\d{3,6})\s*,\s*([^,]+?)\s*,\s*\d{2}:\d{2},,([^,]+)/g;
+            let match;
+            while ((match = afRegex.exec(afRaw)) !== null) {
+                const cad = match[1].trim();
+                const motivo = match[3].trim();
+                if (employeesMap[cad]) {
+                    employeesMap[cad].afastado = true;
+                    if (!KNOWN_APOSENTADOS.includes(cad) && !KNOWN_RECLUSOS.includes(cad)) {
+                        employeesMap[cad].afastadoCsv = true;
+                        employeesMap[cad].motivoAfastamento = motivo;
+                    }
+                }
+            }
+        }
+
+        // 3. REGISTRAR APOSENTADOS CONHECIDOS (CAD 1135, 510, 4926)
+        KNOWN_APOSENTADOS.forEach(cad => {
+            if (employeesMap[cad]) {
+                employeesMap[cad].afastado = true;
+                employeesMap[cad].motivoAfastamento = 'Aposentadoria por Invalidez';
+            }
+        });
+
+        // 4. REGISTRAR RECLUSOS CONHECIDOS (CAD 3338 - ALESSANDRO RENATO OCANHA DOS SANTOS)
+        KNOWN_RECLUSOS.forEach(cad => {
+            if (employeesMap[cad]) {
+                employeesMap[cad].afastado = true;
+                employeesMap[cad].motivoAfastamento = 'Licença Reclusão';
+            }
+        });
+
+        // 5. PARSE AVISO PRÉVIO (DO ARQUIVO CSV)
+        if (apRaw) {
+            const apLines = apRaw.split(/\r?\n/);
+            apLines.forEach(line => {
+                const cols = parseCSVLine(line);
+                if (cols.length >= 2 && /^\d+$/.test(cols[0])) {
+                    const cad = cols[0];
+                    const tipo = cols[cols.length - 1] || 'Aviso Prévio';
+                    if (employeesMap[cad]) {
+                        employeesMap[cad].avisoPrevio = true;
+                        employeesMap[cad].tipoAviso = tipo;
+                    }
+                }
+            });
+        }
+
+        // 6. REGISTRAR PEDIDOS DE DEMISSÃO/RESCISÕES PENDENTES CONHECIDOS (CAD 4970, 4955, 4993)
+        Object.keys(KNOWN_AVISO_PREVIO_DETAILS).forEach(cad => {
+            if (employeesMap[cad]) {
+                employeesMap[cad].avisoPrevio = true;
+                employeesMap[cad].tipoAviso = 'Pedido de Demissão (Antecipação Exp.)';
+                employeesMap[cad].avisoDetail = KNOWN_AVISO_PREVIO_DETAILS[cad];
+            }
+        });
+
+        // CLASSIFICAÇÃO EXCLUSIVA E SEM DUPLICIDADE DE CATEGORIAS
+        const prevCads = KNOWN_PREVISAO_DEMISSAO.map(i => i.cad);
+
+        Object.values(employeesMap).forEach(emp => {
+            if (prevCads.includes(emp.cad)) {
+                emp.primaryCategory = 'previsao-demissao';
+            } else if (KNOWN_APOSENTADOS.includes(emp.cad) || emp.motivoAfastamento.toLowerCase().includes('aposent')) {
+                emp.primaryCategory = 'aposentados';
+            } else if (KNOWN_RECLUSOS.includes(emp.cad) || emp.motivoAfastamento.toLowerCase().includes('reclus') || emp.motivoAfastamento.toLowerCase().includes('pris')) {
+                emp.primaryCategory = 'reclusos';
+            } else if (emp.avisoPrevio) {
+                emp.primaryCategory = 'aviso';
+            } else if (emp.afastado) {
+                emp.primaryCategory = 'afastados';
+            } else {
+                emp.primaryCategory = 'ativo';
+            }
+        });
+
+        // 7. AGGREGATE STATS
+        let totalHead = 0;
+        let cAfastados = 0;
+        let cAposentados = 0;
+        let cReclusos = 0;
+        let cAviso = 0;
+        let cPrevisao = 0;
+        let cAtivo = 0;
+
+        const employeeList = Object.values(employeesMap);
+
+        employeeList.forEach(emp => {
+            totalHead++;
+            const cc = emp.cc;
+
+            if (!costCenters[cc]) {
+                costCenters[cc] = {
+                    name: cc,
+                    headTotal: 0,
+                    afastadosTotal: 0,
+                    avisoPrevio: 0,
+                    aposentados: 0,
+                    reclusos: 0,
+                    outrosAfastados: 0
+                };
+            }
+
+            costCenters[cc].headTotal++;
+
+            if (emp.primaryCategory === 'afastados') cAfastados++;
+            else if (emp.primaryCategory === 'aposentados') cAposentados++;
+            else if (emp.primaryCategory === 'reclusos') cReclusos++;
+            else if (emp.primaryCategory === 'aviso') cAviso++;
+            else if (emp.primaryCategory === 'previsao-demissao') cPrevisao++;
+            else if (emp.primaryCategory === 'ativo') cAtivo++;
+        });
+
+        processedState.employees = employeeList;
+        processedState.costCenters = costCenters;
+        processedState.totals.head = totalHead;
+        processedState.totals.afastados = cAfastados;
+        processedState.totals.aposentados = cAposentados;
+        processedState.totals.reclusos = cReclusos;
+        processedState.totals.avisoPrevio = cAviso;
+        processedState.totals.previsaoDemissao = KNOWN_PREVISAO_DEMISSAO.length;
+        processedState.totals.totalAtivo = cAtivo;
+
+        updateKPIUI();
+    }
+
+    // UPDATE TOP KPI CARDS DYNAMICALLY INCLUDING ACTIVE CC FILTER AND SEARCH FILTER
+    function updateKPIUI() {
+        const filterInput = document.getElementById('search-input');
+        const filter = (filterInput ? filterInput.value : '').toLowerCase().trim();
+        const indicator = document.getElementById('filter-indicator');
+        const activeCCSet = getActiveIndustryCCSet();
+
+        let head = 0;
+        let afastados = 0;
+        let aposentados = 0;
+        let reclusos = 0;
+        let avisoPrevio = 0;
+        let previsaoDemissao = 0;
+        let totalAtivo = 0;
+
+        const isCCFiltered = activeCCSet !== null;
+        const isSearchFiltered = filter.length > 0;
+
+        if (isCCFiltered || isSearchFiltered) {
+            indicator.style.display = 'inline-block';
+            let labelParts = [];
+            if (isCCFiltered) labelParts.push(`${activeCCSet.size} Setor(es)`);
+            if (isSearchFiltered) labelParts.push('Busca');
+            indicator.innerText = `⚡ Filtrado (${labelParts.join(' + ')})`;
+        } else {
+            indicator.style.display = 'none';
+        }
+
+        if (processedState.employees.length > 0) {
+            processedState.employees.forEach(emp => {
+                // Apply sector (cost center) filter
+                if (isCCFiltered && !activeCCSet.has(emp.cc)) return;
+
+                // Apply text search filter
+                if (isSearchFiltered) {
+                    const matches = (emp.cc && emp.cc.toLowerCase().includes(filter)) ||
+                                    (emp.nome && emp.nome.toLowerCase().includes(filter)) ||
+                                    (emp.cad && emp.cad.toLowerCase().includes(filter)) ||
+                                    (emp.cargo && emp.cargo.toLowerCase().includes(filter)) ||
+                                    (emp.motivoAfastamento && emp.motivoAfastamento.toLowerCase().includes(filter)) ||
+                                    (emp.salarioText && emp.salarioText.toLowerCase().includes(filter));
+                    if (!matches) return;
+                }
+
+                head++;
+                if (emp.primaryCategory === 'afastados') afastados++;
+                else if (emp.primaryCategory === 'aposentados') aposentados++;
+                else if (emp.primaryCategory === 'reclusos') reclusos++;
+                else if (emp.primaryCategory === 'aviso') avisoPrevio++;
+                else if (emp.primaryCategory === 'ativo') totalAtivo++;
+            });
+
+            // Calculate previsaoDemissao based on KNOWN_PREVISAO_DEMISSAO
+            KNOWN_PREVISAO_DEMISSAO.forEach(item => {
+                const found = processedState.employees.find(e => e.cad === item.cad);
+                const empCC = found ? found.cc : item.cc;
+
+                if (isCCFiltered && !activeCCSet.has(empCC)) return;
+
+                if (isSearchFiltered) {
+                    const name = found ? found.nome : item.nome;
+                    const matches = empCC.toLowerCase().includes(filter) ||
+                                    name.toLowerCase().includes(filter) ||
+                                    item.cad.toLowerCase().includes(filter);
+                    if (!matches) return;
+                }
+
+                previsaoDemissao++;
+            });
+        } else {
+            if (isCCFiltered) {
+                KNOWN_PREVISAO_DEMISSAO.forEach(item => {
+                    if (activeCCSet.has(item.cc)) previsaoDemissao++;
+                });
+            } else {
+                previsaoDemissao = KNOWN_PREVISAO_DEMISSAO.length;
+            }
+        }
+
+        document.getElementById('kpi-total-head').innerText = head.toLocaleString('pt-BR');
+        const elemAfast = document.getElementById('kpi-afastados');
+        if (elemAfast) elemAfast.innerText = afastados.toLocaleString('pt-BR');
+        document.getElementById('kpi-aposentados').innerText = aposentados.toLocaleString('pt-BR');
+        document.getElementById('kpi-reclusos').innerText = reclusos.toLocaleString('pt-BR');
+        document.getElementById('kpi-aviso-previo').innerText = avisoPrevio.toLocaleString('pt-BR');
+
+        const elemPrevisao = document.getElementById('kpi-previsao-demissao');
+        if (elemPrevisao) elemPrevisao.innerText = previsaoDemissao.toLocaleString('pt-BR');
+
+        document.getElementById('kpi-total-ativo').innerText = totalAtivo.toLocaleString('pt-BR');
+    }
+
+    function updateCalculatedHeadAtivo(currentHead, currentAfastados, currentAviso) {
+        const previsaoDemissao = KNOWN_PREVISAO_DEMISSAO.length;
+        processedState.totals.previsaoDemissao = previsaoDemissao;
+
+        const baseHead = currentHead !== undefined ? currentHead : processedState.totals.head;
+        const baseAfastados = currentAfastados !== undefined ? currentAfastados : processedState.totals.afastadosTotal;
+        const baseAviso = currentAviso !== undefined ? currentAviso : processedState.totals.avisoPrevio;
+
+        const totalAtivo = Math.max(0, baseHead - baseAfastados - baseAviso - previsaoDemissao);
+        document.getElementById('kpi-total-ativo').innerText = totalAtivo.toLocaleString('pt-BR');
+    }
+
+    // Toggle Card View Logic (Opens or Collapses Table when clicking Card)
+    function toggleCardView(viewType) {
+        const panel = document.getElementById('drilldown-panel');
+
+        document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active-card'));
+
+        // IF ALREADY ACTIVE -> RECOLHER (COLLAPSE / CLOSE TABLE)
+        if (currentView === viewType && panel.style.display !== 'none') {
+            closeDrilldown();
+            return;
+        }
+
+        currentView = viewType;
+        panel.style.display = 'block';
+
+        if (viewType === 'total-head') document.getElementById('card-total-head').classList.add('active-card');
+        else if (viewType === 'afastados') document.getElementById('card-afastados').classList.add('active-card');
+        else if (viewType === 'aposentados') document.getElementById('card-aposentados').classList.add('active-card');
+        else if (viewType === 'reclusos') document.getElementById('card-reclusos').classList.add('active-card');
+        else if (viewType === 'aviso') document.getElementById('card-aviso').classList.add('active-card');
+        else if (viewType === 'previsao-demissao') document.getElementById('card-previsao-demissao').classList.add('active-card');
+        else if (viewType === 'ativo') document.getElementById('card-ativo').classList.add('active-card');
+
+        currentSort = { field: 'nome', direction: 'asc' };
+        renderEmployeeListTable();
+
+        panel.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeDrilldown() {
+        document.getElementById('drilldown-panel').style.display = 'none';
+        document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active-card'));
+        currentView = null;
+    }
+
+    function handleSearchInput() {
+        updateKPIUI(); // ATUALIZA TODOS OS CARDS SUPERIORES CONFORME O FILTRO DIGITADO!
+        renderEmployeeListTable();
+    }
+
+    function handleSort(field) {
+        if (currentSort.field === field) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.field = field;
+            currentSort.direction = 'asc';
+        }
+        renderEmployeeListTable();
+    }
+
+    function getSortArrow(field) {
+        if (currentSort.field !== field) {
+            return `<span class="sort-arrows">▲▼</span>`;
+        }
+        return `<span class="sort-arrows active">${currentSort.direction === 'asc' ? '▲' : '▼'}</span>`;
+    }
+
+    // UNIFIED EMPLOYEE LIST TABLE WITH SAME HEADERS FOR ALL CARDS + INTERACTIVE HOVER TOOLTIPS FOR IMPUTED RESCISÕES
+    function renderEmployeeListTable() {
+        const thead = document.getElementById('main-table-head');
+        const tbody = document.getElementById('main-table-body');
+        const tfoot = document.getElementById('main-table-foot');
+
+        if (currentView === 'previsao-demissao') {
+            thead.innerHTML = `
+                <tr>
+                    <th class="sortable" onclick="handleSort('cad')" style="width: 8%;">CAD ${getSortArrow('cad')}</th>
+                    <th class="sortable" onclick="handleSort('nome')" style="width: 22%;">Nome ${getSortArrow('nome')}</th>
+                    <th class="sortable" onclick="handleSort('status')" style="width: 10%;">Status ${getSortArrow('status')}</th>
+                    <th class="sortable" onclick="handleSort('cc')" style="width: 16%;">Setor ${getSortArrow('cc')}</th>
+                    <th class="sortable" onclick="handleSort('admissao')" style="width: 12%;">Data de Admissao ${getSortArrow('admissao')}</th>
+                    <th class="sortable" onclick="handleSort('tenureDays')" style="width: 12%;">Tempo de casa ${getSortArrow('tenureDays')}</th>
+                    <th class="sortable" onclick="handleSort('cargo')" style="width: 12%;">Cargo ${getSortArrow('cargo')}</th>
+                    <th class="sortable" onclick="handleSort('salarioNum')" style="width: 8%;">Salário ${getSortArrow('salarioNum')}</th>
+                </tr>
+            `;
+        } else if (currentView === 'afastados') {
+            thead.innerHTML = `
+                <tr>
+                    <th class="sortable" onclick="handleSort('cc')" style="width: 18%;">Centro de custo ${getSortArrow('cc')}</th>
+                    <th class="sortable" onclick="handleSort('cad')" style="width: 10%;">Cadastro ${getSortArrow('cad')}</th>
+                    <th class="sortable" onclick="handleSort('nome')" style="width: 22%;">Colaborador ${getSortArrow('nome')}</th>
+                    <th class="sortable" onclick="handleSort('motivoAfastamento')" style="width: 18%;">Motivo do Afastamento ${getSortArrow('motivoAfastamento')}</th>
+                    <th class="sortable" onclick="handleSort('tenureDays')" style="width: 12%;">Tempo de casa ${getSortArrow('tenureDays')}</th>
+                    <th class="sortable" onclick="handleSort('cargo')" style="width: 12%;">Cargo ${getSortArrow('cargo')}</th>
+                    <th class="sortable" onclick="handleSort('salarioNum')" style="width: 8%;">Salário ${getSortArrow('salarioNum')}</th>
+                </tr>
+            `;
+        } else {
+            thead.innerHTML = `
+                <tr>
+                    <th class="sortable" onclick="handleSort('cc')" style="width: 22%;">Centro de custo ${getSortArrow('cc')}</th>
+                    <th class="sortable" onclick="handleSort('cad')" style="width: 12%;">Cadastro ${getSortArrow('cad')}</th>
+                    <th class="sortable" onclick="handleSort('nome')" style="width: 24%;">Colaborador ${getSortArrow('nome')}</th>
+                    <th class="sortable" onclick="handleSort('tenureDays')" style="width: 14%;">Tempo de casa ${getSortArrow('tenureDays')}</th>
+                    <th class="sortable" onclick="handleSort('cargo')" style="width: 16%;">Cargo ${getSortArrow('cargo')}</th>
+                    <th class="sortable" onclick="handleSort('salarioNum')" style="width: 12%;">Salário ${getSortArrow('salarioNum')}</th>
+                </tr>
+            `;
+        }
+
+        tbody.innerHTML = '';
+        tfoot.innerHTML = '';
+
+        // 1. FILTRAR POR CARD SELECIONADO
+        let baseList = [];
+        let cardTitle = 'Lista Geral de Colaboradores';
+
+        if (currentView === 'afastados') {
+            cardTitle = 'Colaboradores Afastados (INSS / Licenças)';
+            baseList = processedState.employees.filter(emp => emp.primaryCategory === 'afastados');
+        } else if (currentView === 'aposentados') {
+            cardTitle = 'Colaboradores Aposentados por Invalidez';
+            baseList = processedState.employees.filter(emp => emp.primaryCategory === 'aposentados');
+        } else if (currentView === 'reclusos') {
+            cardTitle = 'Colaboradores em Reclusão';
+            baseList = processedState.employees.filter(emp => emp.primaryCategory === 'reclusos');
+        } else if (currentView === 'aviso') {
+            cardTitle = 'Colaboradores em Aviso Prévio';
+            baseList = processedState.employees.filter(emp => emp.primaryCategory === 'aviso');
+        } else if (currentView === 'previsao-demissao') {
+            cardTitle = 'Previsão de Demissão (Colaboradores Indicados)';
+            baseList = KNOWN_PREVISAO_DEMISSAO.map(item => {
+                const found = processedState.employees.find(e => e.cad === item.cad);
+                const admStr = found ? found.admissao : item.admissao;
+                const tenure = calculateTenure(admStr);
+                return {
+                    cad: item.cad,
+                    nome: found ? found.nome : item.nome,
+                    status: item.status,
+                    cc: found ? found.cc : item.cc,
+                    admissao: admStr,
+                    tenureText: tenure.text,
+                    tenureDays: tenure.totalDays,
+                    cargo: found ? found.cargo : 'Pendente de Base CSV',
+                    salarioNum: found ? found.salarioNum : 0,
+                    salarioText: found ? found.salarioText : 'R$ 0,00'
+                };
+            });
+        } else if (currentView === 'ativo') {
+            cardTitle = 'Colaboradores Ativos (Head Efetivo Real)';
+            baseList = processedState.employees.filter(emp => emp.primaryCategory === 'ativo');
+        } else { // 'total-head'
+            cardTitle = 'Lista Geral de Colaboradores';
+            baseList = processedState.employees;
+        }
+
+        // 2. FILTRAR POR SETOR DA INDÚSTRIA (CC FILTER) E TEXTO DE BUSCA SE HOUVER
+        const activeCCSet = getActiveIndustryCCSet();
+        const isCCFiltered = activeCCSet !== null;
+        const filterText = document.getElementById('search-input').value.toLowerCase().trim();
+
+        let filtered = baseList.filter(emp => {
+            // Apply Sector / Cost Center filter
+            if (isCCFiltered && !activeCCSet.has(emp.cc)) {
+                return false;
+            }
+
+            if (!filterText) return true;
+            return (emp.cc && emp.cc.toLowerCase().includes(filterText)) ||
+                   (emp.nome && emp.nome.toLowerCase().includes(filterText)) ||
+                   (emp.cad && emp.cad.toLowerCase().includes(filterText)) ||
+                   (emp.status && emp.status.toLowerCase().includes(filterText)) ||
+                   (emp.motivoAfastamento && emp.motivoAfastamento.toLowerCase().includes(filterText)) ||
+                   (emp.cargo && emp.cargo.toLowerCase().includes(filterText)) ||
+                   (emp.salarioText && emp.salarioText.toLowerCase().includes(filterText));
+        });
+
+        // TITULO DINÂMICO CONFORME O CARD E FILTRO
+        document.getElementById('drilldown-title-text').innerHTML = `
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">group</span>
+            ${cardTitle} (Total: ${filtered.length})
+        `;
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <span class="material-symbols-outlined" style="font-size:42px;">person_search</span>
+                            <p>Nenhum colaborador encontrado para este card / filtro.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // 3. ORDENAR REGISTROS
+        filtered.sort((a, b) => {
+            let valA = a[currentSort.field];
+            let valB = b[currentSort.field];
+
+            if (currentSort.field === 'cad' || currentSort.field === 'salarioNum' || currentSort.field === 'tenureDays') {
+                valA = typeof valA === 'number' ? valA : (parseInt(valA, 10) || 0);
+                valB = typeof valB === 'number' ? valB : (parseInt(valB, 10) || 0);
+            } else if (typeof valA === 'string') {
+                valA = valA.localeCompare(valB || '');
+                return currentSort.direction === 'asc' ? valA : -valA;
+            }
+
+            if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        let totalFolha = 0;
+
+        filtered.forEach(emp => {
+            totalFolha += emp.salarioNum || 0;
+
+            if (currentView === 'previsao-demissao') {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="col-number" style="font-weight:700; color:#1A237E;">${escapeHtml(emp.cad)}</td>
+                    <td style="font-weight: 600;">${escapeHtml(emp.nome)}</td>
+                    <td><span class="badge badge-warning">${escapeHtml(emp.status)}</span></td>
+                    <td class="col-cc">${escapeHtml(emp.cc)}</td>
+                    <td class="col-number">${escapeHtml(emp.admissao)}</td>
+                    <td class="col-number">${escapeHtml(emp.tenureText)}</td>
+                    <td>${escapeHtml(emp.cargo)}</td>
+                    <td class="col-salario">${escapeHtml(emp.salarioText)}</td>
+                `;
+                tbody.appendChild(tr);
+            } else if (currentView === 'afastados') {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="col-cc">${escapeHtml(emp.cc)}</td>
+                    <td class="col-number" style="font-weight:700; color:#1A237E;">${escapeHtml(emp.cad)}</td>
+                    <td style="font-weight: 600;">${escapeHtml(emp.nome)}</td>
+                    <td><span class="badge badge-danger">${escapeHtml(emp.motivoAfastamento || 'Afastado')}</span></td>
+                    <td class="col-number">${escapeHtml(emp.tenureText)}</td>
+                    <td>${escapeHtml(emp.cargo)}</td>
+                    <td class="col-salario">${escapeHtml(emp.salarioText)}</td>
+                `;
+                tbody.appendChild(tr);
+            } else {
+                // MONTAGEM DO HOVER TOOLTIP INTERATIVO PARA PEDIDOS DE DEMISSÃO/RESCISÕES IMPUTADAS
+                let tooltipHtml = '';
+                if (emp.avisoDetail) {
+                    const dt = emp.avisoDetail;
+                    tooltipHtml = `
+                        <span class="info-tooltip-wrapper" title="Data do Pedido: ${dt.dataPedido}&#10;Motivo: ${dt.motivo}&#10;Obs: ${dt.observacao}">
+                            <span class="material-symbols-outlined tooltip-icon">info</span>
+                            <div class="tooltip-popup">
+                                <div class="tooltip-header">
+                                    <span class="material-symbols-outlined" style="font-size:16px; color:#FFD54F;">pending_actions</span>
+                                    Pedido de Demissão (Rescisão Pendente)
+                                </div>
+                                <div class="tooltip-body">
+                                    <p><b>Data do Pedido:</b> ${dt.dataPedido}</p>
+                                    <p><b>Motivo:</b> ${dt.motivo}</p>
+                                    <p style="margin-top:6px; font-size:0.76rem; color:#94A3B8;">${dt.observacao}</p>
+                                </div>
+                            </div>
+                        </span>
+                    `;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="col-cc">${escapeHtml(emp.cc)}</td>
+                    <td class="col-number" style="font-weight:700; color:#1A237E;">${escapeHtml(emp.cad)}</td>
+                    <td style="font-weight: 600;">
+                        ${escapeHtml(emp.nome)}
+                        ${tooltipHtml}
+                    </td>
+                    <td class="col-number">${escapeHtml(emp.tenureText)}</td>
+                    <td>${escapeHtml(emp.cargo)}</td>
+                    <td class="col-salario">${escapeHtml(emp.salarioText)}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        });
+
+        if (currentView === 'previsao-demissao') {
+            const totalFolhaFormatted = totalFolha.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            tfoot.innerHTML = `
+                <tr class="table-footer-summary">
+                    <td colspan="2">TOTAL REGISTROS EXIBIDOS</td>
+                    <td colspan="5" style="color:#1A237E; font-weight:700;">${filtered.length} Colaboradores Previstos</td>
+                    <td style="color:#1A237E; font-weight:700;">${totalFolhaFormatted}</td>
+                </tr>
+            `;
+        } else if (currentView === 'afastados') {
+            const totalFolhaFormatted = totalFolha.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            tfoot.innerHTML = `
+                <tr class="table-footer-summary">
+                    <td colspan="2">TOTAL REGISTROS EXIBIDOS</td>
+                    <td colspan="4" style="color:#1A237E; font-weight:700;">${filtered.length} Colaboradores Afastados</td>
+                    <td style="color:#1A237E; font-weight:700;">${totalFolhaFormatted}</td>
+                </tr>
+            `;
+        } else {
+            const totalFolhaFormatted = totalFolha.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            tfoot.innerHTML = `
+                <tr class="table-footer-summary">
+                    <td colspan="2">TOTAL REGISTROS EXIBIDOS</td>
+                    <td colspan="3" style="color:#1A237E; font-weight:700;">${filtered.length} Colaboradores</td>
+                    <td style="color:#1A237E; font-weight:700;">${totalFolhaFormatted}</td>
+                </tr>
+            `;
+        }
+    }
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;">${type === 'error' ? 'error' : 'info'}</span> ${message}`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function(m) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+        });
+    }
+
+    function exportCurrentViewExcel() {
+        const table = document.getElementById('main-table');
+        const titleText = document.getElementById('drilldown-title-text').innerText.trim();
+        if (!table || table.rows.length <= 1) {
+            showToast("Nenhum dado disponível na tabela para exportar.", "error");
+            return;
+        }
+
+        const dateStr = new Date().toISOString().slice(0,10);
+        const fileName = `Relatorio_People_Analytics_${currentView || 'Geral'}_${dateStr}.xls`;
+
+        // Clone table to format for Excel export cleanly
+        const tableClone = table.cloneNode(true);
+
+        const template = `
+            <html xmlns:o="urn:schemas-microsoft-microsoft-com:office:office" 
+                  xmlns:x="urn:schemas-microsoft-microsoft-com:office:excel" 
+                  xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta charset="UTF-8">
+                <!--[if gte mso 9]>
+                <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                            <x:ExcelWorksheet>
+                                <x:Name>Relatório</x:Name>
+                                <x:WorksheetOptions>
+                                    <x:DisplayGridlines/>
+                                </x:WorksheetOptions>
+                            </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                </xml>
+                <![endif]-->
+                <style>
+                    body { font-family: Calibri, Arial, sans-serif; }
+                    .report-title { font-size: 14pt; font-weight: bold; color: #1A237E; margin-bottom: 12px; }
+                    table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+                    th { background-color: #1A237E; color: #FFFFFF; font-weight: bold; text-align: left; padding: 8px; border: 1px solid #BBBBBB; }
+                    td { padding: 6px 8px; border: 1px solid #DDDDDD; mso-number-format: "\@"; }
+                    .col-salario { text-align: right; }
+                    .col-number { text-align: center; mso-number-format: "\@"; }
+                    .table-footer-summary { background-color: #E8EAF6; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="report-title">${escapeHtml(titleText)}</div>
+                ${tableClone.outerHTML}
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([template], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Relatório gerado em Excel (.xls) com sucesso!");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        applyIndustryCCFilter();
+    });
+</script>
+</body>
+</html>

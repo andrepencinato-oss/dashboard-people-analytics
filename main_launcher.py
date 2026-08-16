@@ -42,36 +42,56 @@ try:
                 update_stage = os.path.join(app_root, ".update_stage")
                 bat_path = os.path.join(app_root, "apply_update.bat")
                 
-                exe_command = f'start "" "{os.path.basename(sys.executable)}"' if getattr(sys, 'frozen', False) else 'start "" "python" "main_launcher.py"'
-                
-                bat_content = f"""@echo off
-echo =========================================
-echo  PEOPLE ANALYTICS - ATUALIZACAO EM ANDAMENTO
-echo =========================================
-echo Aguardando 3 segundos para fechamento total do sistema...
-timeout /t 3 /nobreak > nul
+                if getattr(sys, 'frozen', False):
+                    exe_name = os.path.basename(sys.executable)
+                    exe_command = f'start "" "{exe_name}"'
+                    kill_exe_cmd = f'taskkill /f /im "{exe_name}" > nul 2>&1'
+                else:
+                    exe_name = "python.exe"
+                    exe_command = 'start "" "python" "main_launcher.py"'
+                    kill_exe_cmd = 'echo.'
 
-echo.
-echo Copiando novos arquivos...
+                import glob
+                version_files = glob.glob(os.path.join(update_stage, "core", "version*.json"))
+                version_renames = ""
+                for v_file in version_files:
+                    v_name = os.path.basename(v_file)
+                    os.rename(v_file, v_file + ".new")
+                    version_renames += f'    move /y "{app_root}\\core\\{v_name}.new" "{app_root}\\core\\{v_name}" > nul 2>&1\n'
+
+                bat_content = f"""@echo off
+ping 127.0.0.1 -n 3 > nul
+{kill_exe_cmd}
+ping 127.0.0.1 -n 2 > nul
+
+del /q /f "{app_root}\\*.old" > nul 2>&1
+ren "{app_root}\\{exe_name}" "{exe_name}.old" > nul 2>&1
+ren "{app_root}\\*.dll" "*.dll.old" > nul 2>&1
+ren "{app_root}\\*.pyd" "*.pyd.old" > nul 2>&1
+
 xcopy /s /y /q "{update_stage}\\*" "{app_root}\\"
 
-echo.
-echo Limpando arquivos temporarios...
-rmdir /s /q "{update_stage}"
+if exist "{app_root}\\{exe_name}" (
+{version_renames}) else (
+    ren "{app_root}\\{exe_name}.old" "{exe_name}" > nul 2>&1
+)
 
-echo.
-echo Reiniciando o sistema...
+rmdir /s /q "{update_stage}"
 cd /d "{app_root}"
 {exe_command}
-
-echo Atualizacao concluida.
 del "%~f0"
 """
                 with open(bat_path, 'w', encoding='utf-8') as f:
                     f.write(bat_content)
                     
                 print("[OTA BOOTLOADER] Iniciando instalador independente e encerrando processo principal...")
-                subprocess.Popen([bat_path], cwd=app_root, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                subprocess.Popen(
+                    [bat_path],
+                    cwd=app_root,
+                    shell=True,
+                    creationflags=0x00000008,
+                    close_fds=True
+                )
                 sys.exit(0)
         except Exception as e:
             print(f"[OTA BOOTLOADER] Erro ao checar atualizacoes: {e}")
